@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account</title>
+  <link rel="stylesheet" href="/css/user-signup.css">
+</head>
+<body>
+  <div class="wrapper">
+    <h2>Create Account</h2>
+
+    <!-- Google signup button -->
+    <button class="google-btn">
+      <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Logo">
+      sign up with Google
+    </button>
+
+    <div class="divider">
+      <span>or</span>
+    </div>
+
+    <!-- Signup form -->
+    <form id="signupform" method="post" action="/signup" novalidate>
+      <input id="email" name="email" type="email" placeholder="Email Address" required>
+      <div id="error1" class="error-message"></div>
+
+      <input id="password" name="password" type="password" placeholder="Password" required>
+      <div id="error2" class="error-message"></div>
+
+      <input id="confirmPassword" name="ConfirmPassword" type="password" placeholder="Confirm password" required>
+      <div id="error3" class="error-message"></div>
+
+      <p class="referral-text">
+        Did Someone Refer You? Enter their code to Claim the reward
+      </p>
+      <input name="refferalCode" type="text" placeholder="Refferal Code">
+
+      <button type="submit" class="signup-btn">Sign up</button>
+    </form>
+
+    <p class="login-text">
+      Already have account ? <a href="#">Login</a>
+    </p>
+  </div>
+</body>
+<script>
+const emailid = document.getElementById("email");
+const passid = document.getElementById("password");
+const confirmPasswordid = document.getElementById("confirmPassword");
+const error1 = document.getElementById("error1");
+const error2 = document.getElementById("error2");
+const error3 = document.getElementById("error3");
+const signupform = document.getElementById("signupform");
+
+function emailValidation() {
+  const email = emailid.value.trim();
+  const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+
+  if (!emailPattern.test(email)) {
+    error1.style.display = "block";
+    error1.textContent = "Please enter a valid email";
+  } else {
+    error1.style.display = "none";
+    error1.textContent = "";
+  }
+}
+
+function passwordValidation() {
+  const password = passid.value.trim();
+  const confirmPassword = confirmPasswordid.value.trim();
+  const alpha = /[a-zA-Z]/;
+  const digit = /\d/;
+
+  if (password === "") {
+    error2.style.display = "block";
+    error2.textContent = "Please enter a valid password";
+  } else if (password.length < 8) {
+    error2.style.display = "block";
+    error2.textContent = "Password must contain at least 8 characters";
+  } else if (!alpha.test(password) || !digit.test(password)) {
+    error2.style.display = "block";
+    error2.textContent = "Password must contain at least one alphabet and one digit";
+  } else {
+    error2.style.display = "none";
+    error2.textContent = "";
+  }
+
+  if (password !== confirmPassword) {
+    error3.style.display = "block";
+    error3.textContent = "Passwords do not match";
+  } else {
+    error3.style.display = "none";
+    error3.textContent = "";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  signupform.addEventListener("submit", function (e) {
+    emailValidation();
+    passwordValidation();
+
+    if (error1.textContent || error2.textContent || error3.textContent) {
+      e.preventDefault(); // stop form submission if errors exist
+    }
+  });
+});
+</script>
+</html>

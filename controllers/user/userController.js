@@ -1,3 +1,7 @@
+const User = require('../../models/userSchema')
+
+
+//not found page
 const pageNotFound = async (req, res) => {
     try{
 
@@ -11,7 +15,7 @@ const pageNotFound = async (req, res) => {
 
 
 
-
+//load home page
 const loadHome = async (req, res) => {
     try{
 
@@ -25,4 +29,40 @@ const loadHome = async (req, res) => {
     }
 }
 
-module.exports = { loadHome, pageNotFound }
+//load signup page
+const loadSignupPage = async (req, res) => {
+  try{
+    res.render('user/signup',{ user: null })
+  }catch(error){
+     console.log('Page Not Found', error.message)
+     res.redirect('/pagenotfound')
+  }
+}
+
+//signup
+const signup = async (req, res) => {
+  const {email, password, confirmPassword, refferalCode} = req.body;
+  try{ 
+    const newUser = new User({email, password})
+    console.log(newUser);
+
+    await newUser.save();
+
+    return res.redirect('/signup')
+
+  }catch(error){
+      console.error('signup error',error)
+      res.redirect('/signup')
+  }
+
+}
+
+
+
+
+module.exports = {
+   loadHome,
+   pageNotFound,
+   loadSignupPage,
+   signup
+ }
