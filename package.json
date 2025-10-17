@@ -12,11 +12,16 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.2.2",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "mongodb": "^6.20.0",
     "mongoose": "^8.18.2",
-    "nodemon": "^3.1.10"
+    "nodemailer": "^7.0.9",
+    "nodemon": "^3.1.10",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0"
   }
 }

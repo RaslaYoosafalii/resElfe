@@ -11,24 +11,25 @@
     <h2>Create Account</h2>
 
     <!-- Google signup button -->
-    <button class="google-btn">
+  <div class="social-btn">
+    <button class="google-btn" onclick="window.location.href='/auth/google'">
       <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Logo">
       sign up with Google
     </button>
-
+  </div>
     <div class="divider">
       <span>or</span>
     </div>
 
     <!-- Signup form -->
-    <form id="signupform" method="post" action="/signup" novalidate>
+    <form id="signupform" method="POST" action="/signup" novalidate>
       <input id="email" name="email" type="email" placeholder="Email Address" required>
       <div id="error1" class="error-message"></div>
 
       <input id="password" name="password" type="password" placeholder="Password" required>
       <div id="error2" class="error-message"></div>
 
-      <input id="confirmPassword" name="ConfirmPassword" type="password" placeholder="Confirm password" required>
+      <input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" required>
       <div id="error3" class="error-message"></div>
 
       <p class="referral-text">
@@ -40,7 +41,7 @@
     </form>
 
     <p class="login-text">
-      Already have account ? <a href="#">Login</a>
+      Already have account ? <a href="/login">Login</a>
     </p>
   </div>
 </body>

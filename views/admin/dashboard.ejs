@@ -1,0 +1,314 @@
+<%- include("../../views/partials/admin/header") %>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body {
+    background-color: #f5f6fa;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  }
+  .icon-box {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bg-blue { background-color: #e0f7fa; color: #007bff; }
+  .bg-green { background-color: #e8f5e9; color: #28a745; }
+  .bg-orange { background-color: #ffe5d9; color: #fd7e14; }
+  .bg-purple { background-color: #f3e5f5; color: #6f42c1; }
+  .status-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  .delivered { background-color: #d4edda; color: #155724; }
+  .pending { background-color: #fff3cd; color: #856404; }
+  .cancelled { background-color: #f8d7da; color: #721c24; }
+</style>
+
+<!-- Dashboard Content -->
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="font-weight-bold">📈 Dashboard</h2>
+  </div>
+
+  <div class="row mb-4" id="summaryCards"></div>
+
+  <div class="row mb-4">
+    <div class="col-md-8 d-flex">
+      <div class="card flex-fill chart-card">
+        <div class="card-body p-4 d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title m-0 fw-bold text-primary">📊 Sales Overview</h5>
+            <div>
+              <select id="rangeSelect" class="form-control form-control-sm d-inline w-auto">
+                <option value="daily">Last 7 Days</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="custom">Custom</option>
+              </select>
+              <input type="date" id="startDate" class="form-control form-control-sm d-inline w-auto" style="display: none;">
+              <input type="date" id="endDate" class="form-control form-control-sm d-inline w-auto" style="display: none;">
+              <button id="applyBtn" class="btn btn-sm btn-primary" onclick="loadDashboard()" style="display: none;">Apply</button>
+            </div>
+          </div>
+          <canvas id="salesChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 d-flex">
+      <div class="card flex-fill">
+        <div class="card-body p-4 d-flex flex-column">
+          <h5 class="mb-3">📦 Order Status</h5>
+          <canvas id="statusChart" height="150"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Lists -->
+  <div class="row mt-3">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Top Products</div>
+        <div class="card-body">
+          <ul class="list-group" id="top-products"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Top Categories</div>
+        <div class="card-body">
+          <ul class="list-group" id="top-categories"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">Top Brands</div>
+        <div class="card-body">
+          <ul class="list-group" id="top-brands">
+            <li class="list-group-item">Loading...</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JS Section -->
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  let salesChartInstance, statusChartInstance;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadDashboard();
+
+    document.getElementById("rangeSelect").addEventListener("change", function () {
+      const filter = this.value;
+      const start = document.getElementById("startDate");
+      const end = document.getElementById("endDate");
+      const applyBtn = document.getElementById("applyBtn");
+
+      if (filter === "custom") {
+        start.style.display = "inline-block";
+        end.style.display = "inline-block";
+        applyBtn.style.display = "inline-block";
+      } else {
+        start.style.display = "none";
+        end.style.display = "none";
+        applyBtn.style.display = "none";
+        loadDashboard();  // auto-load for non-custom
+      }
+    });
+  });
+
+  function loadDashboard() {
+    const filter = document.getElementById("rangeSelect").value;
+    const start = document.getElementById("startDate").value;
+    const end = document.getElementById("endDate").value;
+    if (filter === 'custom') {
+  if (!start || !end) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Missing Dates',
+      text: 'Please select both start and end dates.'
+    });
+    return;
+  }
+
+  if (new Date(start) > new Date(end)) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Invalid Date Range',
+      text: 'Start date cannot be after end date.'
+    });
+    return;
+  }
+}
+
+
+    let url = `/admin/dashboard-data?filter=${filter}`;
+    if (filter === 'custom' && start && end) {
+      url += `&start=${start}&end=${end}`;
+    }
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        updateSummaryCards(data);
+        updateSalesChart(data.salesChart);
+        updateStatusChart(data.orderStatus);
+        updateTopLists(data);
+      })
+      .catch(err => console.error('Dashboard fetch error:', err));
+  }
+
+  function updateSummaryCards(data) {
+    const container = document.getElementById("summaryCards");
+    container.innerHTML = `
+      <div class="col-md-3"><div class="card p-3 d-flex flex-row align-items-center"><div class="icon-box bg-blue mr-3"><i class="fas fa-box fa-lg"></i></div><div><h4 class="mb-0">${data.totalProducts}</h4><small>Total Products</small></div></div></div>
+      <div class="col-md-3"><div class="card p-3 d-flex flex-row align-items-center"><div class="icon-box bg-green mr-3"><i class="fas fa-users fa-lg"></i></div><div><h4 class="mb-0">${data.totalCustomers}</h4><small>Total Customers</small></div></div></div>
+      <div class="col-md-3"><div class="card p-3 d-flex flex-row align-items-center"><div class="icon-box bg-orange mr-3"><i class="fas fa-shopping-bag fa-lg"></i></div><div><h4 class="mb-0">${data.totalOrders}</h4><small>Total Orders</small></div></div></div>
+      <div class="col-md-3"><div class="card p-3 d-flex flex-row align-items-center"><div class="icon-box bg-purple mr-3"><i class="fas fa-rupee-sign fa-lg"></i></div><div><h4 class="mb-0">₹${data.totalRevenue}</h4><small>Total Revenue</small></div></div></div>
+    `;
+  }
+
+  function updateSalesChart(chartData) {
+    const filter = document.getElementById("rangeSelect").value;
+    let labels = [], values = [];
+
+    if (filter === "monthly") {
+      const today = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        labels.push(d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }));
+        const found = chartData.find(item => item._id.month === d.getMonth() + 1 && item._id.year === d.getFullYear());
+        values.push(found ? found.totalSales : 0);
+      }
+    } else if (filter === "daily") {
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        labels.push(d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+        const found = chartData.find(item => item._id.day === d.getDate() && item._id.month === d.getMonth() + 1 && item._id.year === d.getFullYear());
+        values.push(found ? found.totalSales : 0);
+      }
+    } else if (filter === "yearly") {
+      for (let i = 4; i >= 0; i--) {
+        const year = new Date().getFullYear() - i;
+        labels.push(`${year}`);
+        const found = chartData.find(item => item._id.year === year);
+        values.push(found ? found.totalSales : 0);
+      }
+    } else if (filter === "custom") {
+      const start = new Date(document.getElementById("startDate").value);
+      const end = new Date(document.getElementById("endDate").value);
+      let d = new Date(start);
+      while (d <= end) {
+        labels.push(d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+        const found = chartData.find(item => item._id.day === d.getDate() && item._id.month === d.getMonth() + 1 && item._id.year === d.getFullYear());
+        values.push(found ? found.totalSales : 0);
+        d.setDate(d.getDate() + 1);
+      }
+    }
+
+    if (salesChartInstance) salesChartInstance.destroy();
+    const ctx = document.getElementById("salesChart").getContext("2d");
+
+    salesChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Sales ₹',
+          data: values,
+          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          borderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true, position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: context => `₹${context.formattedValue}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: value => `₹${value.toLocaleString()}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function updateStatusChart(data) {
+    const labels = data.map(d => d._id);
+    const values = data.map(d => d.count);
+
+    if (statusChartInstance) statusChartInstance.destroy();
+
+    statusChartInstance = new Chart(document.getElementById("statusChart"), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c', '#9b59b6', '#3498db']
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+
+  function updateTopLists(data) {
+    const render = (id, list) => {
+      const ul = document.getElementById(id);
+      ul.innerHTML = "";
+      if (!list.length) {
+        ul.innerHTML = `<li class="list-group-item">No Data</li>`;
+        return;
+      }
+      list.forEach(item => {
+        ul.innerHTML += `<li class="list-group-item d-flex justify-content-between">${item.name}<span class="badge badge-primary">${item.totalQty}</span></li>`;
+      });
+    };
+    render("top-products", data.bestProducts);
+    render("top-categories", data.bestCategories);
+    render("top-brands", data.bestBrands);
+  }
+</script>
+
+<%- include("../../views/partials/admin/footer") %>

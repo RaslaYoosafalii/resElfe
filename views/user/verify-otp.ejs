@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Confirm with OTP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #fff;
+}
+
+.card {
+  width: 480px;
+  background: #fff;
+  padding: 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+.card h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #222;
+}
+
+.card p {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.otp-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.otp-inputs input {
+  width: 50px;
+  height: 50px;
+  text-align: center;
+  font-size: 18px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  transition: border 0.3s;
+}
+
+.otp-inputs input:focus {
+  border-color: #5a4a42;
+}
+
+.confirm-btn {
+  width: 350px;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: #5a4a42;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.confirm-btn:hover {
+  background: #463730;
+}
+
+.timer {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #555;
+}
+
+.resend-btn {
+  display: block;
+  margin: 10px auto 0;
+  font-size: 14px;
+  color: #615A5A;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  display: none; /* hidden initially */
+}
+
+.resend-btn:hover {
+  color: #463730;
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #555;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+    <h2>Confirm with OTP</h2>
+    <p>Please check your mail address for OTP</p>
+
+    <form id="otpForm" action="/verify-otp" method="POST" onsubmit="return validateOtpForm()">
+      <div id= "otp" class="otp-inputs">
+        <input type="text" maxlength="1" required>
+        <input type="text" maxlength="1" required>
+        <input type="text" maxlength="1" required>
+        <input type="text" maxlength="1" required>
+      </div>
+
+      <button type="submit" class="confirm-btn">Confirm</button>
+    </form>
+
+    <div class="timer" id="timer">Resend OTPin 60s</div>
+    <button class="resend-btn" id="resendBtn" onclick="resendOTP()">Resend OTP</button>
+
+    <a href="/signup" class="back-link">Go back to Signup page</a>
+  </div>
+
+<script>
+const inputs = document.querySelectorAll('.otp-inputs input');
+const timerEl = document.getElementById('timer');
+const resendBtn = document.getElementById('resendBtn');
+let countdown;
+let timeLeft = 60;
+
+// Auto-move to next input
+inputs.forEach((input, index) => {
+  input.addEventListener('input', function() {
+    if (this.value.length === 1 && index < inputs.length - 1) {
+      inputs[index + 1].focus();
+    }
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' && !this.value && index > 0) {
+      inputs[index - 1].focus();
+    }
+  });
+});
+
+// Start countdown timer
+function startTimer() {
+  clearInterval(countdown);
+  timeLeft = 60;
+  timerEl.textContent = `Resend OTP in ${timeLeft}s`;
+  resendBtn.style.display = 'none';
+
+  countdown = setInterval(() => {
+    if (timeLeft <= 0) {
+      clearInterval(countdown);
+      timerEl.textContent = '';
+      resendBtn.style.display = 'block';
+    } else {
+      timeLeft--;
+      timerEl.textContent = `Resend OTP in ${timeLeft}s`;
+    }
+  }, 1000);
+}
+
+// Resend OTP
+function resendOTP() {
+  if (timeLeft > 0) return; // only allow resend after countdown
+
+  $.post('/resend-otp', { email: '<%= email %>' }, (response) => {
+    if(response.message){
+      Swal.fire({ icon: 'success', title: 'OTP Resent', timer: 1500, showConfirmButton: false });
+      startTimer(); // restart timer after resend
+    } else {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to resend OTP' });
+    }
+  });
+}
+
+// Event listener
+resendBtn.addEventListener('click', resendOTP);
+
+// Start timer on page load
+startTimer();
+
+//validate otp form
+function validateOtpForm(){
+   const otpInput = Array.from(inputs).map(input => input.value).join('');
+
+   $.ajax({
+    type: 'POST',
+    url: '/verify-otp',
+    data: {otp: otpInput},
+    success: function(response){
+      if(response.success) {
+        Swal.fire({
+            icon: "success",
+            title: "OTP Verified Successfully",
+            showConfirmButton: false,
+            timer: 1500,
+        }).then(()=>{
+            window.location.href = response.redirectUrl;
+        });
+      } else{
+        Swal.fire({
+           icon: "error",
+           title: 'Error',
+           text: response.message,
+        });
+      }
+    },
+    error: function() {
+          Swal.fire({
+            icon: "error",
+            title: "Invalid OTP",
+            text: "Please try again"
+          });
+        }
+   });
+   return false;
+}
+</script>
+
+
+</body>
+</html>

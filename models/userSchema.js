@@ -8,17 +8,18 @@ const userSchema = new Schema({
     },
    password: {
     type: String,
-    required: true
+    required: false
    },
    email: {
     type: String,
     required: true,
-    unique: true
 
    },
    mobileNumber: {
     type: Number,
-    required: false
+    required: false,
+    default: null,
+    sparse: true
    },
     createdAt:{
         type:Date,
@@ -47,8 +48,9 @@ const userSchema = new Schema({
         // ref:'User'
     }],
     googleId:{
-        type:String,
-        unique:true,
+        type: String,
+        sparse: true,
+        
     },
     cart:[{
         type:Schema.Types.ObjectId,
@@ -82,6 +84,6 @@ const userSchema = new Schema({
     }]
 })
 
-const User = mongoose.model("user", userSchema);
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;

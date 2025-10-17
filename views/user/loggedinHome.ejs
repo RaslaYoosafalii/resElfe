@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elfé Lorienveil</title>
+  <style>
+    /* General Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      color: #615A5A;
+      background: #fff;
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 60px;
+      background: #fff;
+    }
+
+    .navbar .logo {
+      font-size: 22px;
+      font-weight: bold;
+      color: #8b7e74;
+    }
+
+    .navbar ul {
+      display: flex;
+      list-style: none;
+      gap: 25px;
+    }
+
+    .navbar a {
+      text-decoration: none;
+      color: #615A5A;
+      font-size: 15px;
+    }
+
+    .navbar .btn {
+      padding: 8px 15px;
+      border-radius: 5px;
+      background: #4b403a;
+      color: #fff;
+    }
+
+    /* Hero */
+    .hero {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      padding: 40px 60px;
+    }
+
+    .hero img {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .hero .center {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .hero h2 {
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .hero h2 span {
+      font-size: 40px;
+    }
+
+    .hero .btn {
+      margin-top: 15px;
+    }
+
+    /* Categories */
+    .categories {
+      text-align: center;
+      padding: 50px 60px;
+    }
+
+    .categories .btn {
+      margin: 15px 0;
+    }
+
+    .category-list {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .category img {
+      width: 200px;
+      border-radius: 8px;
+    }
+
+    .category p {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    /* New Arrivals */
+    .new-arrivals {
+      text-align: center;
+      padding: 50px 60px;
+    }
+
+    .products {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .product img {
+      width: 220px;
+      border-radius: 8px;
+    }
+
+    .product h3 {
+      font-size: 15px;
+      margin: 10px 0 5px;
+    }
+
+    .product p {
+      font-size: 13px;
+      color: #555;
+    }
+
+    .product span {
+      font-weight: bold;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 40px;
+      background: #f6f6f6;
+      padding: 40px 60px;
+      color: #666;
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .footer-top h4 {
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .footer-top input {
+      padding: 8px;
+      width: 200px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <%-include('../partials/user/loggedinHeader')%>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-item">
+      <img src="https://via.placeholder.com/400x500" alt="Hero Image 1">
+    </div>
+    <div class="hero-item center">
+      <h2>ULTIMATE <br><span>SALE</span></h2>
+      <p>NEW COLLECTION</p>
+      <button class="btn">Shop Now</button>
+    </div>
+    <div class="hero-item">
+      <img src="https://via.placeholder.com/400x500" alt="Hero Image 2">
+    </div>
+  </section>
+
+  <!-- Explore by Category -->
+  <section class="categories">
+    <h2>EXPLORE BY CATEGORY</h2>
+    <button class="btn">Explore</button>
+    <div class="category-list">
+      <div class="category">
+        <img src="https://via.placeholder.com/300x400" alt="Tops">
+        <p>Tops</p>
+      </div>
+      <div class="category">
+        <img src="https://via.placeholder.com/300x400" alt="Dresses">
+        <p>Dresses</p>
+      </div>
+      <div class="category">
+        <img src="https://via.placeholder.com/300x400" alt="Jeans">
+        <p>Jeans</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- New Arrivals -->
+  <section class="new-arrivals">
+    <h2>NEW ARRIVALS</h2>
+    <button class="btn">Explore</button>
+    <div class="products">
+      <div class="product">
+        <img src="https://via.placeholder.com/300x400" alt="Sweatshirt">
+        <h3>PRINTED SWEATSHIRT</h3>
+        <p>Oversized<br>Navy Blue/Yale</p>
+        <span>Rs. 1,499.00</span>
+      </div>
+      <div class="product">
+        <img src="https://via.placeholder.com/300x400" alt="Shirt">
+        <h3>POPLIN SHIRT</h3>
+        <p>Slim Fit<br>Light Blue/Pinstriped</p>
+        <span>Rs. 1,499.00</span>
+      </div>
+      <div class="product">
+        <img src="https://via.placeholder.com/300x400" alt="Dress">
+        <h3>PLEAT-DETAIL TWILL DRESS</h3>
+        <p>Slim Fit<br>White</p>
+        <span>Rs. 1,999.00</span>
+      </div>
+      <div class="product">
+        <img src="https://via.placeholder.com/300x400" alt="Blazer">
+        <h3>CROPPED LINEN-BLEND BLAZER</h3>
+        <p>Regular Fit<br>Brown</p>
+        <span>Rs. 13,499.00</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <%-include('../partials/user/footer')%>
+</body>
+</html>
