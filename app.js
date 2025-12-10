@@ -45,6 +45,10 @@ app.use(express.static(path.join(__dirname,'public')))
 
 
 app.use(noCache);
+app.use((req, res, next) => {
+  console.log(new Date().toISOString(), req.method, req.originalUrl);
+  next();
+});
 
 app.use('/', userRouter)
 app.use('/admin', adminRouter);

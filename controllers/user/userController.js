@@ -123,6 +123,8 @@ async function sendVerificationEmail(email, otp){
         }
        })
       
+       await transporter.verify();
+
        const info = await transporter.sendMail({
             from: process.env.NODEMAILER_EMAIL, //app email
             to: email,                        //user email
@@ -131,7 +133,12 @@ async function sendVerificationEmail(email, otp){
             html: `<b>Your OTP is ${otp}</b>`
         })
 
-        return info.accepted.length > 0
+        console.log('nodemailer info:', info);
+
+        // return info.accepted.length > 0
+        return { ok: info.accepted && info.accepted.length > 0, info, rejected: info.rejected };
+
+        
     } catch (error) {
 
          console.error("Error for sending email",error)
@@ -141,57 +148,54 @@ async function sendVerificationEmail(email, otp){
 
 //signup
 const signup = async (req, res) => {
-  const {email, password, confirmPassword, refferalCode } = req.body;
+  const { email, password, confirmPassword, refferalCode } = req.body;
 
-  try{ 
+  try {
+    console.log("req.body:", req.body);
 
-    console.log("req.body:", req.body); 
+    if (!email || !password || !confirmPassword) {
+      return res.render('signup', { message: 'Fill all required fields', user: null });
+    }
 
-    //password check
-     if( password !==  confirmPassword ){
-            return res.render('signup',{message:'Password do not matched',user: null})
-        }
-      //checking user
-      console.log("🔍 Searching for existing user...");
-      const findUser = await User.findOne({email:email})
-      console.log("🔹 User search result:", findUser);
+    if (password !== confirmPassword) {
+      return res.render('signup', { message: 'Passwords do not match', user: null });
+    }
 
-      //if user with same email exists
-      if(findUser){
-            return res.render('signup',{message:'User with this email already exists',user: null})
-        }  
-      
-      //generating random otp 
-      const otp = generateOTP();
-      console.log("Generated OTP:", otp);
+    console.log("🔍 Searching for existing user...");
+    const findUser = await User.findOne({ email: email.toLowerCase() });
+    console.log("🔹 User search result:", findUser);
 
-      //sending verification email
-      const emailSent = await sendVerificationEmail(email,otp);
-      console.log("Email sent:", emailSent); 
+    if (findUser) {
+      return res.render('signup', { message: 'User with this email already exists', user: null });
+    }
 
-      //if error occured while sending verification email
-      if(!emailSent){
-         return res.json("email-error")
-      }
-      //keep session after successfully sending otp
-      req.session.userOtp = otp;
-      //keep session of user data
-      req.session.userData = {email, password, refferalCode};
-      //keep session of otp creation time
-      req.session.otpCreatedAt = Date.now()
+    const otp = generateOTP();
+    console.log("Generated OTP:", otp);
 
-      console.log('otp send successfully', otp)
-      //rendering verify otp page
-      res.render('verify-otp', {email});
-      
-      
+    const emailResult = await sendVerificationEmail(email, otp);
+    console.log("Email result:", emailResult);
 
-  }catch(error){
-      console.error('signup error',error)
-      return res.redirect('/pageNotFound');
+    if (!emailResult || !emailResult.ok) {
+      console.error('Email sending failed detail:', emailResult);
+      return res.render('signup', {
+        message: 'Failed to send verification email. Check your email or try again later.',
+        user: null
+      });
+    }
+
+    // store sessions (make sure express-session is configured before routes)
+    req.session.userOtp = otp;
+    req.session.userData = { email: email.toLowerCase(), password, refferalCode };
+    req.session.otpCreatedAt = Date.now();
+
+    console.log('otp sent successfully', otp);
+    return res.render('verify-otp', { email });
+
+  } catch (error) {
+    console.error('signup error', error);
+    return res.redirect('/pageNotFound');
   }
-
-}
+};
 
 //password hashing
 const securePassword = async (password) => {
@@ -218,15 +222,25 @@ const verifyOtp = async(req, res) => {
       return res.status(400).json({ success: false, message: 'OTP expired. Please resend.' });
     }
 
+    const createdAt = req.session.otpCreatedAt;
+    const TEN_MIN = 10 * 60 * 1000;
+    if (createdAt && (Date.now() - createdAt > TEN_MIN)) {
+      req.session.userOtp = null;
+      return res.status(400).json({ success: false, message: 'OTP expired. Please resend.' });
+    }
+
+
    //checking if the otp matches
    if(otp===req.session.userOtp){
-     const user = req.session.userData;
-     const passwordHash = await securePassword(user.password);
+     const userData = req.session.userData;
+           if (!userData) return res.status(400).json({ success: false, message: 'User data missing in session.' });
+
+     const passwordHash = await securePassword(userData.password);
 
      const saveUserData = new User({
-         email: user.email,
+         email: userData.email,
          password: passwordHash,
-        //  refferalcode: refferalCode,
+        refferalcode: userData.refferalCode || undefined
      })
      
      await saveUserData.save()
@@ -234,7 +248,9 @@ const verifyOtp = async(req, res) => {
 
        // Clear OTP from session
       req.session.userOtp = null;
-    
+      req.session.userData = null;
+      req.session.otpCreatedAt = null;
+
     return res.json({success:true, redirectUrl:'/login'})
 
 
@@ -301,6 +317,7 @@ module.exports = {
    pageNotFound,
    loadSignupPage,
    signup,
+   sendVerificationEmail,
    verifyOtp,
    resendOtp,
    loadLoginPage,
