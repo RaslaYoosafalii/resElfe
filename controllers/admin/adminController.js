@@ -10,7 +10,7 @@ const errorPage = async (req, res) => {
 }
 
 //load login page
-const loadLogin =async (req, res) => {
+const loadLogin = async (req, res) => {
     if(req.session.admin){
         return res.redirect('/admin')
     }
