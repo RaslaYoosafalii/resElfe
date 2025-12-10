@@ -47,7 +47,7 @@ app.use(noCache);
 
 // --- Global request logger (useful while debugging) ---
 app.use((req, res, next) => {
-  console.log(new Date().toISOString(), req.method, req.originalUrl);
+  console.log(req.method, req.originalUrl);
   next();
 });
 

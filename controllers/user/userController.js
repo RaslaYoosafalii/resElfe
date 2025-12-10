@@ -59,24 +59,24 @@ const loadLoginPage = async (req, res) => {
 //login
 const login = async(req, res) => {
   try {
-    console.log('[AUTH] login attempt', req.body?.email);
+    console.log('login attempt', req.body?.email);
 
     const {email, password} = req.body;
 
     if (!email || !password) {
-      console.log('[AUTH] login failed: missing email or password');
+      console.log('login failed: missing email or password');
       return res.render('login', { message: 'Fill all required fields', user: null });
     }
 
     const user = await User.findOne({isAdmin:0, email: email})
 
     if(!user){
-      console.log('[AUTH] login failed: user not found -', email);
+      console.log('login failed: user not found', email);
       return res.render('login', {message: 'User not found', user: req.session.user || null})
     }
 
     if( !user || user.isBlocked){
-      console.log('[AUTH] login failed: blocked or invalid -', email);
+      console.log('login failed: blocked or invalid', email);
       return res.render('login', {
         message: user?.isBlocked
         ? 'You are blocked by admin' : 'Invalid email or password', user: null
@@ -86,11 +86,11 @@ const login = async(req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
      
     if(!passwordMatch){
-      console.log('[AUTH] login failed: incorrect password -', email);
+      console.log('login failed: incorrect password ', email);
       return res.render('login', { message: 'incorrect password', user: null})
     }
     req.session.user = user._id;
-    console.log('[AUTH] login success -', email);
+    console.log('login success', email);
     res.redirect('/');
 
   } catch (error) {
@@ -161,15 +161,15 @@ const signup = async (req, res) => {
   const { email, password, confirmPassword, refferalCode } = req.body;
 
   try {
-    console.log("[AUTH] signup attempt", email);
+    console.log("signup attempt", email);
 
     if (!email || !password || !confirmPassword) {
-      console.log('[AUTH] signup failed: missing required fields');
+      console.log('signup failed: missing required fields');
       return res.render('signup', { message: 'Fill all required fields', user: null });
     }
 
     if (password !== confirmPassword) {
-      console.log('[AUTH] signup failed: passwords do not match -', email);
+      console.log('signup failed: passwords do not match', email);
       return res.render('signup', { message: 'Passwords do not match', user: null });
     }
 
@@ -178,7 +178,7 @@ const signup = async (req, res) => {
     console.log("🔹 User search result:", findUser);
 
     if (findUser) {
-      console.log('[AUTH] signup failed: user exists -', email);
+      console.log('signup failed: user exists', email);
       return res.render('signup', { message: 'User with this email already exists', user: null });
     }
 
@@ -205,7 +205,7 @@ const signup = async (req, res) => {
     return res.render('verify-otp', { email });
 
   } catch (error) {
-    console.error('[AUTH] signup error:', error);
+    console.error('signup error:', error);
     return res.render('signup', { message: 'Signup failed, please try again.', user: null });
   }
 };
@@ -228,12 +228,12 @@ const verifyOtp = async(req, res) => {
   try{
 
    const {otp} = req.body;
-  console.log('[AUTH] verifyOtp received OTP:', otp);
+  console.log('verifyOtp received OTP:', otp);
   const email = req.session?.userData?.email || '';
   
    // Check if OTP exists in session
    if (!req.session.userOtp) {
-      console.log('[AUTH] verifyOtp failed: OTP missing in session');
+      console.log('verifyOtp failed: OTP missing in session');
       return res.render('verify-otp', { email, message: 'OTP expired. Please resend.' });
     }
 
@@ -241,7 +241,7 @@ const verifyOtp = async(req, res) => {
     const TEN_MIN = 10 * 60 * 1000;
     if (createdAt && (Date.now() - createdAt > TEN_MIN)) {
       req.session.userOtp = null;
-      console.log('[AUTH] verifyOtp failed: OTP expired');
+      console.log('verifyOtp failed: OTP expired');
       return res.render('verify-otp', { email, message: 'OTP expired. Please resend.' });
     }
 
@@ -250,7 +250,7 @@ const verifyOtp = async(req, res) => {
    if(otp===req.session.userOtp){
      const userData = req.session.userData;
            if (!userData) {
-             console.log('[AUTH] verifyOtp failed: user data missing in session');
+             console.log('verifyOtp failed: user data missing in session');
              return res.render('verify-otp', { email, message: 'User data missing in session.' });
            }
 
@@ -274,12 +274,12 @@ const verifyOtp = async(req, res) => {
 
 
    }else{
-     console.log('[AUTH] verifyOtp failed: invalid OTP');
+     console.log('verifyOtp failed: invalid OTP');
      return res.render('verify-otp', { email, message: 'Invalid OTP, please try again' });
    }
 
   } catch(error){
-     console.error('[AUTH] verifyOtp error',error)
+     console.error('verifyOtp error',error)
      const email = req.session?.userData?.email || '';
      return res.render('verify-otp', { email, message:'Server Error, please try again.' })
   }
@@ -290,11 +290,11 @@ const verifyOtp = async(req, res) => {
 const resendOtp = async (req, res) => {
    try {
     const { email } = req.body;
-    console.log('[AUTH] resendOtp attempt -', email);
+    console.log(' resendOtp attempt', email);
 
     // check email exists in session
     if (!req.session.userData || req.session.userData.email !== email) {
-      console.log('[AUTH] resendOtp failed: email mismatch or missing session data');
+      console.log('resendOtp failed: email mismatch or missing session data');
       return res.render('verify-otp', { email: email || '', message: 'Invalid request' });
     }
 
@@ -306,15 +306,15 @@ const resendOtp = async (req, res) => {
     // Send email
     const emailSent = await sendVerificationEmail(email, otp);
     if (!emailSent) {
-      console.log('[AUTH] resendOtp failed: email send error');
+      console.log('resendOtp failed: email send error');
       return res.render('verify-otp', { email, message: 'Failed to send OTP' });
     }
 
-    console.log('[AUTH] resendOtp success -', email);
+    console.log(`resendOtp success ${otp} `, email);
     return res.json({ success: true, message: 'OTP resent successfully' });
 
   } catch (error) {
-    console.error('[AUTH] resendOtp error', error);
+    console.error('resendOtp error', error);
     const email = req.session?.userData?.email || '';
     return res.render('verify-otp', { email, message: 'Server error' });
   }

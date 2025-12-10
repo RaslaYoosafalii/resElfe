@@ -55,6 +55,11 @@ const loadDashboard = async (req, res) => {
    
      if(req.session.admin){
           try {
+                // send strict no-cache headers for this response
+                res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, private');
+                res.set('Pragma', 'no-cache');
+                res.set('Expires', '0');
+
             res.render('dashboard')
 
          } catch(error) {
@@ -68,21 +73,35 @@ const loadDashboard = async (req, res) => {
 
 
 //logout
+// logout - replace the existing function with this
 const logout = async (req, res) => {
-    try {
-       
-        req.session.destroy(err =>{
-            if(err){
-                console.log('error destroying session', err)
-                return res.redirect('/errorPage')
-            }
-            res.redirect('/admin/login')
-        })
-       }catch (error) {
-            console.log('Error logging out', error);
-            res.redirect('/errorPage')
-       }
-}
+  try {
+    // capture admin id for logging before session is destroyed
+    const adminId = req.session?.admin;
+
+    req.session.destroy((err) => {
+      if (err) {
+        console.log('error destroying session', err);
+        return res.redirect('/errorPage');
+      }
+
+      // clear the session cookie in the browser
+      res.clearCookie('connect.sid', { path: '/' });
+
+      // set strict no-cache headers so Back won't show protected content from cache
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+
+      console.log('[ADMIN] logout: admin', adminId, 'logged out');
+      return res.redirect('/admin/login');
+    });
+  } catch (error) {
+    console.log('Error logging out', error);
+    return res.redirect('/errorPage');
+  }
+};
+
    
 
 
