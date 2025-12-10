@@ -150,6 +150,10 @@ form input {
     </div>
 
     <!-- Signup form -->
+     <% if (typeof message !== 'undefined' && message) { %>
+      <div id="server-message" class="error-message"><%= message %></div>
+    <% } %>
+    
     <form id="signupform" method="POST" action="/signup" novalidate>
       <input id="email" name="email" type="email" placeholder="Email Address" required>
       <div id="error1" class="error-message"></div>

@@ -9,15 +9,15 @@ router.get('/pageNotFound', userController.pageNotFound);
 router.get('/', userController.loadHome);
 
 router.get('/signup',userController.loadSignupPage);
-router.post('/signup', userController.signup);
+router.post('/signup', (req, res, next) => { console.log('[ROUTE] POST /signup', req.body?.email); next(); }, userController.signup);
 
 router.post('/verify-otp', userController.verifyOtp)
 router.post('/resend-otp', userController.resendOtp);
 
 router.get('/login', userController.loadLoginPage)
-router.post('/login', userController.login);
+router.post('/login', (req, res, next) => { console.log('[ROUTE] POST /login', req.body?.email); next(); }, userController.login);
 
-router.get('/logout',userController.logout)
+router.get('/logout', userAuth, userController.logout);
 
 router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account'}))
 router.get('/auth/google/callback', passport.authenticate('google', {failureRedirect: '/signup'}), async(req, res) => {
