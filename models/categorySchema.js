@@ -18,6 +18,10 @@ const categorySchema = new Schema({
     offerValidDate: {
         type: Date,
     },
+     isListed: {               
+        type: Boolean,
+        default: true
+    },
     createdAt: {
         type: Date,
         default: Date.now

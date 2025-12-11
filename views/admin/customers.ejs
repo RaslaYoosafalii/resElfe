@@ -1,0 +1,64 @@
+<!-- views/admin/customers.ejs -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin - Customers</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* Minimal table styles - you can remove or adapt if you use a global admin CSS */
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-family: Arial, sans-serif; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background: #f4f4f4; }
+    .btn { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-block { background: #e74c3c; color: #fff; }
+    .btn-unblock { background: #2ecc71; color: #fff; }
+    .small { font-size: 0.9rem; color: #666; }
+    .center { text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Customers</h1>
+
+  <p class="small">Total customers: <strong><%= customers.length %></strong></p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Customer ID</th>
+        <th class="center">Orders</th>
+        <th class="center">Wallet</th>
+        <th class="center">Status</th>
+        <th class="center">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (customers && customers.length) { %>
+        <% customers.forEach(function(c) { %>
+          <tr>
+            <td><%= c.name %></td>
+            <td><%= c.email %></td>
+            <td><%= c.customerId %></td>
+            <td class="center"><%= c.orderCount %></td>
+            <td class="center">₹<%= c.wallet.toFixed(2) %></td>
+            <td class="center"><%= c.isBlocked ? 'Blocked' : 'Active' %></td>
+            <td class="center">
+              <form method="POST" action="/admin/customer/toggle/<%= c._id %>" style="display:inline;">
+                <button class="btn <%= c.isBlocked ? 'btn-unblock' : 'btn-block' %>" type="submit">
+                  <%= c.isBlocked ? 'Unblock' : 'Block' %>
+                </button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr>
+          <td colspan="7" class="center">No customers found</td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</body>
+</html>

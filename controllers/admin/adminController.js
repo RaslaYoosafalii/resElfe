@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt')
 
 //error page
 const errorPage = async (req, res) => {
-    res.render('error-page')
+    res.render('admin/error-page')
 }
 
 //load login page

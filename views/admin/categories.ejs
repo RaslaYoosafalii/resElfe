@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin - Categories</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-family: Arial, sans-serif; }
+    th, td { padding: 8px; border: 1px solid #ddd; text-align: left; vertical-align: top; }
+    th { background: #f4f4f4; }
+    .btn { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-primary { background: #3498db; color: #fff; }
+    .btn-danger { background: #e74c3c; color: #fff; }
+    .small { font-size: 0.9rem; color: #666; }
+    form.inline { display:inline; }
+    .muted { color: #666; font-size: 0.9rem; }
+    .sub-list { margin: 4px 0; font-size: 0.95rem; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>Categories</h1>
+
+  <% if (message) { %>
+    <div class="muted"><%= message %></div>
+  <% } %>
+
+  <!-- Add Category form -->
+  <section>
+    <h3>Add Category</h3>
+    <form method="POST" action="/admin/category/create">
+      <input name="name" placeholder="Category name" required />
+      <input name="description" placeholder="Short description" required />
+      <button class="btn btn-primary" type="submit">Create</button>
+    </form>
+  </section>
+
+  <hr/>
+
+  <!-- Categories table -->
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Subcategories</th>
+        <th class="small">Products</th>
+        <th>Offer</th>
+        <th class="small">Listed</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (categories && categories.length) { %>
+        <% categories.forEach(cat => { %>
+          <tr>
+            <td><strong><%= cat.name %></strong></td>
+            <td><%= cat.description %></td>
+            <td>
+              <% if (cat.subcategories && cat.subcategories.length) { %>
+                <ul class="sub-list">
+                  <% cat.subcategories.forEach(sc => { %>
+                    <li><%= sc.fitName %></li>
+                  <% }) %>
+                </ul>
+              <% } else { %>
+                <span class="muted">No subcategories</span>
+              <% } %>
+
+              <!-- Form to add subcategory under this category -->
+              <form method="POST" action="/admin/category/subcreate" style="margin-top:6px;">
+                <input type="hidden" name="categoryId" value="<%= cat._id %>" />
+                <input name="fitName" placeholder="New subcategory name" required />
+                <button class="btn" type="submit">Add</button>
+              </form>
+            </td>
+            <td class="small center"><%= cat.productCount %></td>
+            <td>
+              <% if (cat.offerPrice) { %>
+                <div class="small">₹<%= cat.offerPrice %></div>
+                <div class="muted"><%= cat.offerValidDate ? new Date(cat.offerValidDate).toLocaleDateString() : '' %></div>
+                <!-- Clear offer form -->
+                <form method="POST" action="/admin/category/offer/<%= cat._id %>" class="inline">
+                  <input type="hidden" name="offerPrice" value="" />
+                  <button class="btn" type="submit">Clear Offer</button>
+                </form>
+              <% } else { %>
+                <form method="POST" action="/admin/category/offer/<%= cat._id %>" class="inline">
+                  <input name="offerPrice" placeholder="Offer price" />
+                  <input name="offerValidDate" type="date" />
+                  <button class="btn" type="submit">Set Offer</button>
+                </form>
+              <% } %>
+            </td>
+            <td class="small center"><%= cat.isListed ? 'Yes' : 'No' %></td>
+            <td class="small">
+              <form method="POST" action="/admin/category/toggle/<%= cat._id %>" class="inline">
+                <button class="btn <%= cat.isListed ? 'btn-danger' : 'btn-primary' %>" type="submit"><%= cat.isListed ? 'Unlist' : 'List' %></button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr>
+          <td colspan="7" class="center">No categories</td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</body>
+</html>
