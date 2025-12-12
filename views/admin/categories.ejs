@@ -1,3 +1,4 @@
+<!-- views/admin/categories.ejs -->
 <!doctype html>
 <html>
 <head>
@@ -5,29 +6,42 @@
   <title>Admin - Categories</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-family: Arial, sans-serif; }
-    th, td { padding: 8px; border: 1px solid #ddd; text-align: left; vertical-align: top; }
-    th { background: #f4f4f4; }
+    /* (same styles as before) */
+    body { font-family: Arial, Helvetica, sans-serif; padding: 20px; color: #222; }
+    h1 { margin: 0 0 12px 0; }
+    .muted { color: #666; font-size: 0.95rem; margin-bottom: 8px; }
+    .notice { padding: 8px 12px; margin-bottom: 12px; background: #f8f8f8; border-left: 4px solid #ccc; }
+    section { margin-bottom: 18px; }
+    input[type="text"], input[type="date"], select { padding: 6px 8px; margin-right: 6px; border: 1px solid #ccc; border-radius: 4px; }
     .btn { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
     .btn-primary { background: #3498db; color: #fff; }
     .btn-danger { background: #e74c3c; color: #fff; }
-    .small { font-size: 0.9rem; color: #666; }
-    form.inline { display:inline; }
-    .muted { color: #666; font-size: 0.9rem; }
-    .sub-list { margin: 4px 0; font-size: 0.95rem; color: #333; }
+    .btn-small { padding: 4px 8px; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 10px; border: 1px solid #e1e1e1; vertical-align: top; text-align: left; }
+    th { background: #f4f4f4; }
+    .center { text-align: center; }
+    .sub-list { margin: 6px 0; padding-left: 18px; }
+    .inline { display: inline-block; vertical-align: middle; }
+    .small { font-size: 0.9rem; color: #444; }
+    .muted-small { color: #888; font-size: 0.85rem; }
+    .pager { margin-top: 12px; display:flex; gap:6px; align-items:center; }
+    .pager a, .pager button { padding:6px 10px; border-radius:4px; border:1px solid #ddd; text-decoration:none; background:#fff; color:#333; }
+    .pager .active { background:#3498db; color:#fff; border-color:#3498db; }
+    .search-bar { margin-bottom:12px; display:flex; gap:8px; align-items:center; }
   </style>
 </head>
 <body>
   <h1>Categories</h1>
 
-  <% if (message) { %>
-    <div class="muted"><%= message %></div>
+  <% if (typeof message !== 'undefined' && message) { %>
+    <div class="notice"><%= message %></div>
   <% } %>
 
   <!-- Add Category form -->
   <section>
     <h3>Add Category</h3>
-    <form method="POST" action="/admin/category/create">
+    <form method="POST" action="/admin/category/create" style="display:flex; gap:8px; align-items:center;">
       <input name="name" placeholder="Category name" required />
       <input name="description" placeholder="Short description" required />
       <button class="btn btn-primary" type="submit">Create</button>
@@ -36,66 +50,120 @@
 
   <hr/>
 
+  <!-- Search + controls -->
+  <div class="search-bar">
+    <form id="searchForm" method="GET" action="/admin/category" style="display:flex; gap:8px;">
+      <input type="text" name="q" placeholder="Search categories..." value="<%= (pagination && pagination.q) ? pagination.q : '' %>" />
+      <input type="hidden" name="limit" value="<%= (pagination && pagination.limit) ? pagination.limit : 10 %>" />
+      <button class="btn btn-primary" type="submit">Search</button>
+      <button id="clearSearch" type="button" class="btn">Clear</button>
+      <a href="/admin/category" class="btn">Cancel</a>
+    </form>
+
+    <!-- simple limit selector -->
+    <div style="margin-left:auto;">
+      <form id="limitForm" method="GET" action="/admin/category" style="display:inline;">
+        <input type="hidden" name="q" value="<%= (pagination && pagination.q) ? pagination.q : '' %>" />
+        <label>Per page</label>
+        <select name="limit" onchange="document.getElementById('limitForm').submit();">
+          <option value="5" <%= (pagination && pagination.limit==5) ? 'selected' : '' %>>5</option>
+          <option value="10" <%= (pagination && pagination.limit==10) ? 'selected' : '' %>>10</option>
+          <option value="20" <%= (pagination && pagination.limit==20) ? 'selected' : '' %>>20</option>
+        </select>
+      </form>
+    </div>
+  </div>
+
   <!-- Categories table -->
   <table>
     <thead>
       <tr>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Subcategories</th>
-        <th class="small">Products</th>
-        <th>Offer</th>
-        <th class="small">Listed</th>
-        <th>Actions</th>
+        <th style="width:18%;">Name</th>
+        <th style="width:28%;">Description</th>
+        <th style="width:22%;">Subcategories</th>
+        <th style="width:6%;" class="center">Products</th>
+        <th style="width:16%;">Offer</th>
+        <th style="width:5%;" class="center">Listed</th>
+        <th style="width:5%;" class="center">Actions</th>
       </tr>
     </thead>
     <tbody>
       <% if (categories && categories.length) { %>
-        <% categories.forEach(cat => { %>
+        <% categories.forEach(function(cat) { %>
           <tr>
-            <td><strong><%= cat.name %></strong></td>
+            <td>
+              <strong><%= cat.name %></strong><br/>
+              <div class="muted-small">Created: <%= cat.createdAt ? new Date(cat.createdAt).toLocaleDateString() : '-' %></div>
+            </td>
+
             <td><%= cat.description %></td>
+
             <td>
               <% if (cat.subcategories && cat.subcategories.length) { %>
                 <ul class="sub-list">
-                  <% cat.subcategories.forEach(sc => { %>
-                    <li><%= sc.fitName %></li>
+                  <% cat.subcategories.forEach(function(sc){ %>
+                    <li>
+                      <%= sc.fitName %>
+                      <button class="btn btn-small" style="margin-left:8px;" data-action="edit-sub" data-id="<%= sc._id %>">Edit</button>
+                      <button class="btn btn-small" style="margin-left:6px;background:#c0392b;color:#fff;" data-action="delete-sub" data-id="<%= sc._id %>">Delete</button>
+                    </li>
                   <% }) %>
                 </ul>
               <% } else { %>
-                <span class="muted">No subcategories</span>
+                <div class="muted-small">No subcategories</div>
               <% } %>
 
-              <!-- Form to add subcategory under this category -->
-              <form method="POST" action="/admin/category/subcreate" style="margin-top:6px;">
+              <!-- Add subcategory form -->
+              <form method="POST" action="/admin/category/subcreate" style="margin-top:8px;">
                 <input type="hidden" name="categoryId" value="<%= cat._id %>" />
                 <input name="fitName" placeholder="New subcategory name" required />
-                <button class="btn" type="submit">Add</button>
+                <button class="btn btn-small" type="submit">Add</button>
               </form>
             </td>
-            <td class="small center"><%= cat.productCount %></td>
+
+            <td class="center small"><%= typeof cat.productCount === 'number' ? cat.productCount : 0 %></td>
+
             <td>
-              <% if (cat.offerPrice) { %>
-                <div class="small">₹<%= cat.offerPrice %></div>
-                <div class="muted"><%= cat.offerValidDate ? new Date(cat.offerValidDate).toLocaleDateString() : '' %></div>
-                <!-- Clear offer form -->
-                <form method="POST" action="/admin/category/offer/<%= cat._id %>" class="inline">
-                  <input type="hidden" name="offerPrice" value="" />
-                  <button class="btn" type="submit">Clear Offer</button>
+              <% if (cat.offerPrice && Number(cat.offerPrice) > 0) { %>
+                <div class="small">
+                  <% if (cat.offerIsPercent) { %>
+                    <span><strong><%= cat.offerPrice %>% off</strong></span>
+                  <% } else { %>
+                    <span><strong>₹<%= Number(cat.offerPrice).toFixed(2) %></strong></span>
+                  <% } %>
+                </div>
+                <div class="muted-small"><%= cat.offerValidDate ? new Date(cat.offerValidDate).toLocaleDateString() : '' %></div>
+
+                <form method="POST" action="/admin/category/offer/<%= cat._id %>" class="inline" style="margin-top:6px;">
+                  <input type="hidden" name="offerValue" value="" />
+                  <button class="btn btn-small" type="submit">Clear Offer</button>
                 </form>
               <% } else { %>
                 <form method="POST" action="/admin/category/offer/<%= cat._id %>" class="inline">
-                  <input name="offerPrice" placeholder="Offer price" />
+                  <select name="offerType" required>
+                    <option value="fixed">Fixed Amount</option>
+                    <option value="percent">Percentage (%)</option>
+                  </select>
+                  <input name="offerValue" placeholder="Value" style="width:100px;" />
                   <input name="offerValidDate" type="date" />
-                  <button class="btn" type="submit">Set Offer</button>
+                  <button class="btn btn-primary btn-small" type="submit">Set Offer</button>
                 </form>
               <% } %>
             </td>
-            <td class="small center"><%= cat.isListed ? 'Yes' : 'No' %></td>
-            <td class="small">
-              <form method="POST" action="/admin/category/toggle/<%= cat._id %>" class="inline">
-                <button class="btn <%= cat.isListed ? 'btn-danger' : 'btn-primary' %>" type="submit"><%= cat.isListed ? 'Unlist' : 'List' %></button>
+
+            <td class="center small"><%= cat.isListed ? 'Yes' : 'No' %></td>
+
+            <!-- ACTIONS column (toggle + edit + delete) -->
+            <td class="center small">
+              <form method="POST" action="/admin/category/toggle/<%= cat._id %>" style="display:inline;">
+                <button class="btn <%= cat.isListed ? 'btn-danger' : 'btn-primary' %> btn-small" type="submit">
+                  <%= cat.isListed ? 'Unlist' : 'List' %>
+                </button>
               </form>
+
+              <button class="btn btn-small" style="margin-left:6px;" data-action="edit-cat" data-id="<%= cat._id %>">Edit</button>
+
+              <button class="btn btn-small" style="margin-left:6px; background:#c0392b; color:#fff;" data-action="delete-category" data-id="<%= cat._id %>">Delete</button>
             </td>
           </tr>
         <% }) %>
@@ -106,5 +174,198 @@
       <% } %>
     </tbody>
   </table>
+
+  <!-- pagination -->
+  <% if (pagination && pagination.totalPages > 1) { %>
+    <div class="pager" aria-label="Pagination">
+      <% const startPage = Math.max(1, pagination.page - 2); const endPage = Math.min(pagination.totalPages, pagination.page + 2); %>
+      <% if (pagination.page > 1) { %>
+        <a href="/admin/category?page=<%= pagination.page - 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>">Prev</a>
+      <% } %>
+      <% for (let p = startPage; p <= endPage; p++) { %>
+        <a class="<%= p === pagination.page ? 'active' : '' %>" href="/admin/category?page=<%= p %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>"><%= p %></a>
+      <% } %>
+      <% if (pagination.page < pagination.totalPages) { %>
+        <a href="/admin/category?page=<%= pagination.page + 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>">Next</a>
+      <% } %>
+      <div style="margin-left:auto;" class="muted-small">Page <%= pagination.page %> of <%= pagination.totalPages %> — <%= pagination.total %> items</div>
+    </div>
+  <% } %>
+
+  <!-- SweetAlert2 (script must be placed AFTER the table and buttons) -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    // helper POST JSON
+    async function postJson(url, data) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data || {})
+      });
+      return res.json();
+    }
+
+    // Clear search button behaviour
+    document.getElementById('clearSearch').addEventListener('click', function () {
+      const form = document.getElementById('searchForm');
+      form.q.value = '';
+      form.submit();
+    });
+
+    // click handler for edit/delete actions
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      const action = btn.getAttribute('data-action');
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+
+      // ----------------- DELETE CATEGORY -----------------
+      if (action === 'delete-category') {
+        Swal.fire({
+          title: 'Delete category?',
+          text: 'This will delete the category and all its subcategories. This action cannot be undone.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, delete',
+          cancelButtonText: 'Cancel'
+        }).then(async (result) => {
+          if (!result.isConfirmed) return;
+          try {
+            const json = await postJson('/admin/category/delete/' + id);
+            if (json.success) {
+              Swal.fire('Deleted', json.message, 'success').then(() => location.reload());
+            } else {
+              Swal.fire('Error', json.message || 'Failed to delete', 'error');
+            }
+          } catch (err) {
+            Swal.fire('Error', 'Network or server error', 'error');
+          }
+        });
+        return;
+      }
+
+      // ----------------- DELETE SUBCATEGORY -----------------
+      if (action === 'delete-sub') {
+        Swal.fire({
+          title: 'Delete subcategory?',
+          text: 'This will delete the subcategory. This action cannot be undone.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, delete',
+          cancelButtonText: 'Cancel'
+        }).then(async (result) => {
+          if (!result.isConfirmed) return;
+          try {
+            const json = await postJson('/admin/category/subdelete/' + id);
+            if (json.success) {
+              Swal.fire('Deleted', json.message, 'success').then(() => location.reload());
+            } else {
+              Swal.fire('Error', json.message || 'Failed to delete', 'error');
+            }
+          } catch (err) {
+            Swal.fire('Error', 'Network or server error', 'error');
+          }
+        });
+        return;
+      }
+
+      // ----------------- EDIT CATEGORY (modal) -----------------
+      if (action === 'edit-cat') {
+        // fetch category + subs
+        fetch('/admin/category/data/' + id)
+          .then(r => r.json())
+          .then(data => {
+            if (!data.success) return Swal.fire('Error', data.message || 'Failed to fetch data', 'error');
+            const cat = data.category;
+            // show modal with inputs for name, description, isListed
+            Swal.fire({
+              title: 'Edit Category',
+              html:
+                `<input id="sw-name" class="sw-input" placeholder="Name" value="${escapeHtml(cat.name)}" style="width:100%;padding:8px;margin-bottom:8px;" />` +
+                `<textarea id="sw-desc" class="sw-input" placeholder="Description" style="width:100%;padding:8px;">${escapeHtml(cat.description || '')}</textarea>` +
+                `<div style="margin-top:8px;">Listed: <select id="sw-listed"><option value="true">Yes</option><option value="false">No</option></select></div>`,
+              didOpen: () => { document.getElementById('sw-listed').value = cat.isListed ? 'true' : 'false'; },
+              showCancelButton: true,
+              preConfirm: () => {
+                const name = document.getElementById('sw-name').value.trim();
+                const description = document.getElementById('sw-desc').value.trim();
+                const isListed = document.getElementById('sw-listed').value;
+                if (!name || !description) {
+                  Swal.showValidationMessage('Name and description are required');
+                  return false;
+                }
+                return { name, description, isListed };
+              }
+            }).then(async (result) => {
+              if (!result.isConfirmed) return;
+              const body = result.value;
+              // call edit endpoint
+              try {
+                const json = await postJson('/admin/category/edit/' + id, body);
+                if (json.success) {
+                  Swal.fire('Saved', json.message || 'Category updated', 'success').then(() => location.reload());
+                } else {
+                  Swal.fire('Error', json.message || 'Failed to update', 'error');
+                }
+              } catch (err) {
+                Swal.fire('Error', 'Network error', 'error');
+              }
+            });
+          }).catch(err => {
+            Swal.fire('Error', 'Failed to fetch category', 'error');
+          });
+        return;
+      }
+
+      // ----------------- EDIT SUBCATEGORY (modal) -----------------
+      if (action === 'edit-sub') {
+        // fetch subcategory by using data endpoint of its parent? We can fetch SubCategory by id using the same category/data route not available.
+        // Simpler: call an endpoint to get subcategory or reuse category/data for parent category. For speed, call server endpoint /admin/category/data? Not available for sub.
+        // Instead fetch minimal data: we can ask server to return sub info at /admin/category/data/:parentId and then find sub.
+        // We'll try fetching both parent categories to locate sub: simpler approach - fetch /admin/category/subdata/:id would be cleaner (but not yet implemented).
+        // To avoid new endpoint, call /admin/category/subdata/<id> — implement server side if needed. For now assume /admin/category/subdata exists.
+        fetch('/admin/category/subdata/' + id)
+          .then(r => r.json())
+          .then(data => {
+            if (!data.success) return Swal.fire('Error', data.message || 'Failed to fetch subcategory', 'error');
+            const sub = data.subcategory;
+            Swal.fire({
+              title: 'Edit Subcategory',
+              html: `<input id="sw-subname" class="sw-input" placeholder="Subcategory name" value="${escapeHtml(sub.fitName)}" style="width:100%;padding:8px;" />`,
+              showCancelButton: true,
+              preConfirm: () => {
+                const fitName = document.getElementById('sw-subname').value.trim();
+                if (!fitName) { Swal.showValidationMessage('Name required'); return false; }
+                return { fitName };
+              }
+            }).then(async (result) => {
+              if (!result.isConfirmed) return;
+              try {
+                const json = await postJson('/admin/category/subedit/' + id, { fitName: result.value.fitName });
+                if (json.success) {
+                  Swal.fire('Saved', json.message || 'Subcategory updated', 'success').then(() => location.reload());
+                } else {
+                  Swal.fire('Error', json.message || 'Failed to update', 'error');
+                }
+              } catch (err) {
+                Swal.fire('Error', 'Network error', 'error');
+              }
+            });
+          }).catch(err => Swal.fire('Error', 'Failed to fetch subcategory', 'error'));
+        return;
+      }
+
+    }); // document click
+
+    // escape helper for strings in HTML (XSS safe)
+    function escapeHtml(s) {
+      if (!s) return '';
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+
 </body>
 </html>

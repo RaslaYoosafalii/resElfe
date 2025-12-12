@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title><%= product.productName %></title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+      * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      color: #615A5A;
+      background: #fff;
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 60px;
+      background: #fff;
+    }
+
+    .navbar .logo {
+      font-size: 40px;
+      font-weight: 37;
+      color: #B2A9A1;
+    }
+
+    .navbar ul {
+      display: flex;
+      list-style: none;
+      gap: 25px;
+    }
+
+    .navbar a {
+      text-decoration: none;
+      color: #615A5A;
+      font-size: 15px;
+    }
+
+    .navbar .btn {
+      padding: 8px 15px;
+      border-radius: 5px;
+      background: #484848;
+      color: #fff;
+    }
+
+    /* Hero */
+    .hero {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      padding: 40px 60px;
+    }
+
+    .hero img {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .hero .center {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .hero h2 {
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .hero h2 span {
+      font-size: 40px;
+    }
+
+    .hero .btn {
+      margin-top: 15px;
+    }
+
+    /* Categories */
+    .categories {
+      text-align: center;
+      padding: 50px 60px;
+    }
+
+    .categories .btn {
+      margin: 15px 0;
+    }
+
+    .category-list {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .category img {
+      width: 200px;
+      border-radius: 8px;
+    }
+
+    .category p {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    /* New Arrivals */
+    .new-arrivals {
+      text-align: center;
+      padding: 50px 60px;
+    }
+
+    .products {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .product img {
+      width: 220px;
+      border-radius: 8px;
+    }
+
+    .product h3 {
+      font-size: 15px;
+      margin: 10px 0 5px;
+    }
+
+    .product p {
+      font-size: 13px;
+      color: #555;
+    }
+
+    .product span {
+      font-weight: bold;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 40px;
+      background: #f6f6f6;
+      padding: 40px 60px;
+      color: #666;
+    }
+     .footer .logo {
+      font-size: 60px;
+      font-weight: 37;
+      color: #B2A9A1;
+    }
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .footer-top h4 {
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .footer-top input {
+      padding: 8px;
+      width: 200px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+body {
+    font-family: Arial, sans-serif;
+    color: #222;
+}
+
+.container {
+    max-width: 1250px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.breadcrumbs {
+    font-size: 14px;
+    margin-bottom: 20px;
+    color: #777;
+}
+
+.breadcrumbs a {
+    color: #777;
+    text-decoration: none;
+}
+
+.details-layout {
+    display: flex;
+    gap: 40px;
+}
+
+/* LEFT IMAGE SECTION */
+.left-images {
+    width: 55%;
+}
+
+.main-img-wrap {
+    width: 100%;
+    height: 600px;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.main-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: zoom-in;
+    transition: transform 0.3s ease;
+}
+
+.main-img-wrap img:hover {
+    transform: scale(1.08);
+}
+
+.thumbnail-grid {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+.thumbnail-grid img {
+    width: 100%;
+    height: 170px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: 0.2s;
+}
+
+.thumbnail-active {
+    outline: 2px solid black;
+    opacity: 1 !important;
+}
+
+/* RIGHT INFO SECTION */
+.right-info {
+    width: 45%;
+}
+
+.product-title {
+    font-size: 26px;
+    font-weight: bold;
+}
+
+.product-price {
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.mrp-text {
+    font-size: 12px;
+    margin-top: 5px;
+    color: gray;
+}
+
+.color-text {
+    margin-top: 15px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.size-box-wrap {
+    margin-top: 20px;
+}
+
+.size-box-wrap h4 {
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.size-btns {
+    display: flex;
+    gap: 10px;
+}
+
+.size-option {
+    padding: 10px 18px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.size-option.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.size-option.active {
+    background: #000;
+    color: #fff;
+}
+
+.add-btn {
+    margin-top: 25px;
+    width: 240px;
+    padding: 15px;
+    background: black;
+    color: white;
+    border-radius: 30px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+/* DESCRIPTION SECTION */
+.desc-section {
+    margin-top: 40px;
+}
+
+.desc-title {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.desc-text {
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.recommend-title {
+    margin-top: 60px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.recommend-grid {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.recommend-grid img {
+    width: 100%;
+    height: 230px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+</style>
+
+</head>
+<body>
+
+<%- include('../partials/user/loggedinHeader') %>
+
+<div class="container">
+
+    <!-- BREADCRUMB -->
+    <div class="breadcrumbs">
+        <a href="/">Home</a> → 
+        <a href="/products">All Products</a> → 
+        <%= category ? category.name : "" %>
+    </div>
+
+    <div class="details-layout">
+
+        <!-- LEFT IMAGES -->
+        <div class="left-images">
+            <div class="main-img-wrap">
+                <img id="mainImg" src="/uploads/products/<%= product.images[0] %>" alt="Product Image">
+            </div>
+
+            <div class="thumbnail-grid">
+                <% product.images.forEach(function(img, i) { %>
+                    <img 
+                      src="/uploads/products/<%= img %>" 
+                      onclick="changeImage(this)" 
+                      class="<%= i === 0 ? 'thumbnail-active' : '' %>"
+                    >
+                <% }) %>
+            </div>
+        </div>
+
+        <!-- RIGHT INFO -->
+        <div class="right-info">
+
+<div class="product-title"><%= product.productName %></div>
+
+<% if (subcategory && subcategory.fitName) { %>
+  <div class="subcat-text" style="margin-top:6px;color:#666;font-size:14px;">
+    <%= subcategory.fitName %>
+  </div>
+<% } %>
+
+<% 
+  // safe defaults — use first variant if present
+  var defaultVariant = (variants && variants.length) ? variants[0] : null;
+  var vPrice = defaultVariant ? Number(defaultVariant.price) : 0;
+  var vDisc = (defaultVariant && typeof defaultVariant.discountPrice !== 'undefined' && defaultVariant.discountPrice !== null)
+    ? Number(defaultVariant.discountPrice)
+    : null;
+%>
+             <div class="product-price">
+               <% if (vDisc !== null && vDisc > 0 && vDisc < vPrice) { %>
+                 <span style="font-weight:700; font-size:20px;">Rs. <%= vDisc.toLocaleString('en-IN') %></span>
+                 <span style="margin-left:10px; color:#777; text-decoration:line-through;">Rs. <%= vPrice.toLocaleString('en-IN') %></span>
+                 <% var pcent = Math.round(((vPrice - vDisc) / vPrice) * 100); %>
+                 <span style="margin-left:12px; background:#f3f3f3; padding:4px 8px; border-radius:4px;">-<%= pcent %>%</span>
+               <% } else { %>
+                 <span style="font-weight:700; font-size:20px;">Rs. <%= vPrice.toLocaleString('en-IN') %></span>
+               <% } %>
+             </div>
+
+            <div class="mrp-text">MRP inclusive of all taxes</div>
+
+            <div class="color-text">
+                COLOUR: <%= variants[0].color %>
+            </div>
+
+            <!-- SIZE SELECTOR -->
+            <div class="size-box-wrap">
+                <h4>SELECT A SIZE</h4>
+
+                <div class="size-btns">
+                    <% sizeVariants.forEach(function(s) { %>
+                        <div 
+                            class="size-option <%= s.stock <= 0 ? 'disabled' : '' %>"
+                            onclick="selectSize(this, '<%= s.size %>', <%= s.stock %>)"
+                        >
+                            <%= s.size %>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+
+            <!-- ADD TO BAG -->
+            <div class="add-btn" onclick="addToCart()">ADD TO BAG</div>
+
+        </div>
+
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="desc-section">
+        <div class="desc-title">DESCRIPTION & FIT</div>
+        <div class="desc-text"><%= product.description %></div>
+    </div>
+
+    <!-- RECOMMENDATIONS -->
+    <div class="recommend-title">You May Also Like</div>
+
+    <div class="recommend-grid">
+        <% recommendations.forEach(function(r) { %>
+            <a href="/product/<%= r._id %>">
+                <img src="/uploads/products/<%= r.images[0] %>">
+                <div><%= r.productName %></div>
+                <strong>Rs. <%= r.offerPrice ? r.offerPrice : '0' %></strong>
+            </a>
+        <% }) %>
+    </div>
+
+</div>
+
+<script>
+function changeImage(el) {
+    document.getElementById("mainImg").src = el.src;
+
+    document.querySelectorAll(".thumbnail-grid img")
+        .forEach(img => img.classList.remove("thumbnail-active"));
+
+    el.classList.add("thumbnail-active");
+}
+
+function selectSize(el, size, stock) {
+    if (stock <= 0) return; // disable
+
+    document.querySelectorAll(".size-option").forEach(b => b.classList.remove("active"));
+    el.classList.add("active");
+
+    // find the variant object for this size from a data structure rendered into the page
+    var variantsData = <%- JSON.stringify(sizeVariants || []) %>;
+
+    // find first variant matching size
+    var found = null;
+    for (var i = 0; i < variantsData.length; i++) {
+      if (variantsData[i].size === size) { found = variantsData[i]; break; }
+    }
+    if (!found) return;
+
+    var priceEl = document.querySelector('.product-price');
+    var vPrice = Number(found.price || 0);
+    var vDisc = (typeof found.discountPrice !== 'undefined' && found.discountPrice !== null) ? Number(found.discountPrice) : null;
+
+    if (vDisc !== null && vDisc > 0 && vDisc < vPrice) {
+      var pct = Math.round(((vPrice - vDisc) / vPrice) * 100);
+      priceEl.innerHTML = '<span style="font-weight:700; font-size:20px;">Rs. ' + vDisc.toLocaleString('en-IN') + '</span>' +
+                          '<span style="margin-left:10px; color:#777; text-decoration:line-through;">Rs. ' + vPrice.toLocaleString('en-IN') + '</span>' +
+                          '<span style="margin-left:12px; background:#f3f3f3; padding:4px 8px; border-radius:4px;">-' + pct + '%</span>';
+    } else {
+      priceEl.innerHTML = '<span style="font-weight:700; font-size:20px;">Rs. ' + vPrice.toLocaleString('en-IN') + '</span>';
+    }
+}
+
+function addToCart() {
+    alert("Added to cart(haven't done the add to cart yet)");
+}
+</script>
+
+<%- include('../partials/user/footer') %>
+
+</body>
+</html>

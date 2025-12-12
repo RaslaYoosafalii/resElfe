@@ -6,7 +6,6 @@
   <title>Admin - Customers</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    /* Minimal table styles - you can remove or adapt if you use a global admin CSS */
     table { width: 100%; border-collapse: collapse; margin-top: 16px; font-family: Arial, sans-serif; }
     th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
     th { background: #f4f4f4; }
@@ -15,12 +14,40 @@
     .btn-unblock { background: #2ecc71; color: #fff; }
     .small { font-size: 0.9rem; color: #666; }
     .center { text-align: center; }
+    .pager { margin-top: 12px; display:flex; gap:6px; align-items:center; }
+    .pager a, .pager button { padding:6px 10px; border-radius:4px; border:1px solid #ddd; text-decoration:none; background:#fff; color:#333; }
+    .pager .active { background:#3498db; color:#fff; border-color:#3498db; }
+    .search-bar { margin-bottom:12px; display:flex; gap:8px; align-items:center; }
   </style>
 </head>
 <body>
   <h1>Customers</h1>
 
-  <p class="small">Total customers: <strong><%= customers.length %></strong></p>
+  <% // total customers from pagination.total when available, else customers.length %>
+  <p class="small">Total customers: <strong><%= (pagination && pagination.total) ? pagination.total : (customers ? customers.length : 0) %></strong></p>
+
+  <!-- Search bar -->
+  <div class="search-bar">
+    <form id="searchForm" method="GET" action="/admin/customer" style="display:flex; gap:8px; align-items:center;">
+      <input type="text" name="q" placeholder="Search by name or email..." value="<%= (pagination && pagination.q) ? pagination.q : '' %>" />
+      <input type="hidden" name="limit" value="<%= (pagination && pagination.limit) ? pagination.limit : 10 %>" />
+      <button class="btn" type="submit">Search</button>
+      <button id="clearSearch" type="button" class="btn">Clear</button>
+      <a href="/admin/customer" class="btn">Cancel</a>
+    </form>
+
+    <div style="margin-left:auto;">
+      <form id="limitForm" method="GET" action="/admin/customer" style="display:inline;">
+        <input type="hidden" name="q" value="<%= (pagination && pagination.q) ? pagination.q : '' %>" />
+        <label>Per page</label>
+        <select name="limit" onchange="document.getElementById('limitForm').submit();">
+          <option value="5" <%= (pagination && pagination.limit==5) ? 'selected' : '' %>>5</option>
+          <option value="10" <%= (pagination && pagination.limit==10) ? 'selected' : '' %>>10</option>
+          <option value="20" <%= (pagination && pagination.limit==20) ? 'selected' : '' %>>20</option>
+        </select>
+      </form>
+    </div>
+  </div>
 
   <table>
     <thead>
@@ -45,7 +72,8 @@
             <td class="center">₹<%= c.wallet.toFixed(2) %></td>
             <td class="center"><%= c.isBlocked ? 'Blocked' : 'Active' %></td>
             <td class="center">
-              <form method="POST" action="/admin/customer/toggle/<%= c._id %>" style="display:inline;">
+              <!-- keep form fallback but hide it visually; JS will intercept and run AJAX with confirmation -->
+              <form method="POST" action="/admin/customer/toggle/<%= c._id %>" style="display:inline;" class="toggle-form" data-id="<%= c._id %>">
                 <button class="btn <%= c.isBlocked ? 'btn-unblock' : 'btn-block' %>" type="submit">
                   <%= c.isBlocked ? 'Unblock' : 'Block' %>
                 </button>
@@ -60,5 +88,80 @@
       <% } %>
     </tbody>
   </table>
+
+  <!-- Pagination -->
+  <% if (pagination && pagination.totalPages > 1) { %>
+    <div class="pager" aria-label="Pagination">
+      <% const startPage = Math.max(1, pagination.page - 2); const endPage = Math.min(pagination.totalPages, pagination.page + 2); %>
+      <% if (pagination.page > 1) { %>
+        <a href="/admin/customer?page=<%= pagination.page - 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>">Prev</a>
+      <% } %>
+      <% for (let p = startPage; p <= endPage; p++) { %>
+        <a class="<%= p === pagination.page ? 'active' : '' %>" href="/admin/customer?page=<%= p %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>"><%= p %></a>
+      <% } %>
+      <% if (pagination.page < pagination.totalPages) { %>
+        <a href="/admin/customer?page=<%= pagination.page + 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>">Next</a>
+      <% } %>
+      <div style="margin-left:auto;" class="small">Page <%= pagination.page %> of <%= pagination.totalPages %> — <%= pagination.total %> items</div>
+    </div>
+  <% } %>
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    // helper: POST JSON
+    async function postJson(url, data) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(data || {})
+      });
+      return res.json();
+    }
+
+    // Clear search
+    document.getElementById('clearSearch').addEventListener('click', function () {
+      const form = document.getElementById('searchForm');
+      form.q.value = '';
+      form.submit();
+    });
+
+    // Intercept all toggle forms and show confirmation before calling AJAX
+    document.querySelectorAll('.toggle-form').forEach(form => {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const userId = form.getAttribute('data-id');
+        const isBlocked = form.querySelector('button').textContent.trim().toLowerCase() === 'unblock' ? true : false;
+        const actionText = isBlocked ? 'Unblock' : 'Block';
+        const confirmText = isBlocked
+          ? 'Are you sure you want to unblock this user?'
+          : 'Are you sure you want to block this user?';
+
+        Swal.fire({
+          title: actionText + ' user?',
+          text: confirmText,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: actionText,
+          cancelButtonText: 'Cancel'
+        }).then(async (result) => {
+          if (!result.isConfirmed) return;
+
+          try {
+            const json = await postJson('/admin/customer/toggle/' + userId);
+            if (json.success) {
+              Swal.fire('Success', json.message || 'Updated', 'success').then(() => location.reload());
+            } else {
+              Swal.fire('Error', json.message || 'Failed', 'error');
+            }
+          } catch (err) {
+            Swal.fire('Error', 'Network or server error', 'error');
+            console.error('toggle error', err);
+          }
+        });
+      });
+    });
+  </script>
 </body>
 </html>

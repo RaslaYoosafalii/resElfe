@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Products</title>
+  <style> body{font-family:Arial;padding:20px} table{width:100%;border-collapse:collapse} th,td{padding:8px;border:1px solid #ddd} img{width:60px;height:60px;object-fit:cover;margin-right:6px} .btn{padding:6px 10px;border:none;border-radius:4px;cursor:pointer} .btn-danger{background:#e74c3c;color:#fff} .btn-primary{background:#3498db;color:#fff} </style>
+</head>
+<body>
+  <h1>Products</h1>
+  <p><a href="/admin/product/add">Add new product</a></p>
+
+  <table>
+    <thead><tr><th>Name</th><th>Category</th><th>Subcategory</th><th>Variants</th><th>Images</th><th>Actions</th></tr></thead>
+    <tbody>
+      <% if (products && products.length) { %>
+        <% products.forEach(p => { %>
+          <tr>
+            <td><%= p.productName %></td>
+            <td><%= p.categoryId ? p.categoryId.name : '-' %></td>
+            <td><%= p.subcategoryId ? p.subcategoryId.fitName : '-' %></td>
+            <td>
+              <a href="/admin/variants?productId=<%= p._id %>">Manage variants</a>
+            </td>
+            <td>
+              <% if (p.images && p.images.length) { %>
+                <% p.images.forEach(img => { %>
+                  <img src="/uploads/products/<%= img %>" />
+                <% }) %>
+              <% } %>
+            </td>
+           <td>
+            <a class="btn btn-primary" href="/admin/product/edit/<%= p._id %>">Edit</a>
+
+            <!-- Delete button: SweetAlert will call your endpoint -->
+            <button class="btn btn-danger" data-action="delete-product" data-id="<%= p._id %>">Delete</button>
+          </td>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="6">No products</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+
+<!-- include SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  async function postJson(url, data) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {})
+    });
+    return res.json();
+  }
+
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-action="delete-product"]');
+    if (!btn) return;
+
+    const id = btn.getAttribute('data-id');
+    if (!id) return;
+
+    Swal.fire({
+      title: 'Delete product?',
+      text: 'This will permanently delete the product and its variants. This cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel'
+    }).then(async (result) => {
+      if (!result.isConfirmed) return;
+
+      try {
+        const json = await postJson('/admin/product/delete/' + id);
+        if (json.success) {
+          Swal.fire('Deleted', json.message || 'Product deleted', 'success').then(() => location.reload());
+        } else {
+          Swal.fire('Error', json.message || 'Failed to delete', 'error');
+        }
+      } catch (err) {
+        console.error('Delete request failed', err);
+        Swal.fire('Error', 'Network or server error', 'error');
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

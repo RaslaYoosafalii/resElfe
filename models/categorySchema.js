@@ -12,8 +12,13 @@ const categorySchema = new Schema({
         required: true,
     },
     offerPrice: {
-        type: String,
-        required: false
+        type: Number,
+        required: false,
+        default: 0
+    },
+    offerIsPercent: {            // <-- NEW flag
+        type: Boolean,
+        default: false
     },
     offerValidDate: {
         type: Date,
@@ -46,6 +51,7 @@ const subCategorySchema = new Schema({
         unique: true
     }
 })
+
 const SubCategory = mongoose.model('SubCategory', subCategorySchema);
 
 

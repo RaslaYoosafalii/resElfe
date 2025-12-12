@@ -101,7 +101,140 @@ const login = async(req, res) => {
 }
 
 
+// --- forgot password: send OTP if user exists ---
+const forgotPasswordRequest = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.render('forgot-password', { message: 'Please provide your email.' });
+    }
 
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.render('forgot-password', { message: 'User with this email does not exist', email: email.toLowerCase() });
+    }
+
+    const otp = generateOTP();
+    req.session.resetOtp = otp;
+    req.session.resetEmail = email.toLowerCase();
+    req.session.otpCreatedAt = Date.now();
+
+    const emailResult = await sendVerificationEmail(email, otp);
+    if (!emailResult || !emailResult.ok) {
+      // friendly error shown on the forgot page
+      return res.render('forgot-password', { message: 'Failed to send OTP. Try again later.', email });
+    }
+
+    // Render OTP verification page and show human-readable message
+    return res.render('forgot-password-otp', { email, message: 'OTP sent successfully' });
+  } catch (error) {
+    console.error('forgotPasswordRequest error', error);
+    return res.render('forgot-password', { message: 'Server error. Please try again.' });
+  }
+};
+
+// --- verify OTP for forgot password ---
+const forgotVerifyOtp = async (req, res) => {
+  try {
+    const { otp } = req.body; // the combined 4-digit code
+    const email = req.session.resetEmail || req.body.email || '';
+
+    // Session OTP existence check
+    if (!req.session.resetOtp) {
+      return res.render('forgot-password-otp', { email, message: 'OTP expired. Please request again.' });
+    }
+
+    const createdAt = req.session.otpCreatedAt;
+    const TEN_MIN = 10 * 60 * 1000;
+    if (createdAt && (Date.now() - createdAt > TEN_MIN)) {
+      // expire OTP
+      req.session.resetOtp = null;
+      req.session.resetEmail = null;
+      req.session.otpCreatedAt = null;
+      return res.render('forgot-password-otp', { email: '', message: 'OTP expired. Please request again.' });
+    }
+
+    if (String(otp) === String(req.session.resetOtp)) {
+      // OTP correct -> render change password page
+      // keep resetEmail in session for later password change
+      // Clear OTP so it cannot be reused
+      req.session.resetOtp = null;
+      req.session.otpCreatedAt = null;
+      return res.render('change-password', { message: null });
+    } else {
+      return res.render('forgot-password-otp', { email, message: 'Invalid OTP, please try again' });
+    }
+  } catch (error) {
+    console.error('forgotVerifyOtp error', error);
+    const email = req.session.resetEmail || '';
+    return res.render('forgot-password-otp', { email, message: 'Server Error, please try again.' });
+  }
+};
+
+// --- resend OTP (recommended endpoint) ---
+const forgotResendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    // validate session email to avoid sending OTP to different account
+    if (!req.session.resetEmail || req.session.resetEmail !== (email && email.toLowerCase())) {
+      return res.status(400).json({ success: false, message: 'Invalid request' });
+    }
+
+    const otp = generateOTP();
+    req.session.resetOtp = otp;
+    req.session.otpCreatedAt = Date.now();
+
+    const emailResult = await sendVerificationEmail(email, otp);
+    if (!emailResult || !emailResult.ok) {
+      return res.status(500).json({ success: false, message: 'Failed to send OTP' });
+    }
+
+    return res.json({ success: true, message: 'OTP resent successfully' });
+  } catch (error) {
+    console.error('forgotResendOtp error', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// --- change password after OTP verified ---
+const forgotChangePassword = async (req, res) => {
+  try {
+    const { newPassword, confirmPassword } = req.body;
+    const email = req.session.resetEmail;
+
+    if (!email) {
+      return res.render('change-password', { message: 'Session expired. Please retry the flow.' });
+    }
+    if (!newPassword || !confirmPassword) {
+      return res.render('change-password', { message: 'Fill all required fields' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.render('change-password', { message: 'Passwords do not match' });
+    }
+    if (newPassword.length < 6) {
+      return res.render('change-password', { message: 'Password too short' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      req.session.resetEmail = null;
+      return res.render('forgot-password', { message: 'User not found. Please register.' });
+    }
+
+    user.password = await securePassword(newPassword);
+    await user.save();
+
+    // clear session keys
+    req.session.resetEmail = null;
+    req.session.resetOtp = null;
+    req.session.otpCreatedAt = null;
+
+    // return JSON so client can show sweetalert + redirect
+    return res.json({ success: true, redirectUrl: '/login', message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('forgotChangePassword error', error);
+    return res.render('change-password', { message: 'Server error. Please try again.' });
+  }}
 
 //load signup page
 const loadSignupPage = async (req, res) => {
@@ -146,7 +279,9 @@ async function sendVerificationEmail(email, otp){
         console.log('nodemailer info:', info);
 
         // return info.accepted.length > 0
-        return { ok: info.accepted && info.accepted.length > 0, info, rejected: info.rejected };
+        // return { ok: info.accepted && info.accepted.length > 0, info, rejected: info.rejected };
+        return { ok: Array.isArray(info.accepted) && info.accepted.length > 0, info, rejected: info.rejected };
+
 
         
     } catch (error) {
@@ -259,6 +394,7 @@ const verifyOtp = async(req, res) => {
      const saveUserData = new User({
          email: userData.email,
          password: passwordHash,
+        // name: userData.name && userData.name.trim() ? userData.name.trim() : extractNameFromEmail(userData.email) || undefined,
         refferalcode: userData.refferalCode || undefined
      })
      
@@ -367,6 +503,10 @@ module.exports = {
    loadHome,
    pageNotFound,
    loadSignupPage,
+   forgotPasswordRequest,
+   forgotVerifyOtp,
+   forgotResendOtp,
+   forgotChangePassword,
    signup,
    sendVerificationEmail,
    verifyOtp,

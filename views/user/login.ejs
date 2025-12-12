@@ -156,7 +156,7 @@ form input {
   <div class="wrapper">
 
     <!-- Google login button -->
-    <button class="google-btn">
+    <button class="google-btn" onclick="window.location.href='/auth/google'">
       <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Logo">
       Login with Google
     </button>
@@ -179,7 +179,7 @@ form input {
         <span class="toggle-password" onclick="togglePassword()">👁</span>
       </div>
 
-      <a href="#" class="forgot">Forget Password?</a>
+      <a href="/forgot-password" class="forgot">Forget Password?</a>
 
       <button type="submit" class="login-btn">Login</button>
     </form>

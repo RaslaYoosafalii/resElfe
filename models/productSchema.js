@@ -17,13 +17,20 @@ const productSchema = new Schema({
         ref: "Category",
         required: true
     },
-    subcategoryId: {
-        type: String,
-        required: true
-    },
+    subcategoryId:{ 
+        type: Schema.Types.ObjectId,
+        ref: "SubCategory",
+        required: true 
+        
+    }, // changed to ObjectId
+
     isListed: {
         type: Boolean,
         default: false,
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false 
     },
     createdAt: {
         type: Date,
@@ -45,7 +52,8 @@ const productSchema = new Schema({
         enum: ['available', 'out of stock'],
         default: 'available',
         required: true
-    }
+    },
+    images: [{ type: String }]
   
 },{timestamps: true});
 
@@ -75,6 +83,11 @@ const varientSchema = new Schema({
     price: {
        type: Number,
        required: true
+    },
+    discountPrice: {
+       type: Number,
+       required: false,
+       default: null
     },
     stock: {
         type: Number,
