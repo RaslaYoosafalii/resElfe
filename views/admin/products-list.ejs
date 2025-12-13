@@ -1,90 +1,330 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Products</title>
-  <style> body{font-family:Arial;padding:20px} table{width:100%;border-collapse:collapse} th,td{padding:8px;border:1px solid #ddd} img{width:60px;height:60px;object-fit:cover;margin-right:6px} .btn{padding:6px 10px;border:none;border-radius:4px;cursor:pointer} .btn-danger{background:#e74c3c;color:#fff} .btn-primary{background:#3498db;color:#fff} </style>
-</head>
-<body>
-  <h1>Products</h1>
-  <p><a href="/admin/product/add">Add new product</a></p>
+  <meta charset="utf-8" />
+  <title>Products management</title>
 
-  <table>
-    <thead><tr><th>Name</th><th>Category</th><th>Subcategory</th><th>Variants</th><th>Images</th><th>Actions</th></tr></thead>
-    <tbody>
-      <% if (products && products.length) { %>
-        <% products.forEach(p => { %>
-          <tr>
-            <td><%= p.productName %></td>
-            <td><%= p.categoryId ? p.categoryId.name : '-' %></td>
-            <td><%= p.subcategoryId ? p.subcategoryId.fitName : '-' %></td>
-            <td>
-              <a href="/admin/variants?productId=<%= p._id %>">Manage variants</a>
-            </td>
-            <td>
-              <% if (p.images && p.images.length) { %>
-                <% p.images.forEach(img => { %>
-                  <img src="/uploads/products/<%= img %>" />
-                <% }) %>
-              <% } %>
-            </td>
-           <td>
-            <a class="btn btn-primary" href="/admin/product/edit/<%= p._id %>">Edit</a>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-            <!-- Delete button: SweetAlert will call your endpoint -->
-            <button class="btn btn-danger" data-action="delete-product" data-id="<%= p._id %>">Delete</button>
-          </td>
-        <% }) %>
-      <% } else { %>
-        <tr><td colspan="6">No products</td></tr>
-      <% } %>
-    </tbody>
-  </table>
+  <style>
+    :root {
+      --accent: #5a5252;
+      --muted: #efeeee;
+      --brown-text: #6f6766;
+      --table-head: #5a5252;
+      --soft-border: #e6e3e1;
+    }
 
-<!-- include SweetAlert2 CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    body {
+      background:#f9f8f7;
+      font-family:'Poppins',sans-serif;
+      color:var(--brown-text);
+      margin:0;
+    }
 
-<script>
-  async function postJson(url, data) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data || {})
-    });
-    return res.json();
+    .admin-container {
+      margin-left:260px;
+      margin-top:110px;
+      padding:28px 40px;
+    }
+
+    .topbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:25px;
+    }
+
+    .page-title h2 {
+      margin:0;
+      font-size:22px;
+      font-weight:700;
+    }
+
+    .search-add { display:flex; gap:12px; align-items:center; }
+    .search-box {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:#fff;
+      border:1px solid var(--soft-border);
+      padding:8px 12px;
+      border-radius:8px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.06);
+    }
+    .search-box input {
+      border:none;
+      outline:none;
+      width:220px;
+      font-size:14px;
+    }
+  
+  #clearSearch {
+    font-size: 16px;
+    color: #7f7776;
+  }
+  .search-box {
+    position: relative;
+  }
+  #clearSearch {
+    position: absolute;
+    right: 10px;
+    background: none;
   }
 
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('[data-action="delete-product"]');
-    if (!btn) return;
 
-    const id = btn.getAttribute('data-id');
-    if (!id) return;
 
-    Swal.fire({
-      title: 'Delete product?',
-      text: 'This will permanently delete the product and its variants. This cannot be undone.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete',
-      cancelButtonText: 'Cancel'
-    }).then(async (result) => {
-      if (!result.isConfirmed) return;
+    .btn-new {
+      background:var(--accent);
+      color:#fff;
+      border:none;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+    }
 
-      try {
-        const json = await postJson('/admin/product/delete/' + id);
-        if (json.success) {
-          Swal.fire('Deleted', json.message || 'Product deleted', 'success').then(() => location.reload());
-        } else {
-          Swal.fire('Error', json.message || 'Failed to delete', 'error');
-        }
-      } catch (err) {
-        console.error('Delete request failed', err);
-        Swal.fire('Error', 'Network or server error', 'error');
-      }
+    .products-table {
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 12px;
+    }
+
+    .products-table thead th {
+      background:var(--table-head);
+      color:#fff;
+      padding:14px 18px;
+      border-radius:8px 8px 0 0;
+      font-size:14px;
+      text-align:left;
+    }
+
+    .products-table tbody td {
+      background:#f3f2f2;
+      padding:14px 18px;
+      font-size:15px;
+      vertical-align:middle;
+      color:var(--brown-text);
+    }
+
+    .product-identity {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .product-thumb {
+      width:54px;
+      height:54px;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px solid #ddd;
+    }
+    .product-thumb img { width:100%; height:100%; object-fit:cover; }
+
+    .product-name { font-weight:500; }
+    .muted { color:#7f7776; font-size:14px; }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      justify-content:center;
+    }
+    .icon-btn {
+      border:1px solid #d0cdcd;
+      padding:8px;
+      border-radius:8px;
+      background:transparent;
+      cursor:pointer;
+    }
+
+    .table-footer {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:25px;
+    }
+
+    .pagination {
+      display:flex;
+      gap:8px;
+    }
+
+    .page-btn {
+      padding:8px 12px;
+      border:1px solid var(--soft-border);
+      background:#fff;
+      border-radius:8px;
+      cursor:pointer;
+    }
+    .page-btn.active {
+      background:#e9e2e0;
+      font-weight:700;
+      color:var(--accent);
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/admin/headerSidebar') %>
+
+  <div class="admin-container">
+    
+    <div class="topbar">
+      <div class="page-title"><h2>Products management</h2></div>
+
+      <div class="search-add">
+        <div class="search-box">
+          <i class="bi bi-search"></i>
+          <input 
+  id="searchInput" 
+  name="search"
+  value="<%= search || '' %>" 
+  placeholder="Search here"
+/>
+<button id="clearSearch" style="background:none; border:none; cursor:pointer; display:<%= search ? 'block' : 'none' %>;">clear</button>
+
+        </div>
+
+        <button onclick="location.href='/admin/product/add'" class="btn-new">
+          <i class="bi bi-plus-lg"></i> New
+        </button>
+      </div>
+    </div>
+
+    <table class="products-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Product ID</th>
+          <th>Category</th>
+          <th>Subcategory</th>
+          <th>Total Stock</th>
+          <th>Added on</th>
+          <th style="text-align:center;">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if (products.length) { %>
+          <% function shortId(id){ return ("PROD-" + id.toString().slice(-6).toUpperCase()); } %>
+
+          <% products.forEach(p => { %>
+            <tr>
+              <td>
+                <div class="product-identity">
+                  <div class="product-thumb">
+                    <img src="/uploads/products/<%= p.images[0] %>">
+                  </div>
+                  <div>
+                    <div class="product-name"><%= p.productName %></div>
+                  </div>
+                </div>
+              </td>
+
+              <td class="muted"><%= shortId(p._id) %></td>
+              <td><%= p.categoryId?.name || '-' %></td>
+              <td><%= p.subcategoryId?.fitName || '-' %></td>
+
+              <td class="muted"><%= p.totalStock %></td>
+
+              <td class="muted">
+                <%= new Date(p.createdAt).toLocaleString("en-GB", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}) %>
+              </td>
+
+              <td style="text-align:center;">
+                <div class="actions">
+                  <a href="/admin/product/edit/<%= p._id %>" class="icon-btn">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <button class="icon-btn" data-action="delete-product" data-id="<%= p._id %>">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+
+        <% } else { %>
+          <tr><td colspan="7" style="text-align:center; padding:25px;">No products</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <!-- PAGINATION -->
+    <div class="table-footer">
+
+      <div></div> <!-- empty left side -->
+
+      <div class="pagination">
+
+        <!-- Prev -->
+        <% if (page > 1) { %>
+          <a class="page-btn" href="/admin/product?page=<%= page - 1 %>&limit=<%= limit %>">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        <% } %>
+
+        <% for (let i = 1; i <= totalPages; i++) { %>
+            <a href="/admin/product?page=<%= i %>&limit=<%= limit %><%= search ? '&search=' + search : '' %>"
+            class="page-btn <%= page === i ? 'active' : '' %>"><%= i %></a>
+        <% } %>
+
+        <!-- Next -->
+        <% if (page < totalPages) { %>
+          <a class="page-btn" href="/admin/product?page=<%= page + 1 %>&limit=<%= limit %>">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        <% } %>
+
+      </div>
+    </div>
+
+   
+  </div>
+ <%- include('../partials/admin/footer') %>
+  <!-- Delete handler -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    document.addEventListener("click", e => {
+      const btn = e.target.closest("[data-action='delete-product']");
+      if (!btn) return;
+
+      const id = btn.dataset.id;
+
+      Swal.fire({
+        title:"Delete product?",
+        text:"This action cannot be undone.",
+        icon:"warning",
+        showCancelButton:true,
+        confirmButtonText:"Yes, delete"
+      }).then(async result => {
+        if (!result.isConfirmed) return;
+
+        const res = await fetch(`/admin/product/delete/${id}`, { method:"POST" });
+        const json = await res.json();
+
+        if (json.success) location.reload();
+        else Swal.fire("Error", json.message, "error");
+      });
     });
+  </script>
+  <script>
+  const input = document.getElementById("searchInput");
+  const clearBtn = document.getElementById("clearSearch");
+
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      const value = input.value.trim();
+      window.location.href = "/admin/product?page=1&search=" + encodeURIComponent(value);
+    }
+  });
+
+  clearBtn?.addEventListener("click", () => {
+    window.location.href = "/admin/product?page=1";
   });
 </script>
+
 
 </body>
 </html>

@@ -32,6 +32,7 @@
   </style>
 </head>
 <body>
+  <%- include('../partials/admin/headerSidebar') %>
   <h1>Categories</h1>
 
   <% if (typeof message !== 'undefined' && message) { %>
@@ -191,6 +192,10 @@
       <div style="margin-left:auto;" class="muted-small">Page <%= pagination.page %> of <%= pagination.totalPages %> — <%= pagination.total %> items</div>
     </div>
   <% } %>
+
+  <!-- footer -->
+  <%- include('../partials/admin/footer') %>
+
 
   <!-- SweetAlert2 (script must be placed AFTER the table and buttons) -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

@@ -1,209 +1,313 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Edit Product</title>
-  <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
+<%- include('../partials/admin/headerSidebar') %>
+
+<div class="main-content">
+
   <style>
-    body{font-family:Arial;padding:20px}
-    .img-thumb { width:120px; height:120px; object-fit:cover; margin-right:8px; border:1px solid #ddd; }
-    .variant-row { margin-bottom:8px; }
-    .inline { display:inline-block; vertical-align:middle; }
-    .btn { padding:6px 10px; border-radius:4px; cursor:pointer; border:none; }
-    .btn-danger { background:#e74c3c; color:#fff; }
-    .btn-primary { background:#3498db; color:#fff; }
+    .edit-container {
+      background: #fff;
+      padding: 35px;
+      border-radius: 18px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    .page-title {
+      font-size: 26px;
+      font-weight: 600;
+      color: #776e65;
+      margin-bottom: 25px;
+    }
+
+    .form-label {
+      font-weight: 500;
+      color: #555;
+    }
+
+    input, select, textarea {
+      border-radius: 10px !important;
+    }
+
+    textarea { height: 120px; }
+
+    /* IMAGES */
+    .existing-images {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .existing-image-box {
+      width: 130px;
+      text-align: center;
+    }
+
+    .existing-image-box img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      margin-bottom: 6px;
+    }
+
+    #addedImages img {
+      width: 120px;
+      border-radius: 10px;
+      margin-right: 8px;
+      border: 1px solid #ddd;
+    }
+
+    /* CROPPER */
+    .cropper-wrapper {
+      width: 300px;
+      height: 400px;
+      display: none;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #ddd;
+      background: #fafafa;
+      margin-bottom: 15px;
+    }
+
+    #imagePreview {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    /* VARIANTS */
+    .variant-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #6f665f;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    .variant-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto auto;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    .remove-variant {
+      background: #e9e4df;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .remove-variant:hover {
+      background: #d5cec8;
+    }
+
+    /* BUTTONS */
+    #addImageBtn,
+    #addVariantBtn {
+      background: #b6ada4;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 10px;
+      color: #fff;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+
+    .submit-btn {
+      background: #776e65;
+      padding: 12px 26px;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 17px;
+      float: right;
+      margin-top: 25px;
+    }
   </style>
-</head>
-<body>
-  <h1>Edit Product</h1>
-  <% if (message) { %><div><%= message %></div><% } %>
 
-  <form id="editForm" method="POST" action="/admin/product/edit/<%= product._id %>" enctype="multipart/form-data">
-    <div>
-      <label>Product Name</label><br/>
-      <input name="productName" value="<%= product.productName %>" required />
-    </div>
+  <div class="edit-container">
 
-    <div>
-      <label>Description</label><br/>
-      <textarea name="description" rows="4" cols="60" required><%= product.description %></textarea>
-    </div>
+    <h2 class="page-title">Edit Product</h2>
 
-    <div>
-      <label>Category</label>
-      <select name="categoryId" id="categorySelect" required>
-        <option value="">Select</option>
-        <% categories.forEach(function(cat){ %>
-          <option value="<%= cat._id %>" <%= String(cat._id) === String(product.categoryId) ? 'selected' : '' %>><%= cat.name %></option>
-        <% }) %>
-      </select>
-    </div>
+    <% if (message) { %>
+      <div class="alert alert-danger"><%= message %></div>
+    <% } %>
 
-    <div>
-      <label>Subcategory</label>
-      <select name="subcategoryId" id="subSelect" required>
-        <option value="">Select</option>
-        <% subcategories.forEach(function(sc){ %>
-          <option value="<%= sc._id %>" <%= String(sc._id) === String(product.subcategoryId) ? 'selected' : '' %>><%= sc.fitName %></option>
-        <% }) %>
-      </select>
-    </div>
+    <form id="editForm" action="/admin/product/edit/<%= product._id %>" method="POST">
 
-    <hr/>
+      <!-- NAME -->
+      <div class="mb-3">
+        <label class="form-label">Product Name</label>
+        <input type="text" name="productName" class="form-control" value="<%= product.productName %>" required>
+      </div>
 
-    <h3>Existing Images</h3>
-    <p>Uncheck images you want to DELETE (they will be removed when you save).</p>
-    <div id="existingImages">
-      <% (product.images || []).forEach(function(img) { %>
-        <label style="display:inline-block;text-align:center;margin-right:8px;">
-          <img src="/uploads/products/<%= img %>" class="img-thumb" />
-          <div><input type="checkbox" class="keep-img" value="<%= img %>" checked /> Keep</div>
-        </label>
-      <% }) %>
-    </div>
+      <!-- DESCRIPTION -->
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control" required><%= product.description %></textarea>
+      </div>
 
-    <hr/>
-    <h3>Add New Images (optional)</h3>
-    <input id="imageInput" type="file" accept="image/*" />
-    <div class="crop-area"><img id="imagePreview" style="max-width:100%;display:none;" /></div>
-    <button type="button" id="addImageBtn">Add image</button>
-    <div id="addedImages"></div>
-
-    <hr/>
-    <h3>Variants</h3>
-
-    <div id="variantsWrap">
-      <% variants.forEach(function(v){ %>
-        <div class="variant-row" data-existing-id="<%= v._id %>">
-          <input class="v-id" type="hidden" value="<%= v._id %>" />
-          <input class="v-size" placeholder="Size" value="<%= v.size %>" />
-          <input class="v-color" placeholder="Color" value="<%= v.color %>" />
-          <input class="v-price" placeholder="Price" value="<%= v.price %>" />
-          <input class="v-discount" placeholder="Discount Price (optional)" value="<%= (typeof v.discountPrice !== 'undefined' && v.discountPrice !== null) ? v.discountPrice : '' %>" />
-          <input class="v-stock" placeholder="Stock" value="<%= v.stock %>" />
-          <label><input type="checkbox" class="v-delete" /> Delete</label>
+      <div class="row">
+        <!-- CATEGORY -->
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Category</label>
+          <select name="categoryId" class="form-control" required>
+            <% categories.forEach(c => { %>
+              <option value="<%= c._id %>" <%= String(c._id) === String(product.categoryId) ? 'selected' : '' %>>
+                <%= c.name %>
+              </option>
+            <% }) %>
+          </select>
         </div>
-        
-      <% }) %>
-    </div>
-    <button type="button" id="addVariantBtn">Add Variant</button>
 
-    <!-- hidden inputs: variants JSON + existing images list -->
-    <input type="hidden" name="variants" id="variantsField" />
-    <input type="hidden" name="existingImagesKeep" id="existingKeepField" />
+        <!-- SUBCATEGORY -->
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Subcategory</label>
+          <select name="subcategoryId" class="form-control" required>
+            <% subcategories.forEach(s => { %>
+              <option value="<%= s._id %>" <%= String(s._id) === String(product.subcategoryId) ? 'selected' : '' %>>
+                <%= s.fitName %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
 
-    <hr/>
-    <button type="submit" class="btn btn-primary">Save changes</button>
-    <a href="/admin/product" class="btn" style="margin-left:8px;">Back</a>
-  </form>
+      <!-- EXISTING IMAGES -->
+      <label class="form-label">Existing Images</label>
+      <div class="existing-images">
+        <% product.images.forEach(img => { %>
+          <div class="existing-image-box">
+            <img src="/uploads/products/<%= img %>">
+            <div>
+              <input type="checkbox" class="keep-img" value="<%= img %>" checked>
+              <small>Keep</small>
+            </div>
+          </div>
+        <% }) %>
+      </div>
 
-  <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+      <!-- ADD NEW IMAGES -->
+      <input type="file" id="imageInput" accept="image/*" hidden>
+      <button type="button" id="triggerInputBtn" class="btn btn-outline-secondary mb-2">
+        Add New Image
+      </button>
 
-  <script>
-    // Cropper: reuse code from add page
-    let cropper;
-    const input = document.getElementById('imageInput');
-    const preview = document.getElementById('imagePreview');
-    const addImgBtn = document.getElementById('addImageBtn');
-    const addedImages = document.getElementById('addedImages');
-    const imagesBlobs = [];
+      <div class="cropper-wrapper">
+        <img id="imagePreview">
+      </div>
 
-    input.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      preview.src = url;
-      preview.style.display = 'block';
-      if (cropper) cropper.destroy();
-      cropper = new Cropper(preview, { aspectRatio: 1, viewMode: 1, autoCropArea:1 });
+      <button type="button" id="addImageBtn">Add Image</button>
+      <div id="addedImages"></div>
+
+      <!-- VARIANTS -->
+      <div class="variant-title">Variants</div>
+      <div id="variantsWrap">
+
+        <% variants.forEach(v => { %>
+          <div class="variant-row">
+            <input type="hidden" class="v-id" value="<%= v._id %>">
+            <input class="form-control v-size" value="<%= v.size %>" placeholder="Size">
+            <input class="form-control v-color" value="<%= v.color %>" placeholder="Color">
+            <input class="form-control v-price" value="<%= v.price %>" type="number">
+            <input class="form-control v-discount" value="<%= v.discountPrice ?? '' %>" type="number">
+            <input class="form-control v-stock" value="<%= v.stock %>" type="number">
+            <label><input type="checkbox" class="v-delete"> Delete</label>
+          </div>
+        <% }) %>
+
+      </div>
+
+      <button type="button" id="addVariantBtn">Add Variant</button>
+
+      <button class="submit-btn" type="submit">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+  let cropper;
+  const input = document.getElementById('imageInput');
+  const preview = document.getElementById('imagePreview');
+  const addedImages = document.getElementById('addedImages');
+  const imagesBlobs = [];
+
+  document.getElementById('triggerInputBtn').onclick = () => input.click();
+
+  input.onchange = e => {
+    document.querySelector('.cropper-wrapper').style.display = 'block';
+    const file = e.target.files[0];
+    if (!file) return;
+    preview.src = URL.createObjectURL(file);
+    if (cropper) cropper.destroy();
+    cropper = new Cropper(preview, { aspectRatio: 1, viewMode: 1 });
+  };
+
+  document.getElementById('addImageBtn').onclick = () => {
+    if (!cropper) return alert('Crop image first');
+    cropper.getCroppedCanvas({ width: 1200, height: 1200 }).toBlob(blob => {
+      const name = `prod-${Date.now()}.jpg`;
+      imagesBlobs.push({ blob, name });
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob);
+      addedImages.appendChild(img);
+      cropper.destroy();
+      cropper = null;
+      preview.src = '';
+      input.value = '';
+      document.querySelector('.cropper-wrapper').style.display = 'none';
+    }, 'image/jpeg', 0.9);
+  };
+
+  document.getElementById('addVariantBtn').onclick = () => {
+    const row = document.createElement('div');
+    row.className = 'variant-row';
+    row.innerHTML = `
+      <input class="form-control v-size" placeholder="Size">
+      <input class="form-control v-color" placeholder="Color">
+      <input class="form-control v-price" type="number">
+      <input class="form-control v-discount" type="number">
+      <input class="form-control v-stock" type="number">
+      <button type="button" class="remove-variant">Remove</button>
+    `;
+    row.querySelector('.remove-variant').onclick = () => row.remove();
+    document.getElementById('variantsWrap').appendChild(row);
+  };
+
+  document.getElementById('editForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+
+    const keep = [];
+    document.querySelectorAll('.keep-img:checked').forEach(cb => keep.push(cb.value));
+    fd.append('existingImagesKeep', JSON.stringify(keep));
+
+    const variants = [];
+    document.querySelectorAll('.variant-row').forEach(r => {
+      const data = {
+        _id: r.querySelector('.v-id')?.value,
+        size: r.querySelector('.v-size')?.value,
+        color: r.querySelector('.v-color')?.value,
+        price: r.querySelector('.v-price')?.value,
+        discountPrice: r.querySelector('.v-discount')?.value,
+        stock: r.querySelector('.v-stock')?.value,
+        _delete: r.querySelector('.v-delete')?.checked
+      };
+      variants.push(data);
     });
+    fd.append('variants', JSON.stringify(variants));
 
-    addImgBtn.addEventListener('click', () => {
-      if (!cropper) { alert('Select and crop an image first'); return; }
-      const canvas = cropper.getCroppedCanvas({ width: 1200, height: 1200 });
-      canvas.toBlob((blob) => {
-        const name = `prod-${Date.now()}.jpg`;
-        imagesBlobs.push({ blob, name });
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(blob);
-        img.className = 'img-thumb';
-        addedImages.appendChild(img);
-        cropper.destroy();
-        preview.style.display = 'none';
-        input.value = '';
-        cropper = null;
-      }, 'image/jpeg', 0.9);
-    });
+    imagesBlobs.forEach(o => fd.append('productImages', o.blob, o.name));
 
-    // Variants: add new row
-    const variantsWrap = document.getElementById('variantsWrap');
-    document.getElementById('addVariantBtn').addEventListener('click', () => {
-      const wrap = document.createElement('div');
-      wrap.className = 'variant-row';
-      wrap.innerHTML = '<input class="v-size" placeholder="Size" /> <input class="v-color" placeholder="Color" /> <input class="v-price" placeholder="Price" /> <input class="v-discount" placeholder="Discount Price (optional)" /> <input class="v-stock" placeholder="Stock" /> <button type="button" class="remove-variant">Remove</button>';
-      variantsWrap.appendChild(wrap);
-      wrap.querySelector('.remove-variant').addEventListener('click', () => wrap.remove());
-    });
+    const res = await fetch(e.target.action, { method: 'POST', body: fd });
+    if (res.redirected) location.href = res.url;
+    else document.write(await res.text());
+  });
+</script>
 
-    // Submit handler: build FormData
-    const form = document.getElementById('editForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const fd = new FormData();
-      fd.append('productName', form.productName.value);
-      fd.append('description', form.description.value);
-      fd.append('categoryId', form.categoryId.value);
-      fd.append('subcategoryId', form.subcategoryId.value);
-
-      // existing keep images
-      const keep = [];
-      document.querySelectorAll('.keep-img').forEach(cb => { if (cb.checked) keep.push(cb.value); });
-      fd.append('existingImagesKeep', JSON.stringify(keep));
-
-      // gather variants: existing ones include _id and possibly _delete flag, new ones lack _id
-      const variants = [];
-        document.querySelectorAll('.variant-row').forEach(row => {
-          const idEl = row.querySelector('.v-id');
-          const sizeEl = row.querySelector('.v-size');
-          const colorEl = row.querySelector('.v-color');
-          const priceEl = row.querySelector('.v-price');
-          const discountEl = row.querySelector('.v-discount');
-          const stockEl = row.querySelector('.v-stock');
-          const delEl = row.querySelector('.v-delete');
-        
-          const data = {};
-          if (idEl) data._id = idEl.value;
-          data.size = sizeEl ? sizeEl.value.trim() : '';
-          data.color = colorEl ? colorEl.value.trim() : '';
-          data.price = priceEl ? priceEl.value.trim() : '';
-          data.discountPrice = discountEl ? discountEl.value.trim() : '';
-          data.stock = stockEl ? stockEl.value.trim() : '';
-          if (delEl && delEl.checked) data._delete = true;
-          variants.push(data);
-        });
-        
-
-      fd.append('variants', JSON.stringify(variants));
-
-      // attach new image blobs
-      imagesBlobs.forEach(o => fd.append('productImages', o.blob, o.name));
-
-      try {
-        const res = await fetch(form.action, { method: 'POST', body: fd });
-        if (res.redirected) {
-          window.location.href = res.url;
-          return;
-        }
-        // show returned HTML (e.g., validation errors)
-        const text = await res.text();
-        document.open(); document.write(text); document.close();
-      } catch (err) {
-        alert('Upload failed; check console.');
-        console.error(err);
-      }
-    });
-  </script>
-</body>
-</html>
+<%- include('../partials/admin/footer') %>

@@ -1,167 +1,348 @@
-<!-- views/admin/customers.ejs -->
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Admin - Customers</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+<%- include('../partials/admin/headerSidebar') %>
+
+<div class="main-content">
+
   <style>
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-family: Arial, sans-serif; }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-    th { background: #f4f4f4; }
-    .btn { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
-    .btn-block { background: #e74c3c; color: #fff; }
-    .btn-unblock { background: #2ecc71; color: #fff; }
-    .small { font-size: 0.9rem; color: #666; }
-    .center { text-align: center; }
-    .pager { margin-top: 12px; display:flex; gap:6px; align-items:center; }
-    .pager a, .pager button { padding:6px 10px; border-radius:4px; border:1px solid #ddd; text-decoration:none; background:#fff; color:#333; }
-    .pager .active { background:#3498db; color:#fff; border-color:#3498db; }
-    .search-bar { margin-bottom:12px; display:flex; gap:8px; align-items:center; }
+    /* ===== SAME CSS (unchanged except spacing safety) ===== */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 25px;
+    }
+
+    .page-header h2 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .search-wrap {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search-wrap input {
+      border-radius: 12px;
+      padding: 8px 14px;
+      border: 1px solid #ddd;
+      width: 240px;
+    }
+
+    .filter-btn {
+      border: 1px solid #ddd;
+      background: #fff;
+      padding: 8px 14px;
+      border-radius: 12px;
+      color: #777;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .table-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 10px;
+      padding: 15px;
+    }
+
+    thead th {
+      background: #5f5751;
+      color: #fff;
+      padding: 14px;
+      font-weight: 500;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    thead th:last-child,
+    tbody td:last-child {
+      text-align: center;
+    }
+
+    tbody tr {
+      background: #f6f5f4;
+    }
+
+    tbody td {
+      padding: 14px;
+      color: #555;
+      vertical-align: middle;
+    }
+
+    .customer-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #cfc9c3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .status-active {
+      color: #1ea672;
+      border: 1px solid #1ea672;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+
+    .status-blocked {
+      color: #ff5a5a;
+      border: 1px solid #ff5a5a;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+
+    .action-btn {
+      border: none;
+      background: none;
+      font-size: 18px;
+      cursor: pointer;
+      margin: 0 6px;
+    }
+
+    .action-delete { color: #888; }
+    .action-toggle { color: #1ea672; }
+    .blocked .action-toggle { color: #ff5a5a; }
+
+    .pagination-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 25px;
+    }
+
+    .pagination {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pagination a {
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      color: #777;
+      text-decoration: none;
+    }
+
+    .pagination a.active {
+      background: #e7e5ff;
+      color: #6b63ff;
+      border-color: transparent;
+    }
+
+    .limit-select {
+      border-radius: 8px;
+      padding: 4px 8px;
+    }
   </style>
-</head>
-<body>
-  <h1>Customers</h1>
 
-  <% // total customers from pagination.total when available, else customers.length %>
-  <p class="small">Total customers: <strong><%= (pagination && pagination.total) ? pagination.total : (customers ? customers.length : 0) %></strong></p>
+  <!-- HEADER -->
+  <div class="page-header">
+    <h2>Customer</h2>
 
-  <!-- Search bar -->
-  <div class="search-bar">
-    <form id="searchForm" method="GET" action="/admin/customer" style="display:flex; gap:8px; align-items:center;">
-      <input type="text" name="q" placeholder="Search by name or email..." value="<%= (pagination && pagination.q) ? pagination.q : '' %>" />
-      <input type="hidden" name="limit" value="<%= (pagination && pagination.limit) ? pagination.limit : 10 %>" />
-      <button class="btn" type="submit">Search</button>
-      <button id="clearSearch" type="button" class="btn">Clear</button>
-      <a href="/admin/customer" class="btn">Cancel</a>
+    <form class="search-wrap" id="searchForm" method="GET" action="/admin/customer">
+      <input
+        type="text"
+        name="q"
+        placeholder="Search"
+        value="<%= pagination?.q || '' %>"
+      >
+      <input type="hidden" name="limit" value="<%= pagination?.limit || 10 %>">
+
+      <button type="submit" class="filter-btn">
+        <i class="bi bi-search"></i>
+      </button>
+
+      <button type="button" id="clearSearch" class="filter-btn">
+        Clear
+      </button>
     </form>
-
-    <div style="margin-left:auto;">
-      <form id="limitForm" method="GET" action="/admin/customer" style="display:inline;">
-        <input type="hidden" name="q" value="<%= (pagination && pagination.q) ? pagination.q : '' %>" />
-        <label>Per page</label>
-        <select name="limit" onchange="document.getElementById('limitForm').submit();">
-          <option value="5" <%= (pagination && pagination.limit==5) ? 'selected' : '' %>>5</option>
-          <option value="10" <%= (pagination && pagination.limit==10) ? 'selected' : '' %>>10</option>
-          <option value="20" <%= (pagination && pagination.limit==20) ? 'selected' : '' %>>20</option>
-        </select>
-      </form>
-    </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Customer ID</th>
-        <th class="center">Orders</th>
-        <th class="center">Wallet</th>
-        <th class="center">Status</th>
-        <th class="center">Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% if (customers && customers.length) { %>
-        <% customers.forEach(function(c) { %>
-          <tr>
-            <td><%= c.name %></td>
-            <td><%= c.email %></td>
-            <td><%= c.customerId %></td>
-            <td class="center"><%= c.orderCount %></td>
-            <td class="center">₹<%= c.wallet.toFixed(2) %></td>
-            <td class="center"><%= c.isBlocked ? 'Blocked' : 'Active' %></td>
-            <td class="center">
-              <!-- keep form fallback but hide it visually; JS will intercept and run AJAX with confirmation -->
-              <form method="POST" action="/admin/customer/toggle/<%= c._id %>" style="display:inline;" class="toggle-form" data-id="<%= c._id %>">
-                <button class="btn <%= c.isBlocked ? 'btn-unblock' : 'btn-block' %>" type="submit">
-                  <%= c.isBlocked ? 'Unblock' : 'Block' %>
-                </button>
-              </form>
-            </td>
-          </tr>
-        <% }) %>
-      <% } else { %>
+  <!-- TABLE -->
+  <div class="table-card">
+    <table>
+      <thead>
         <tr>
-          <td colspan="7" class="center">No customers found</td>
+          <th>Customer</th>
+          <th>Email</th>
+          <th>Customer ID</th>
+          <th>Orders</th>
+          <th>Balance</th>
+          <th>Status</th>
+          <th>Actions</th>
         </tr>
-      <% } %>
-    </tbody>
-  </table>
+      </thead>
 
-  <!-- Pagination -->
+      <tbody>
+        <% if (customers && customers.length) { %>
+          <% customers.forEach(c => { %>
+            <tr class="<%= c.isBlocked ? 'blocked' : '' %>">
+              <td>
+                <div class="customer-info">
+                  <div class="avatar"><%= c.name.charAt(0).toUpperCase() %></div>
+                  <%= c.name %>
+                </div>
+              </td>
+              <td><%= c.email %></td>
+              <td><%= c.customerId %></td>
+              <td><%= c.orderCount %></td>
+              <td>$<%= c.wallet.toFixed(2) %></td>
+              <td>
+                <span class="<%= c.isBlocked ? 'status-blocked' : 'status-active' %>">
+                  <%= c.isBlocked ? 'Blocked' : 'Active' %>
+                </span>
+              </td>
+              <td>
+                <!-- BLOCK / UNBLOCK -->
+                <form
+                  method="POST"
+                  action="/admin/customer/toggle/<%= c._id %>"
+                  class="toggle-form"
+                  data-id="<%= c._id %>"
+                  style="display:inline"
+                >
+                  <button class="action-btn action-toggle" type="submit">
+                    <i class="bi <%= c.isBlocked ? 'bi-x-circle' : 'bi-check-circle' %>"></i>
+                  </button>
+                </form>
+
+                <!-- DELETE -->
+                <button
+                  class="action-btn action-delete delete-btn"
+                  data-id="<%= c._id %>"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr>
+            <td colspan="7" style="text-align:center">No customers found</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PAGINATION -->
   <% if (pagination && pagination.totalPages > 1) { %>
-    <div class="pager" aria-label="Pagination">
-      <% const startPage = Math.max(1, pagination.page - 2); const endPage = Math.min(pagination.totalPages, pagination.page + 2); %>
-      <% if (pagination.page > 1) { %>
-        <a href="/admin/customer?page=<%= pagination.page - 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>">Prev</a>
-      <% } %>
-      <% for (let p = startPage; p <= endPage; p++) { %>
-        <a class="<%= p === pagination.page ? 'active' : '' %>" href="/admin/customer?page=<%= p %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>"><%= p %></a>
-      <% } %>
-      <% if (pagination.page < pagination.totalPages) { %>
-        <a href="/admin/customer?page=<%= pagination.page + 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(pagination.q || '') %>">Next</a>
-      <% } %>
-      <div style="margin-left:auto;" class="small">Page <%= pagination.page %> of <%= pagination.totalPages %> — <%= pagination.total %> items</div>
+    <div class="pagination-wrap">
+      <div>
+        Show result:
+        <form method="GET" action="/admin/customer" style="display:inline">
+          <input type="hidden" name="q" value="<%= pagination.q || '' %>">
+          <select name="limit" class="limit-select" onchange="this.form.submit()">
+            <option value="5" <%= pagination.limit==5?'selected':'' %>>5</option>
+            <option value="10" <%= pagination.limit==10?'selected':'' %>>10</option>
+            <option value="20" <%= pagination.limit==20?'selected':'' %>>20</option>
+          </select>
+        </form>
+      </div>
+
+      <div class="pagination">
+        <% if (pagination.page > 1) { %>
+          <a href="?page=<%= pagination.page-1 %>&limit=<%= pagination.limit %>&q=<%= pagination.q || '' %>">&lt;</a>
+        <% } %>
+
+        <% for (let p=1; p<=pagination.totalPages; p++) { %>
+          <a class="<%= p===pagination.page?'active':'' %>"
+             href="?page=<%= p %>&limit=<%= pagination.limit %>&q=<%= pagination.q || '' %>">
+            <%= p %>
+          </a>
+        <% } %>
+
+        <% if (pagination.page < pagination.totalPages) { %>
+          <a href="?page=<%= pagination.page+1 %>&limit=<%= pagination.limit %>&q=<%= pagination.q || '' %>">&gt;</a>
+        <% } %>
+      </div>
     </div>
   <% } %>
 
-  <!-- SweetAlert2 -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</div>
 
-  <script>
-    // helper: POST JSON
-    async function postJson(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(data || {})
+<%- include('../partials/admin/footer') %>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  async function postJson(url) {
+    const res = await fetch(url, { method: 'POST', headers: { Accept: 'application/json' } });
+    return res.json();
+  }
+
+  /* CLEAR SEARCH */
+  document.getElementById('clearSearch').onclick = () => {
+    window.location.href = '/admin/customer';
+  };
+
+  /* BLOCK / UNBLOCK */
+  document.querySelectorAll('.toggle-form').forEach(form => {
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = form.dataset.id;
+      const blocked = form.closest('tr').classList.contains('blocked');
+
+      const result = await Swal.fire({
+        title: blocked ? 'Unblock user?' : 'Block user?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: blocked ? 'Unblock' : 'Block'
       });
-      return res.json();
-    }
 
-    // Clear search
-    document.getElementById('clearSearch').addEventListener('click', function () {
-      const form = document.getElementById('searchForm');
-      form.q.value = '';
-      form.submit();
+      if (!result.isConfirmed) return;
+
+      const json = await postJson('/admin/customer/toggle/' + id);
+      if (json.success) location.reload();
+      else Swal.fire('Error', json.message || 'Action failed', 'error');
     });
+  });
 
-    // Intercept all toggle forms and show confirmation before calling AJAX
-    document.querySelectorAll('.toggle-form').forEach(form => {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const userId = form.getAttribute('data-id');
-        const isBlocked = form.querySelector('button').textContent.trim().toLowerCase() === 'unblock' ? true : false;
-        const actionText = isBlocked ? 'Unblock' : 'Block';
-        const confirmText = isBlocked
-          ? 'Are you sure you want to unblock this user?'
-          : 'Are you sure you want to block this user?';
+  /* DELETE USER */
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
 
-        Swal.fire({
-          title: actionText + ' user?',
-          text: confirmText,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: actionText,
-          cancelButtonText: 'Cancel'
-        }).then(async (result) => {
-          if (!result.isConfirmed) return;
-
-          try {
-            const json = await postJson('/admin/customer/toggle/' + userId);
-            if (json.success) {
-              Swal.fire('Success', json.message || 'Updated', 'success').then(() => location.reload());
-            } else {
-              Swal.fire('Error', json.message || 'Failed', 'error');
-            }
-          } catch (err) {
-            Swal.fire('Error', 'Network or server error', 'error');
-            console.error('toggle error', err);
-          }
-        });
+      const result = await Swal.fire({
+        title: 'Delete customer?',
+        text: 'This action cannot be undone',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Delete',
+        confirmButtonColor: '#d33'
       });
+
+      if (!result.isConfirmed) return;
+
+      const json = await postJson('/admin/customer/delete/' + id);
+      if (json.success) {
+        Swal.fire('Deleted', 'Customer removed', 'success').then(() => location.reload());
+      } else {
+        Swal.fire('Error', json.message || 'Delete failed', 'error');
+      }
     });
-  </script>
-</body>
-</html>
+  });
+</script>

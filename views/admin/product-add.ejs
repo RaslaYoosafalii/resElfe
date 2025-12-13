@@ -1,195 +1,413 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Add Product</title>
-  <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
+<%- include('../partials/admin/headerSidebar') %>
+
+<div class="main-content">
+
   <style>
-    body{font-family:Arial;padding:20px}
-    .img-preview{ width:250px; height:250px; overflow:hidden; border:1px solid #ddd; margin-bottom:8px;}
-    .crop-area { max-width:600px; margin-bottom:12px;}
-    .variants { margin-top:12px; }
-    .variant-row { margin-bottom:8px; }
+    /* -------------------------
+       PAGE LAYOUT
+    --------------------------*/
+    .add-container {
+      background: #fff;
+      padding: 35px;
+      border-radius: 18px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    .page-title {
+      font-size: 26px;
+      font-weight: 600;
+      color: #776e65;
+      margin-bottom: 25px;
+    }
+
+    .form-label {
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #555;
+    }
+
+    input, select, textarea {
+      border-radius: 10px !important;
+    }
+
+    textarea {
+      height: 120px;
+    }
+
+    /* -------------------------
+       IMAGE SECTION
+    --------------------------*/
+    .image-grid {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .image-box {
+      width: 180px;
+      height: 180px;
+      background: #f4f1ee;
+      border: 2px dashed #c4bdb6;
+      border-radius: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 35px;
+      color: #b6aca4;
+      flex-shrink: 0;
+    }
+
+    /* preview row */
+    #addedImages img {
+      width: 120px;
+      border-radius: 10px;
+      margin-right: 8px;
+      border: 1px solid #ddd;
+    }
+
+    /* -------------------------
+   CROPPER CONTAINER (FIX SIZE)
+--------------------------*/
+.cropper-wrapper {
+  width: 300px;
+  height: 400px;
+  margin-bottom: 15px;
+  display: none;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  background: #fafafa;
+
+
+}
+
+#imagePreview {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+
+
+    
+    /* -------------------------
+       VARIANTS
+    --------------------------*/
+    .variant-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #6f665f;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    .variant-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .remove-variant {
+      background: #e9e4df;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .remove-variant:hover {
+      background: #d5cec8;
+    }
+
+    /* -------------------------
+       BUTTONS
+    --------------------------*/
+    #addImageBtn,
+    #addVariantBtn {
+      background: #b6ada4;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 10px;
+      color: #fff;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+
+    #addImageBtn:hover,
+    #addVariantBtn:hover {
+      background: #9e958d;
+    }
+
+    .submit-btn {
+      background: #776e65;
+      padding: 12px 26px;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 17px;
+      float: right;
+      margin-top: 25px;
+    }
+
+    .submit-btn:hover {
+      background: #5f5751;
+    }
+
   </style>
-</head>
-<body>
-  <h1>Add Product</h1>
-  <% if (message) { %><div><%= message %></div><% } %>
 
-  <form id="productForm" method="POST" action="/admin/product/add" enctype="multipart/form-data">
-    <div>
-      <label>Product Name</label><br/>
-      <input name="productName" required />
-    </div>
+  <div class="add-container">
 
-    <div>
-      <label>Description</label><br/>
-      <textarea name="description" rows="4" cols="60" required></textarea>
-    </div>
+    <h2 class="page-title">Add Product</h2>
 
-    <div>
-      <label>Category</label>
-      <select name="categoryId" id="categorySelect" required>
-        <option value="">Select</option>
-        <% categories.forEach(function(cat){ %>
-          <option value="<%= cat._id %>"><%= cat.name %></option>
-        <% }) %>
-      </select>
-    </div>
+    <% if (message) { %>
+      <div class="alert alert-danger"><%= message %></div>
+    <% } %>
 
-    <div>
-      <label>Subcategory</label>
-      <select name="subcategoryId" id="subSelect" required>
-        <option value="">Select</option>
-        <% subcategories.forEach(function(sc){ %>
-          <option value="<%= sc._id %>"><%= sc.fitName %></option>
-        <% }) %>
-      </select>
-    </div>
+    <form id="productForm" action="/admin/product/add" method="POST">
 
-    <hr/>
+      <!-- PRODUCT NAME -->
+      <div class="mb-3">
+        <label class="form-label">Product Name</label>
+        <input type="text" name="productName" class="form-control" required>
+      </div>
 
-    <h3>Product Images (at least 3)</h3>
-    <p>Select an image, crop it and click "Add image" for each image. You must upload at least 3 images.</p>
+      <!-- DESCRIPTION -->
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        <textarea name="description" class="form-control" required></textarea>
+      </div>
 
-    <input id="imageInput" type="file" accept="image/*" />
-    <div class="crop-area">
-      <img id="imagePreview" style="max-width:100%; display:none;" />
-    </div>
-    <button type="button" id="addImageBtn">Add image</button>
+      <div class="row">
+        <!-- CATEGORY -->
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Category</label>
+          <select name="categoryId" class="form-control" required>
+            <option value="">Select</option>
+            <% categories.forEach(c => { %>
+              <option value="<%= c._id %>"><%= c.name %></option>
+            <% }) %>
+          </select>
+        </div>
 
-    <div id="addedImages"></div>
+        <!-- SUBCATEGORY -->
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Subcategory</label>
+          <select name="subcategoryId" class="form-control" required>
+            <option value="">Select</option>
+            <% subcategories.forEach(s => { %>
+              <option value="<%= s._id %>"><%= s.fitName %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
 
-    <!-- variant input: we will pack variants JSON into a hidden input -->
-    <hr/>
-    <h3>Variants (size-based stock)</h3>
-    <div id="variantsWrap" class="variants"></div>
-    <button type="button" id="addVariantBtn">Add Variant</button>
+      <!-- IMAGE AREA (DECORATIVE ONLY) -->
+      <label class="form-label">Upload Images (minimum 3 images)</label>
+      <div class="image-grid">
+       
+      </div>
 
-    <input type="hidden" name="variants" id="variantsField" />
+      <!-- ACTUAL CROP INPUT -->
+      <input type="file" id="imageInput" accept="image/*" hidden>
 
-    <hr/>
-    <button type="submit">Create Product</button>
-  </form>
+      <button type="button" id="triggerInputBtn" class="btn btn-outline-secondary mb-2">
+        Choose File
+      </button>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-  <script>
-    // Client-side: cropper + collect images as blobs & pack into FormData before submit
-    let cropper;
-    const input = document.getElementById('imageInput');
-    const preview = document.getElementById('imagePreview');
-    const addImgBtn = document.getElementById('addImageBtn');
-    const addedImages = document.getElementById('addedImages');
-    const imagesBlobs = []; // store { blob, filename }
+      <br>
 
-    input.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      preview.src = url;
-      preview.style.display = 'block';
-      if (cropper) cropper.destroy();
-      cropper = new Cropper(preview, {
-        aspectRatio: 1,
-        viewMode: 1,
-        autoCropArea: 1
+      <div class="cropper-wrapper">
+  <img id="imagePreview">
+</div>
+
+
+      <br>
+      <button type="button" id="addImageBtn">Add Image</button>
+
+      <div id="addedImages" class="mt-2"></div>
+
+      <!-- VARIANTS -->
+      <div class="variant-title">Variants</div>
+
+      <div id="variantsWrap"></div>
+
+      <button type="button" id="addVariantBtn">Add Variant</button>
+
+      <button class="submit-btn" type="submit">Create Product</button>
+
+    </form>
+  </div>
+</div>
+
+
+
+<!-- ==============================
+     CROP + VARIANT JS
+=============================== -->
+<link
+  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
+  rel="stylesheet"
+/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+  let cropper;
+  const triggerBtn = document.getElementById('triggerInputBtn');
+  const input = document.getElementById('imageInput');
+  const preview = document.getElementById('imagePreview');
+  const addImgBtn = document.getElementById('addImageBtn');
+  const addedImages = document.getElementById('addedImages');
+
+  const imagesBlobs = []; // { blob, filename }
+
+  /* -----------------------------
+     OPEN FILE PICKER
+  ------------------------------*/
+  triggerBtn.addEventListener('click', () => input.click());
+
+  /* -----------------------------
+     LOAD SELECTED FILE → CROP
+  ------------------------------*/
+input.addEventListener('change', (e) => {
+
+  document.querySelector('.cropper-wrapper').style.display = 'block';
+
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+
+  preview.onload = () => {
+    if (cropper) cropper.destroy();
+
+cropper = new Cropper(preview, {
+  aspectRatio: 1,
+  viewMode: 1,
+  autoCropArea: 1,
+  responsive: false,
+  background: false,
+  center: true
+});
+
+
+  };
+
+  preview.src = url;
+  preview.style.display = 'block';
+});
+
+
+  /* -----------------------------
+     CONFIRM CROP → ADD TO LIST
+  ------------------------------*/
+  addImgBtn.addEventListener('click', async () => {
+    if (!cropper) return alert('Select and crop an image first');
+document.querySelector('.cropper-wrapper').style.display = 'none';
+
+    const canvas = cropper.getCroppedCanvas({
+      width: 1200,
+      height: 1600,
+      imageSmoothingQuality: 'high'
+    });
+
+    canvas.toBlob((blob) => {
+      const name = `prod-${Date.now()}.jpg`;
+      imagesBlobs.push({ blob, name });
+
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob);
+      addedImages.appendChild(img);
+
+      cropper.destroy();
+      preview.style.display = 'none';
+      input.value = '';
+      cropper = null;
+    }, 'image/jpeg', 0.9);
+  });
+
+  /* -----------------------------
+     VARIANT MANAGEMENT
+  ------------------------------*/
+  const variantsWrap = document.getElementById('variantsWrap');
+
+  function addVariantRow() {
+    const row = document.createElement('div');
+    row.className = 'variant-row';
+
+    row.innerHTML = `
+      <input class="form-control v-size" placeholder="Size" />
+      <input class="form-control v-color" placeholder="Color" />
+      <input class="form-control v-price" placeholder="Price" type="number" />
+      <input class="form-control v-discount" placeholder="Discount (opt)" type="number" />
+      <input class="form-control v-stock" placeholder="Stock" type="number" value="0" />
+      <button type="button" class="remove-variant">Remove</button>
+    `;
+
+    variantsWrap.appendChild(row);
+
+    row.querySelector('.remove-variant').onclick = () => row.remove();
+  }
+
+  document.getElementById('addVariantBtn').onclick = addVariantRow;
+
+  /* -----------------------------
+     SUBMIT FORM
+  ------------------------------*/
+  document.getElementById('productForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const fd = new FormData();
+    const form = e.target;
+
+    fd.append('productName', form.productName.value);
+    fd.append('description', form.description.value);
+    fd.append('categoryId', form.categoryId.value);
+    fd.append('subcategoryId', form.subcategoryId.value);
+
+    // variants
+    const variants = [];
+    document.querySelectorAll('.variant-row').forEach(r => {
+      const size = r.querySelector('.v-size').value.trim();
+      if (!size) return;
+
+      variants.push({
+        size,
+        color: r.querySelector('.v-color').value.trim(),
+        price: Number(r.querySelector('.v-price').value),
+        discountPrice: r.querySelector('.v-discount').value.trim() === '' 
+          ? null 
+          : Number(r.querySelector('.v-discount').value),
+        stock: Number(r.querySelector('.v-stock').value)
       });
     });
 
-    addImgBtn.addEventListener('click', async () => {
-      if (!cropper) { alert('Select and crop an image first'); return; }
-      const canvas = cropper.getCroppedCanvas({ width: 1200, height: 1200, imageSmoothingQuality: 'high' });
-      canvas.toBlob((blob) => {
-        const name = `prod-${Date.now()}.jpg`;
-        imagesBlobs.push({ blob, name });
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(blob);
-        img.style.width = '120px';
-        img.style.marginRight = '8px';
-        addedImages.appendChild(img);
-        // cleanup
-        cropper.destroy();
-        preview.style.display = 'none';
-        input.value = '';
-        cropper = null;
-      }, 'image/jpeg', 0.9);
+    if (variants.length === 0) return alert('Please add at least one variant');
+    fd.append('variants', JSON.stringify(variants));
+
+    // images
+    if (imagesBlobs.length < 3) return alert('Please add at least 3 images');
+    imagesBlobs.forEach(obj => fd.append('productImages', obj.blob, obj.name));
+
+    const res = await fetch(form.action, {
+      method: 'POST',
+      body: fd
     });
 
-    // variants management
-    const variantsWrap = document.getElementById('variantsWrap');
-    function addVariantRow(data = {}) {
-      const idx = Date.now();
-      const wrap = document.createElement('div');
-      wrap.className = 'variant-row';
-wrap.innerHTML = `
-  <input placeholder="Size (e.g. M)" class="v-size" value="${data.size||''}" />
-  <input placeholder="Color" class="v-color" value="${data.color||''}" />
-  <input placeholder="Price" class="v-price" value="${data.price||''}" />
-  <input placeholder="Discount Price (optional)" class="v-discount" value="${data.discountPrice||''}" />
-  <input placeholder="Stock" class="v-stock" value="${data.stock||0}" />
-  <button type="button" class="remove-variant">Remove</button>
-`;
-
-      variantsWrap.appendChild(wrap);
-      wrap.querySelector('.remove-variant').addEventListener('click', () => wrap.remove());
+    if (res.redirected) {
+      window.location.href = res.url;
+      return;
     }
 
-    document.getElementById('addVariantBtn').addEventListener('click', () => addVariantRow());
+    const text = await res.text();
+    document.open();
+    document.write(text);
+    document.close();
+  });
 
-    // form submit: build FormData manually (to include image blobs)
-    const form = document.getElementById('productForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+</script>
 
-      // collect simple fields
-      const fd = new FormData();
-      fd.append('productName', form.productName.value);
-      fd.append('description', form.description.value);
-      fd.append('categoryId', form.categoryId.value);
-      fd.append('subcategoryId', form.subcategoryId.value);
-
-      // collect variants array
-      const variants = [];
-      document.querySelectorAll('.variant-row').forEach(r => {
-      const size = r.querySelector('.v-size').value.trim();
-      const color = r.querySelector('.v-color').value.trim();
-      const price = r.querySelector('.v-price').value.trim();
-      const discount = (r.querySelector('.v-discount') ? r.querySelector('.v-discount').value.trim() : '');
-      const stock = r.querySelector('.v-stock').value.trim();
-      if (size) variants.push({ 
-        size, 
-        color, 
-        price: Number(price), 
-        discountPrice: discount === '' ? null : Number(discount),
-        stock: Number(stock) 
-        });
-    });
-
-      if (variants.length === 0) return alert('Please add at least one variant');
-      fd.append('variants', JSON.stringify(variants));
-
-      // attach images blobs
-      if (imagesBlobs.length < 3) return alert('Please add at least 3 images');
-      imagesBlobs.forEach((o) => fd.append('productImages', o.blob, o.name));
-
-      // send with fetch
-      try {
-        const res = await fetch(form.action, { method: 'POST', body: fd });
-        if (res.redirected) {
-          // server redirected after success (common behavior)
-          window.location.href = res.url;
-          return;
-        }
-        const text = await res.text();
-        // if server responded with HTML (e.g., render on validation error), replace page
-        document.open();
-        document.write(text);
-        document.close();
-      } catch (err) {
-        alert('Upload failed. See console.');
-        console.error(err);
-      }
-    });
-  </script>
-</body>
-</html>
+<%- include('../partials/admin/footer') %>

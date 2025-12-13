@@ -17,6 +17,7 @@ router.get('/logout', adminController.logout)
 //customer management
 router.get('/customer', adminAuth, customerController.customerInfo);
 router.post('/customer/toggle/:id', adminAuth, customerController.toggleBlockUser);
+router.post('/customer/delete/:id', adminAuth, customerController.deleteCustomer)
 
 //category management
 router.get('/category', adminAuth, categoryController.listCategories)

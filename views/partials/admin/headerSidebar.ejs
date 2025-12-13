@@ -1,0 +1,108 @@
+<!---- ADMIN HEADER + SIDEBAR PARTIAL ---->
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+
+<style>
+  body {
+    background-color: #f9f8f7;
+    font-family: 'Poppins', sans-serif;
+    color: #444;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* FIXED HEADER */
+  header.admin-header {
+    background: #fff;
+    text-align: center;
+    padding: 20px 0;
+    font-size: 40px;
+    font-weight: 500;
+    color: #b6ada4;
+    border-bottom: 1px solid #e6e3e1;
+
+    /* FIX HERE */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+
+  header.admin-header i.user-icon {
+    position: absolute;
+    right: 40px;
+    top: 25px;
+    font-size: 22px;
+    color: #999;
+    cursor: pointer;
+  }
+
+  /* Sidebar (push it below fixed header) */
+  .sidebar {
+    width: 240px;
+    height: calc(100vh - 80px);
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+
+    position: fixed;
+    top: 80px;  /* stays below header */
+    left: 0;
+
+    padding-top: 30px;
+  }
+
+  .sidebar a {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    margin: 4px 10px;
+    color: #555;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: 0.2s;
+    font-size: 15px;
+  }
+
+  .sidebar a:hover {
+    background: #f0eeec;
+    color: #000;
+  }
+
+  .sidebar a i {
+    margin-right: 12px;
+  }
+
+  /* Main content moves down because header is fixed */
+  .main-content {
+    margin-left: 260px;
+    padding: 30px;
+    margin-top: 110px; /* was 20px → fixed header needs space */
+  }
+
+  @media (max-width:700px){
+    .sidebar { display:none; }
+    .main-content { margin-left:0; padding:20px; margin-top:110px; }
+  }
+</style>
+
+
+<header class="admin-header">
+  Elfè Lorienveil
+  <i class="bi bi-person-circle user-icon"></i>
+</header>
+
+<div class="sidebar">
+  <a href="/admin"><i class="bi bi-grid"></i> Dashboard</a>
+  <a href="/admin/order"><i class="bi bi-basket"></i> Order</a>
+  <a href="/admin/product"><i class="bi bi-box-seam"></i> Products</a>
+  <a href="/admin/product/add"><i class="bi bi-box-seam"></i> Add New Products</a>
+  <a href="/admin/sales-report"><i class="bi bi-graph-up"></i> Sales report</a>
+  <a href="/admin/customer"><i class="bi bi-people"></i> Customer</a>
+  <a href="/admin/coupon"><i class="bi bi-ticket"></i> Coupon</a>
+  <a href="/admin/category"><i class="bi bi-grid-3x3-gap"></i> Category</a>
+  <a href="/admin/refund"><i class="bi bi-arrow-counterclockwise"></i> Refund/Return</a>
+  <a href="/admin/banners"><i class="bi bi-image"></i> Banners</a>
+  <a href="/admin/logout"><i class="bi bi-box-arrow-right"></i> Sign Out</a>
+</div>

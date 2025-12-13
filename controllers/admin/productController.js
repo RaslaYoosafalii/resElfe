@@ -7,17 +7,77 @@ const path = require('path');
 const fs = require('fs');
 const { upload, UPLOAD_DIR } = require('../../config/upload');
 
-// view products
+
+// view products — WITH PAGINATION + SEARCH + TOTAL STOCK
 const listProducts = async (req, res) => {
   try {
-    // populate category and subcategory for display
-    const products = await Product.find().populate('categoryId').populate('subcategoryId').lean();
-    return res.render('products-list', { products, message: null });
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 10;
+    if (limit < 1) limit = 10;
+
+    const search = req.query.search ? req.query.search.trim() : "";
+    const skip = (page - 1) * limit;
+
+
+// Build search filter
+let findFilter = { isDeleted: { $ne: true } };
+
+    // Count total before pagination
+    const totalProducts = await Product.countDocuments(findFilter);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // Fetch paginated products
+    const products = await Product.find(findFilter)
+      .populate("categoryId")
+      .populate("subcategoryId")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    let filteredProducts = products;
+
+    if (search) {
+    const regex = new RegExp(search, "i");
+
+     filteredProducts = products.filter(p =>
+        regex.test(p.productName) ||
+        regex.test(p.categoryId?.name || "") ||
+        regex.test(p.subcategoryId?.fitName || "")
+      );
+    }
+
+    // Compute total stock
+    const variants = await Varient.find({
+      productId: { $in: products.map(p => p._id) }
+    }).lean();
+
+    const stockMap = {};
+    variants.forEach(v => {
+      const pid = v.productId.toString();
+      if (!stockMap[pid]) stockMap[pid] = 0;
+      stockMap[pid] += v.stock;
+    });
+
+    products.forEach(p => {
+      p.totalStock = stockMap[p._id.toString()] || 0;
+    });
+
+    return res.render("products-list", {
+      products: filteredProducts,
+      page,
+      totalPages,
+      limit,
+      search,   // pass search term to EJS
+      message: null
+    });
+
   } catch (err) {
-    console.error('[ADMIN] listProducts error:', err);
-    return res.status(500).render('error-page', { message: 'Failed to load products' });
+    console.error("[ADMIN] listProducts error:", err);
+    return res.status(500).render("error-page", { message: "Failed to load products" });
   }
 };
+
 
 // load add product view
 const loadAddProduct = async (req, res) => {

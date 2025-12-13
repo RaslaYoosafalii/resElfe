@@ -73,60 +73,119 @@ function parsePaging(req) {
 }
 
 const customerInfo = async (req, res) => {
-  console.log('[ADMIN] customerInfo: start (debug)'); // one-time debug line
-  // quick sanity log if req.query is missing
-  if (!req || typeof req !== 'object') {
-    console.error('[ADMIN] customerInfo: req is not an object!', typeof req, req);
-  } else if (!req.query) {
-    console.warn('[ADMIN] customerInfo: req.query is undefined — this is unexpected but handled.');
-  }
-
   try {
     const { page, limit, q } = parsePaging(req);
+    const skip = (page - 1) * limit;
 
-    // Build filter: non-admin users only + optional search
-    const baseFilter = { isAdmin: false };
+    /* -------------------------------------------------
+       BASE FILTER (non-admin + NOT soft-deleted)
+    -------------------------------------------------- */
+    const baseFilter = {
+      isAdmin: false,
+      isDeleted: { $ne: true }
+    };
+
+    /* -------------------------------------------------
+       SEARCH LOGIC
+       Supports:
+       - name
+       - email
+       - customerId (CUS-XXXXXX)
+       - status (active / blocked)
+       - orders (numeric)
+    -------------------------------------------------- */
     if (q) {
       const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const re = new RegExp(safeQ, 'i');
-      baseFilter.$or = [{ name: re }, { email: re }];
+      const regex = new RegExp(safeQ, 'i');
+
+      const orConditions = [
+        { name: regex },
+        { email: regex }
+      ];
+
+      // status search
+      if (q.toLowerCase() === 'blocked') {
+        orConditions.push({ isBlocked: true });
+      } else if (q.toLowerCase() === 'active') {
+        orConditions.push({ isBlocked: false });
+      }
+
+      // numeric search → order count
+      const numericQ = Number(q);
+      if (!isNaN(numericQ)) {
+        orConditions.push({
+          $expr: {
+            $eq: [
+              { $size: { $ifNull: ['$orderHistory', []] } },
+              numericQ
+            ]
+          }
+        });
+      }
+
+      baseFilter.$or = orConditions;
     }
 
+    /* -------------------------------------------------
+       COUNT (for pagination)
+    -------------------------------------------------- */
     const total = await User.countDocuments(baseFilter);
 
+    /* -------------------------------------------------
+       FETCH USERS
+    -------------------------------------------------- */
     const users = await User.find(baseFilter)
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
+      .skip(skip)
       .limit(limit)
       .lean();
 
-    const customers = users.map(user => ({
-      _id: user._id,
-      name: user.name && user.name.trim()
-              ? user.name
-            : (extractNameFromEmail(user.email) || user.email || '—'),
-     email: user.email,
-     customerId: shortCustomerId(user._id),
-     orderCount: Array.isArray(user.orderHistory) ? user.orderHistory.length : (user.orderdetails ? user.orderdetails.length : 0),
-     wallet: typeof user.wallet === 'number' ? user.wallet : 0,
-     isBlocked: !!user.isBlocked,
-     createdAt: user.createdAt
-    }));
+    /* -------------------------------------------------
+       MAP → CUSTOMER VIEW MODEL
+    -------------------------------------------------- */
+    const customers = users.map(user => {
+      const orderCount = Array.isArray(user.orderHistory)
+        ? user.orderHistory.length
+        : Array.isArray(user.orderdetails)
+          ? user.orderdetails.length
+          : 0;
 
+      return {
+        _id: user._id,
+        name: user.name && user.name.trim()
+          ? user.name
+          : (extractNameFromEmail(user.email) || user.email || '—'),
+        email: user.email,
+        customerId: shortCustomerId(user._id),
+        orderCount,
+        wallet: typeof user.wallet === 'number' ? user.wallet : 0,
+        isBlocked: !!user.isBlocked,
+        createdAt: user.createdAt
+      };
+    });
 
     const totalPages = Math.max(Math.ceil(total / limit), 1);
 
-    console.log('[ADMIN] customerInfo: returning', customers.length, 'customers, page', page, 'limit', limit);
     return res.render('customers', {
       adminUser: req.session.admin || null,
       customers,
-      pagination: { total, totalPages, page, limit, q }
+      pagination: {
+        total,
+        totalPages,
+        page,
+        limit,
+        q
+      }
     });
+
   } catch (error) {
-    console.error('[ADMIN] customerInfo error:', error && error.stack ? error.stack : error);
-    return res.status(500).render('error-page', { message: 'Unable to load customers' });
+    console.error('[ADMIN] customerInfo error:', error);
+    return res.status(500).render('error-page', {
+      message: 'Unable to load customers'
+    });
   }
 };
+
 
 
 
@@ -179,9 +238,52 @@ const toggleBlockUser = async (req, res) => {
     return res.redirect('/admin/errorPage');
   }
 };
+const deleteCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid customer ID'
+      });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // HARD DELETE
+    // await User.deleteOne({ _id: id });
+
+    user.isDeleted = true;
+    await user.save();
+
+    // If you prefer SOFT DELETE instead, tell me
+    // user.isDeleted = true;
+    // await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Customer deleted successfully'
+    });
+
+  } catch (err) {
+    console.error('[ADMIN] deleteCustomer error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
 
 module.exports = {
   customerInfo,
-  toggleBlockUser
+  toggleBlockUser,
+  deleteCustomer
 };
 

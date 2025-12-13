@@ -113,41 +113,13 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.05);
     }
 
-    footer {
-      background: #fff;
-      border-top: 1px solid #e6e3e1;
-      text-align: center;
-      padding: 15px 0;
-      color: #aaa;
-      font-size: 14px;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-    }
+   
   </style>
 </head>
 <body>
   <!-- Header -->
-  <header>
-    Elfè Lorienveil
-    <i class="bi bi-person-circle"></i>
-  </header>
+  <%- include('../partials/admin/headerSidebar') %>
 
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <a href="#" class="active"><i class="bi bi-grid"></i> Dashboard</a>
-    <a href="#"><i class="bi bi-basket"></i> Order</a>
-    <a href="/admin/product"><i class="bi bi-box-seam"></i> Products</a>
-    <a href="/admin/product/add"><i class="bi bi-box-seam"></i>Add New Products</a>
-    <a href="#"><i class="bi bi-graph-up"></i> Sales report</a>
-    <a href="/admin/customer"><i class="bi bi-people"></i> Customer</a>
-    <a href="#"><i class="bi bi-ticket"></i> Coupon</a>
-    <a href="/admin/category"><i class="bi bi-grid-3x3-gap"></i> Category</a>
-    <a href="#"><i class="bi bi-arrow-counterclockwise"></i> Refund/Return</a>
-    <a href="#"><i class="bi bi-image"></i> Banners</a>
-    <a href="admin/logout"><i class="bi bi-box-arrow-right"></i> Sign Out</a>
-  </div>
 
   <!-- Main content -->
    <div class="main-content">
@@ -219,10 +191,9 @@
       </div>
     </div>
   </div>
-  <!-- Footer -->
-  <footer>
-    © 2025 | elfein | All Rights Reserved. | We Give You Style.
-  </footer>
+
+  <!-- footer -->
+  <%- include('../partials/admin/footer') %>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });</script>
