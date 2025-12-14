@@ -10,28 +10,40 @@ function parseQuery(req) {
   const q = (req.query && req.query.q) ? String(req.query.q).trim() : '';
   const sort = (req.query && req.query.sort) ? String(req.query.sort) : 'newest';
   const category = (req.query && req.query.category) ? String(req.query.category) : null;
+  const subcategory = (req.query && req.query.subcategory) ? String(req.query.subcategory) : null;
   const minPrice = (req.query && req.query.minPrice) ? Number(req.query.minPrice) : null;
   const maxPrice = (req.query && req.query.maxPrice) ? Number(req.query.maxPrice) : null;
   const page = Math.max(parseInt((req.query && req.query.page) ? req.query.page : '1', 10) || 1, 1);
   const limit = 9; // Always 9 (3x3 grid)
-  return { q, sort, category, minPrice, maxPrice, page, limit };
+  return { q, sort, category, subcategory, minPrice, maxPrice, page, limit };
 }
 
 function buildSort(key) {
   switch (key) {
-    case 'price_asc': return { _finalPrice: 1 };
-    case 'price_desc': return { _finalPrice: -1 };
-    case 'a_z': return { productName: 1 };
-    case 'z_a': return { productName: -1 };
-    default: return { createdAt: -1 };
+    case 'price_asc':
+      return { _finalPrice: 1 };
+
+    case 'price_desc':
+      return { _finalPrice: -1 };
+
+case 'a_z':
+  return { productName: 1 };
+
+case 'z_a':
+  return { productName: -1 };
+
+
+    default:
+      return { createdAt: -1 };
   }
 }
+
 
 /* --------------------------- LIST PRODUCTS PAGE -------------------------- */
 
 const listProducts = async (req, res) => {
   try {
-    const { q, sort, category, minPrice, maxPrice, page, limit } = parseQuery(req);
+    const { q, sort, category, subcategory, minPrice, maxPrice, page, limit } = parseQuery(req);
 
     // base filter (hide unlisted and deleted)
     const matchStage = { isListed: true, isDeleted: { $ne: true } };
@@ -45,12 +57,16 @@ const listProducts = async (req, res) => {
     if (category && mongoose.Types.ObjectId.isValid(category)) {
       matchStage.categoryId = new mongoose.Types.ObjectId(category);
     }
+    if (subcategory && mongoose.Types.ObjectId.isValid(subcategory)) {
+         matchStage.subcategoryId = new mongoose.Types.ObjectId(subcategory);
+    }
 
    
 // Build aggregate pipeline
 const pipeline = [
   { $match: matchStage },
-
+   { $sort: buildSort(sort) },
+  
   // bring variants to compute min price and min discount price
   {
     $lookup: {
@@ -173,6 +189,7 @@ const pipeline = [
 },
 
 
+
   // remove helper array
   { $project: { _discountPrices: 0 } }
 ];
@@ -187,12 +204,17 @@ const pipeline = [
     }
 
     // Sorting + pagination
-    pipeline.push({ $sort: buildSort(sort) });
+    // pipeline.push({ $sort: buildSort(sort) });
     pipeline.push({ $skip: (page - 1) * limit });
     pipeline.push({ $limit: limit });
 
     // Run pipeline to get page items
-    const products = await Product.aggregate(pipeline).allowDiskUse(true);
+    // const products = await Product.aggregate(pipeline).allowDiskUse(true);
+    const products = await Product
+  .aggregate(pipeline)
+  .collation({ locale: 'en', strength: 2 })
+  .allowDiskUse(true);
+
 
     // Build a separate counting pipeline (exact same filters but count total)
     const countPipeline = [
@@ -229,12 +251,14 @@ const pipeline = [
     const totalPages = Math.max(Math.ceil(total / limit), 1);
 
     const categories = await Category.find({}).sort({ name: 1 }).lean();
+    const subcategories = await SubCategory.find({}).sort({ fitName: 1 }).lean();
 
     // render template (name 'allProducts' under views/user)
     return res.render('allProducts', {
       products,
       categories,
-      pagination: { q, sort, category, minPrice, maxPrice, page, limit, total, totalPages }
+      subcategories,
+      pagination: { q, sort, category, subcategory, minPrice, maxPrice, page, limit, total, totalPages }
     });
 
   } catch (err) {

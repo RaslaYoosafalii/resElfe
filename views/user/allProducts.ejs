@@ -475,6 +475,8 @@
       <input type="hidden" name="minPrice" value="<%= (pagination && pagination.minPrice) ? pagination.minPrice : '' %>" />
       <input type="hidden" name="maxPrice" value="<%= (pagination && pagination.maxPrice) ? pagination.maxPrice : '' %>" />
       <input type="hidden" name="limit" value="<%= (pagination && pagination.limit) ? pagination.limit : 9 %>" />
+      <input type="hidden" name="subcategory" value="<%= pagination?.subcategory || '' %>" />
+
 
       <button type="submit">Search</button>
     </form>
@@ -502,6 +504,32 @@
             </select>
           </form>
         </div>
+       <div class="filter-block">
+
+  <form id="subcategoryFilter" method="GET" action="/products">
+    <input type="hidden" name="q" value="<%= pagination?.q || '' %>" />
+    <input type="hidden" name="sort" value="<%= pagination?.sort || '' %>" />
+    <input type="hidden" name="category" value="<%= pagination?.category || '' %>" />
+    <input type="hidden" name="limit" value="<%= pagination?.limit || 9 %>" />
+
+    <label for="subcategorySelect">fit type</label>
+    <select id="subcategorySelect"
+            name="subcategory"
+            onchange="document.getElementById('subcategoryFilter').submit()">
+
+      <option value="">All</option>
+
+      <% if (subcategories && subcategories.length) { %>
+        <% subcategories.forEach(function(sub){ %>
+          <option value="<%= sub._id %>"
+            <%= String(pagination?.subcategory) === String(sub._id) ? 'selected' : '' %>>
+            <%= sub.fitName %>
+          </option>
+        <% }) %>
+      <% } %>
+    </select>
+  </form>
+</div>
 
         <div class="filter-block">
           <form id="priceFilter" method="GET" action="/products">
@@ -570,19 +598,50 @@
         </div>
 
         <% if (pagination && pagination.totalPages && pagination.totalPages > 1) { %>
-          <nav class="pager" role="navigation" aria-label="Pagination">
-            <% if (pagination.page > 1) { %>
-              <a aria-label="prev" href="/products?page=<%= pagination.page - 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(String(pagination.q || '')) %>&sort=<%= pagination.sort || '' %>&category=<%= pagination.category || '' %>&minPrice=<%= pagination.minPrice || '' %>&maxPrice=<%= pagination.maxPrice || '' %>">&lt;</a>
-            <% } %>
+         <nav class="pager" role="navigation" aria-label="Pagination">
+  <% if (pagination.page > 1) { %>
+    <a aria-label="prev"
+       href="/products?page=<%= pagination.page - 1 %>
+&limit=<%= pagination.limit %>
+&q=<%= encodeURIComponent(String(pagination.q || '')) %>
+&sort=<%= pagination.sort || '' %>
+&category=<%= pagination.category || '' %>
+&subcategory=<%= pagination.subcategory || '' %>
+&minPrice=<%= pagination.minPrice || '' %>
+&maxPrice=<%= pagination.maxPrice || '' %>">
+      &lt;
+    </a>
+  <% } %>
 
-            <% for (var i = 1; i <= pagination.totalPages; i++) { %>
-              <a class="<%= (i === pagination.page) ? 'active' : '' %>" href="/products?page=<%= i %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(String(pagination.q || '')) %>&sort=<%= pagination.sort || '' %>&category=<%= pagination.category || '' %>&minPrice=<%= pagination.minPrice || '' %>&maxPrice=<%= pagination.maxPrice || '' %>"><%= i %></a>
-            <% } %>
+  <% for (var i = 1; i <= pagination.totalPages; i++) { %>
+    <a class="<%= (i === pagination.page) ? 'active' : '' %>"
+       href="/products?page=<%= i %>
+&limit=<%= pagination.limit %>
+&q=<%= encodeURIComponent(String(pagination.q || '')) %>
+&sort=<%= pagination.sort || '' %>
+&category=<%= pagination.category || '' %>
+&subcategory=<%= pagination.subcategory || '' %>
+&minPrice=<%= pagination.minPrice || '' %>
+&maxPrice=<%= pagination.maxPrice || '' %>">
+      <%= i %>
+    </a>
+  <% } %>
 
-            <% if (pagination.page < pagination.totalPages) { %>
-              <a aria-label="next" href="/products?page=<%= pagination.page + 1 %>&limit=<%= pagination.limit %>&q=<%= encodeURIComponent(String(pagination.q || '')) %>&sort=<%= pagination.sort || '' %>&category=<%= pagination.category || '' %>&minPrice=<%= pagination.minPrice || '' %>&maxPrice=<%= pagination.maxPrice || '' %>">&gt;</a>
-            <% } %>
-          </nav>
+  <% if (pagination.page < pagination.totalPages) { %>
+    <a aria-label="next"
+       href="/products?page=<%= pagination.page + 1 %>
+&limit=<%= pagination.limit %>
+&q=<%= encodeURIComponent(String(pagination.q || '')) %>
+&sort=<%= pagination.sort || '' %>
+&category=<%= pagination.category || '' %>
+&subcategory=<%= pagination.subcategory || '' %>
+&minPrice=<%= pagination.minPrice || '' %>
+&maxPrice=<%= pagination.maxPrice || '' %>">
+      &gt;
+    </a>
+  <% } %>
+</nav>
+
         <% } %>
       </main>
     </div>
