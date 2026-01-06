@@ -1,14 +1,18 @@
-const { Product, Varient } = require('../../models/productSchema');
-const { Category } = require('../../models/categorySchema');
-const { SubCategory } = require('../../models/categorySchema');
-const mongoose = require('mongoose');
-const sharp = require('sharp');
-const path = require('path');
-const fs = require('fs');
-const { upload, UPLOAD_DIR } = require('../../config/upload');
+
+// controllers/admin/productController.js
+import { Product, Varient } from '../../models/productSchema.js';
+import { Category, SubCategory } from '../../models/categorySchema.js';
+import mongoose from 'mongoose';
+import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
+import { upload, UPLOAD_DIR } from '../../config/upload.js';
+import { fileURLToPath } from 'url';
 
 
-// view products — WITH PAGINATION + SEARCH + TOTAL STOCK
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const listProducts = async (req, res) => {
   try {
     let page = parseInt(req.query.page) || 1;
@@ -47,7 +51,7 @@ let findFilter = { isDeleted: { $ne: true } };
       );
     }
 
-    // Compute total stock
+    //total stock
     const variants = await Varient.find({
       productId: { $in: products.map(p => p._id) }
     }).lean();
@@ -68,18 +72,17 @@ let findFilter = { isDeleted: { $ne: true } };
       page,
       totalPages,
       limit,
-      search,   // pass search term to EJS
+      search,  
       message: null
     });
 
   } catch (err) {
-    console.error("[ADMIN] listProducts error:", err);
+    console.error("listProducts error:", err);
     return res.status(500).render("error-page", { message: "Failed to load products" });
   }
 };
 
 
-// load add product view
 const loadAddProduct = async (req, res) => {
   try {
     const categories = await Category.find().lean();
@@ -87,18 +90,12 @@ const loadAddProduct = async (req, res) => {
     const subcategories = await SubCategory.find().lean();
     return res.render('product-add', { categories, subcategories, message: null });
   } catch (err) {
-    console.error('[ADMIN] loadAddProduct error:', err);
+    console.error('loadAddProduct error:', err);
     return res.status(500).render('error-page', { message: 'Failed to load add product page' });
   }
 };
 
-/**
- * addProduct uses multer middleware to parse files.
- * Expect:
- * - productImages[] (3+ files / cropped blobs)
- * - variants (JSON string) e.g. [{size:'M',color:'Red',price:1000,stock:10}, ...]
- * - productName, description, categoryId, subcategoryId
- */
+
 const addProduct = [
   // multer middleware: accept up to 10 images (we require >=3)
   upload.array('productImages', 10),
@@ -195,8 +192,7 @@ const addProduct = [
 
       await newProduct.save();
 
-      // create variants as separate varient docs linking to productId if you already store Varients as separate model
-      // You have Varient model — create varients linking to newProduct._id
+
       const Varient = require('../../models/productSchema').Varient;
       const variantDocs = variantList.map(v => ({
         productId: newProduct._id,
@@ -210,10 +206,10 @@ const addProduct = [
       }));
       await Varient.insertMany(variantDocs);
 
-      console.log('[ADMIN] addProduct: created', newProduct._id);
+      console.log('addProduct: created', newProduct._id);
       return res.redirect('/admin/product');
     } catch (err) {
-      console.error('[ADMIN] addProduct error:', err);
+      console.error('addProduct error:', err);
       // cleanup any uploaded files if exist
       (req.files || []).forEach(f => { try { fs.unlinkSync(f.path); } catch(e){ } });
       return res.status(500).render('error-page', { message: 'Failed to create product' });
@@ -225,22 +221,9 @@ function safeUnlink(p) {
   try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch(e){ console.warn('unlink failed', p, e); }
 }
 
-// ========= LIST PRODUCTS (exclude soft-deleted) =========
-// const listProducts = async (req, res) => {
-//   try {
-//     const products = await Product.find({ isDeleted: { $ne: true } })
-//       .populate('categoryId')
-//       .populate('subcategoryId')
-//       .lean();
-//     return res.render('products-list', { products, message: null });
-//   } catch (err) {
-//     console.error('[ADMIN] listProducts error:', err);
-//     return res.status(500).render('error-page', { message: 'Failed to load products' });
-//   }
-// };
 
-// ========= LOAD EDIT PAGE =========
-// GET /admin/product/edit/:id
+
+
 const loadEditProduct = async (req, res) => {
   try {
     const id = req.params.id;
@@ -269,9 +252,8 @@ const loadEditProduct = async (req, res) => {
   }
 };
 
-// ========= UPDATE PRODUCT =========
-// POST /admin/product/edit/:id
-// Use same upload middleware as add: accept images to ADD (new uploads). Existing images are managed via form fields.
+
+
 const updateProduct = [
   upload.array('productImages', 10),
   async (req, res) => {
@@ -321,9 +303,6 @@ const updateProduct = [
       }
 
       // parse variants array
-      // Expected variants array items shape:
-      // For existing variant: { _id: '...', size:'M', color:'', price:100, stock: 10, _delete: true/false }
-      // For new variant: { size:'L', color:'', price:100, stock:5 }
       let variantList = [];
       try {
         variantList = variants ? JSON.parse(variants) : [];
@@ -385,8 +364,7 @@ const updateProduct = [
         }
       }
 
-      // handle images:
-      // existingImagesKeep can be a JSON array or comma-separated string; convert to array
+      // handle images
       let keep = [];
       if (existingImagesKeep) {
         try {
@@ -412,7 +390,7 @@ const updateProduct = [
         const outName = `prod-${Date.now()}-${path.basename(file.filename)}`;
         const outPath = path.join(UPLOAD_DIR, outName);
         await sharp(inPath).resize(1200, 1200, { fit: 'inside' }).toFile(outPath);
-        // thumbnail optional
+
         // cleanup original upload
         try { fs.unlinkSync(inPath); } catch (e) {}
         savedNewFilenames.push(outName);
@@ -455,19 +433,18 @@ const updateProduct = [
         await Varient.insertMany(docs);
       }
 
-      console.log('[ADMIN] updateProduct:', id);
+      console.log('updateProduct:', id);
       return res.redirect('/admin/product');
     } catch (err) {
-      console.error('[ADMIN] updateProduct error:', err);
+      console.error('updateProduct error:', err);
       (req.files || []).forEach(f => safeUnlink(f.path));
       return res.status(500).render('error-page', { message: 'Failed to update product' });
     }
   }
 ];
 
-// ========= SOFT DELETE PRODUCT =========
-// POST /admin/product/delete/:id  => JSON { success:true/false, message }
-const HARD_DELETE_REMOVE_FILES = true; // set false if you don't want image files removed physically
+
+const HARD_DELETE_REMOVE_FILES = true; // set false if don't want image files removed physically
 
 const deleteProduct = async (req, res) => {
   try {
@@ -482,46 +459,48 @@ const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // ==============================
-    // 1) DELETE product images from filesystem
-    // ==============================
+
+    //DELETE product images from filesystem
     if (HARD_DELETE_REMOVE_FILES && prod.images && prod.images.length) {
       prod.images.forEach(img => {
         const filePath = path.join(__dirname, '../../public/uploads/products/', img);
         fs.unlink(filePath, (err) => {
-          if (err) console.log(`⚠️ Could not delete image: ${filePath}`);
+          if (err) console.log(`Could not delete image: ${filePath}`);
         });
       });
     }
 
-    // ==============================
-    // 2) DELETE variants belonging to product
-    // ==============================
+    // DELETE variants belonging to product
     await Varient.deleteMany({ productId: id });
 
-    // ==============================
-    // 3) DELETE product from DB
-    // ==============================
+    //DELETE product from DB
     await Product.deleteOne({ _id: id });
 
-    console.log('[ADMIN] deleteProduct (HARD DELETE):', id);
+    console.log('deleteProduct:', id);
 
     return res.json({ success: true, message: 'Product permanently deleted' });
 
   } catch (err) {
-    console.error('[ADMIN] deleteProduct error:', err);
+    console.error('deleteProduct error:', err);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 
+export {
+  listProducts,
+  loadAddProduct,
+  addProduct,
+  deleteProduct,
+  updateProduct,
+  loadEditProduct
+};
 
-module.exports = {
-    listProducts,
-    loadAddProduct,
-    addProduct,
-    deleteProduct,
-    updateProduct,
-    loadEditProduct,
-      
+export default{
+  listProducts,
+  loadAddProduct,
+  addProduct,
+  deleteProduct,
+  updateProduct,
+  loadEditProduct
 };

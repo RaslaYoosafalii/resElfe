@@ -1,13 +1,8 @@
 // controllers/admin/customerController.js
+import User from '../../models/userSchema.js';
+import mongoose from 'mongoose';
 
-const User = require('../../models/userSchema');
-const mongoose = require('mongoose');
-
-
-
-
-
-/** Utility: short customer id from ObjectId */
+// create short customer id from ObjectId
 function shortCustomerId(objectId) {
   try {
     const hex = objectId.toString();
@@ -36,7 +31,7 @@ function extractNameFromEmail(email) {
 
   if (!collapsed) return '';
 
-  // capitalize words: "john doe" -> "John Doe"
+  // capitalize words
   const words = collapsed.split(' ').map(w => {
     const s = w.toLowerCase();
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -45,11 +40,9 @@ function extractNameFromEmail(email) {
   return words.join(' ');
 }
 
-// defensive parsePaging + updated customerInfo
+// defensive parsePaging
 function parsePaging(req) {
-  // guard: ensure req object exists
   if (!req) {
-    // fallback defaults
     return { page: 1, limit: 10, q: '' };
   }
 
@@ -77,23 +70,11 @@ const customerInfo = async (req, res) => {
     const { page, limit, q } = parsePaging(req);
     const skip = (page - 1) * limit;
 
-    /* -------------------------------------------------
-       BASE FILTER (non-admin + NOT soft-deleted)
-    -------------------------------------------------- */
     const baseFilter = {
       isAdmin: false,
       isDeleted: { $ne: true }
     };
 
-    /* -------------------------------------------------
-       SEARCH LOGIC
-       Supports:
-       - name
-       - email
-       - customerId (CUS-XXXXXX)
-       - status (active / blocked)
-       - orders (numeric)
-    -------------------------------------------------- */
     if (q) {
       const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(safeQ, 'i');
@@ -103,14 +84,12 @@ const customerInfo = async (req, res) => {
         { email: regex }
       ];
 
-      // status search
       if (q.toLowerCase() === 'blocked') {
         orConditions.push({ isBlocked: true });
       } else if (q.toLowerCase() === 'active') {
         orConditions.push({ isBlocked: false });
       }
 
-      // numeric search → order count
       const numericQ = Number(q);
       if (!isNaN(numericQ)) {
         orConditions.push({
@@ -126,23 +105,14 @@ const customerInfo = async (req, res) => {
       baseFilter.$or = orConditions;
     }
 
-    /* -------------------------------------------------
-       COUNT (for pagination)
-    -------------------------------------------------- */
     const total = await User.countDocuments(baseFilter);
 
-    /* -------------------------------------------------
-       FETCH USERS
-    -------------------------------------------------- */
     const users = await User.find(baseFilter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    /* -------------------------------------------------
-       MAP → CUSTOMER VIEW MODEL
-    -------------------------------------------------- */
     const customers = users.map(user => {
       const orderCount = Array.isArray(user.orderHistory)
         ? user.orderHistory.length
@@ -186,21 +156,11 @@ const customerInfo = async (req, res) => {
   }
 };
 
-
-
-
-/**
- * POST /admin/customer/toggle/:id
- * Toggle block/unblock status for a given user.
- * - If request is AJAX (Accept: application/json or fetch), returns JSON.
- * - If not, falls back to redirect to /admin/customer (non-JS forms).
- */
 const toggleBlockUser = async (req, res) => {
   try {
     const userId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       const msg = 'Invalid user id';
-      console.warn('[ADMIN] toggleBlockUser invalid id:', userId);
       if (req.headers.accept && req.headers.accept.includes('application/json')) {
         return res.status(400).json({ success: false, message: msg });
       }
@@ -210,7 +170,6 @@ const toggleBlockUser = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       const msg = 'User not found';
-      console.warn('[ADMIN] toggleBlockUser user not found:', userId);
       if (req.headers.accept && req.headers.accept.includes('application/json')) {
         return res.status(404).json({ success: false, message: msg });
       }
@@ -221,23 +180,21 @@ const toggleBlockUser = async (req, res) => {
     await user.save();
 
     const message = user.isBlocked ? 'User blocked' : 'User unblocked';
-    console.log(`[ADMIN] toggleBlockUser: user ${userId} isBlocked -> ${user.isBlocked}`);
 
-    // respond JSON for AJAX clients
     if (req.headers.accept && req.headers.accept.includes('application/json')) {
       return res.json({ success: true, message, isBlocked: user.isBlocked });
     }
 
-    // non-AJAX fallback
     return res.redirect('/admin/customer');
   } catch (error) {
-    console.error('[ADMIN] toggleBlockUser error:', error);
+    console.error('toggleBlockUser error:', error);
     if (req.headers.accept && req.headers.accept.includes('application/json')) {
       return res.status(500).json({ success: false, message: 'Server error' });
     }
     return res.redirect('/admin/errorPage');
   }
 };
+
 const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
@@ -257,15 +214,8 @@ const deleteCustomer = async (req, res) => {
       });
     }
 
-    // HARD DELETE
-    // await User.deleteOne({ _id: id });
-
     user.isDeleted = true;
     await user.save();
-
-    // If you prefer SOFT DELETE instead, tell me
-    // user.isDeleted = true;
-    // await user.save();
 
     return res.json({
       success: true,
@@ -273,7 +223,7 @@ const deleteCustomer = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('[ADMIN] deleteCustomer error:', err);
+    console.error('deleteCustomer error:', err);
     return res.status(500).json({
       success: false,
       message: 'Server error'
@@ -281,9 +231,14 @@ const deleteCustomer = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   customerInfo,
   toggleBlockUser,
   deleteCustomer
 };
 
+export default{
+  customerInfo,
+  toggleBlockUser,
+  deleteCustomer
+};

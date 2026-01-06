@@ -269,6 +269,7 @@ body {
     margin-top: 10px;
 }
 
+
 .mrp-text {
     font-size: 12px;
     margin-top: 5px;
@@ -338,6 +339,7 @@ body {
     margin-top: 10px;
     font-size: 14px;
     line-height: 1.6;
+    white-space: pre-line;
 }
 
 .recommend-title {
@@ -359,6 +361,11 @@ body {
     object-fit: cover;
     border-radius: 6px;
 }
+.recommend-grid a {
+    text-decoration: none;
+    color: inherit;
+}
+
 </style>
 
 </head>
@@ -462,15 +469,22 @@ body {
     <!-- RECOMMENDATIONS -->
     <div class="recommend-title">You May Also Like</div>
 
-    <div class="recommend-grid">
-        <% recommendations.forEach(function(r) { %>
-            <a href="/product/<%= r._id %>">
-                <img src="/uploads/products/<%= r.images[0] %>">
-                <div><%= r.productName %></div>
-                <strong>Rs. <%= r.offerPrice ? r.offerPrice : '0' %></strong>
-            </a>
-        <% }) %>
-    </div>
+<div class="recommend-grid">
+    <% recommendations.forEach(function(r) { %>
+        <div onclick="window.location.href='/product/<%= r._id %>'" style="cursor:pointer;">
+            <img src="/uploads/products/<%= r.images[0] %>">
+            <div style="color:#222; text-decoration:none; margin-top:6px;">
+                <%= r.productName %>
+            </div>
+<strong>
+  Rs. <%= (typeof r.finalPrice === 'number' ? r.finalPrice : 0).toLocaleString('en-IN') %>
+</strong>
+
+
+        </div>
+    <% }) %>
+</div>
+
 
 </div>
 

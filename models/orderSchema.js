@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid'; //npm package used for generating universally unique ids
 const { Schema } = mongoose;
-const { v4: uuidv4 } = require('uuid'); //npm package used for generating universally unique ids
 
 const orderSchema = new Schema({
     orderId: {
@@ -115,4 +115,4 @@ const orderSchema = new Schema({
 
 const Order = mongoose.model('Order', orderSchema);
 
-module.exports = Order;
+export default Order;

@@ -1,6 +1,14 @@
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+// config/upload.js
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+/* ===============================
+   __dirname replacement (ESM)
+================================ */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // destination directory
 const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads', 'products');
@@ -13,7 +21,10 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext).replace(/\s+/g, '-').toLowerCase();
+    const name = path
+      .basename(file.originalname, ext)
+      .replace(/\s+/g, '-')
+      .toLowerCase();
     cb(null, `${Date.now()}-${name}${ext}`);
   }
 });
@@ -29,4 +40,4 @@ const upload = multer({
   }
 });
 
-module.exports = { upload, UPLOAD_DIR };
+export { upload, UPLOAD_DIR };

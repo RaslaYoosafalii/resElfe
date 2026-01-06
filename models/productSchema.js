@@ -1,4 +1,4 @@
-const mongoose =require('mongoose');
+import mongoose from 'mongoose';
 const {Schema} = mongoose;
 
 
@@ -128,7 +128,7 @@ const Varient = mongoose.model('Varient', varientSchema);
 
 
 
-module.exports = { 
+export { 
     Product,
     Varient
 };

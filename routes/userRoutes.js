@@ -1,13 +1,13 @@
-const express = require('express')
+import express from 'express'
 const router = express.Router();
-const userController = require('../controllers/user/userController')
-const productController = require('../controllers/user/productController')
-const passport = require('../config/passport');
-const {userAuth} = require("../middlewares/auth")
+import userController from '../controllers/user/userController.js'
+import productController from '../controllers/user/productController.js'
+import passport from '../config/passport.js'
+import {userAuth, noCache} from "../middlewares/auth.js"
 
 router.get('/pageNotFound', userController.pageNotFound);
 
-router.get('/', userController.loadHome);
+router.get('/', noCache, userController.loadHome);
 
 router.get('/signup',userController.loadSignupPage);
 router.post('/signup', (req, res, next) => { console.log('[ROUTE] POST /signup', req.body?.email); next(); }, userController.signup);
@@ -39,7 +39,9 @@ router.get('/auth/google/callback', passport.authenticate('google', {failureRedi
     }
 })
 
-router.get('/products', productController.listProducts);        // All products page
-router.get('/product/:id', productController.productDetails); 
+router.get('/products', userAuth, productController.listProducts);        // All products page
+router.get('/product/:id',userAuth, productController.productDetails); 
 
-module.exports = router;
+router.get('/profile', userAuth, userController.loadUserprofile)
+
+export default router;
