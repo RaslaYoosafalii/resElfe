@@ -23,6 +23,10 @@ const categorySchema = new Schema({
     offerValidDate: {
         type: Date,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false
+  },
      isListed: {               
         type: Boolean,
         default: true
@@ -48,9 +52,13 @@ const subCategorySchema = new Schema({
     fitName: {
         type: String,
         required: true,
-        unique: true
     }
 })
+
+subCategorySchema.index(
+  { Category: 1, fitName: 1 },
+  { unique: true }
+);
 
 const SubCategory = mongoose.model('SubCategory', subCategorySchema);
 

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>User Profile</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Arial", sans-serif;
+    }
+
+     /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 60px;
+      background: #fff;
+    }
+
+    .navbar .logo {
+      font-size: 40px;
+      font-weight: 37;
+      color: #B2A9A1;
+    }
+
+    .navbar ul {
+      display: flex;
+      list-style: none;
+      gap: 25px;
+    }
+
+    .navbar a {
+      text-decoration: none;
+      color: #615A5A;
+      font-size: 15px;
+    }
+
+    .navbar .btn {
+      padding: 8px 15px;
+      border-radius: 5px;
+      background: #484848;
+      color: #fff;
+    }
+    footer {
+      margin-top: 40px;
+      background: #f6f6f6;
+      padding: 40px 60px;
+      color: #666;
+    }
+     .footer .logo {
+      font-size: 60px;
+      font-weight: 37;
+      color: #B2A9A1;
+    }
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .footer-top h4 {
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .footer-top input {
+      padding: 8px;
+      width: 200px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+
+    body {
+      margin: 0;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    /* ===== LAYOUT ===== */
+    .profile-wrapper {
+      display: flex;
+      padding: 40px 60px;
+      gap: 40px;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: 260px;
+      border: 1px solid #ddd;
+    }
+
+    .sidebar-header {
+      background: #5a5553;
+      color: #fff;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-header .avatar-small {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #d9d9d9;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .sidebar-menu li {
+      border-top: 1px solid #ddd;
+    }
+
+    .sidebar-menu a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      color: #333;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .sidebar-menu a:hover,
+    .sidebar-menu .active {
+      background-color: #f3f3f3;
+      font-weight: 600;
+    }
+
+    /* ===== MAIN PROFILE CARD ===== */
+    .profile-card {
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      position: relative;
+    }
+
+    .profile-title {
+      text-align: center;
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+
+    .edit-profile-btn {
+      position: absolute;
+      top: 40px;
+      right: 40px;
+      background: rgb(90, 85, 83);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ===== PROFILE CONTENT ===== */
+    .profile-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 25px;
+    }
+
+    .avatar-large {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #e3e1de;
+    }
+
+    .field-group {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .field-group label {
+      width: 90px;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .field-value {
+      flex: 1;
+      background: #d9d9d9;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .change-password-btn {
+      margin-top: 30px;
+      background: #5a5553;
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .profile-wrapper {
+        flex-direction: column;
+        padding: 20px;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      .profile-card {
+        padding: 25px;
+      }
+
+      .edit-profile-btn {
+        top: 25px;
+        right: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/user/loggedinHeader') %>
+  <div class="profile-wrapper">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="avatar-small"></div>
+        <strong><%= user?.name || 'User' %></strong>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li><a class="active" href="/profile">Profile</a></li>
+        <li><a href="#">Coupon</a></li>
+        <li><a href="#">Referral Code</a></li>
+        <li><a href="/orders">My Orders</a></li>
+        <li><a href="#">Wallet</a></li>
+        <li><a href="/address">Address</a></li>
+        <li><a href="#">Delete Account</a></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </aside>
+
+    <!-- ===== PROFILE CARD ===== -->
+    <section class="profile-card">
+      <h2 class="profile-title">PROFILE</h2>
+
+      <button class="edit-profile-btn" onclick="location.href='/profile/edit'">
+        ✎ edit profile
+      </button>
+
+      <div class="profile-content">
+        <% if (user?.profileImage) { %>
+  <img
+    src="<%= user.profileImage %>"
+    alt="Profile Image"
+    class="avatar-large"
+    style="object-fit: cover;"
+  />
+<% } else { %>
+  <div class="avatar-large"></div>
+<% } %>
+
+
+        <div class="field-group">
+          <label>Name:</label>
+          <div class="field-value">
+            <%= user?.name || '—' %>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Email:</label>
+          <div class="field-value">
+            <%= user?.email || '—' %>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Phone:</label>
+          <div class="field-value">
+            <%= user?.mobileNumber || '—' %>
+          </div>
+        </div>
+
+        <button class="change-password-btn" onclick="location.href='/profile/change-password'">
+          Change password
+        </button>
+      </div>
+    </section>
+
+  </div>
+<%- include('../partials/user/footer') %>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<% if (typeof emailUpdated !== 'undefined' && emailUpdated) { %>
+<script>
+  Swal.fire({
+    icon: 'success',
+    title: 'Email Updated',
+    text: 'Email verified and updated successfully',
+    confirmButtonColor: '#4a4745'
+  });
+</script>
+<% } %>
+
+</html>

@@ -2,10 +2,10 @@
 import User from '../models/userSchema.js';
 
 const noCache = (req, res, next) => {
-  res.setHeader(
-    'Cache-Control',
-    'no-store, no-cache, must-revalidate, proxy-revalidate, private'
-  );
+res.setHeader(
+  'Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0'
+);
+
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   next();
@@ -25,12 +25,8 @@ const userAuth = (req, res, next) => {
   User.findById(userId)
     .then(user => {
       if (!user || user.isBlocked) {
-  return req.session.destroy(() => {
-    res.clearCookie('connect.sid', { path: '/' });
-    return res.redirect('/login');
-  });
-}
-
+        return res.redirect('/login');
+      }
       req.user = user;
       next();
     })

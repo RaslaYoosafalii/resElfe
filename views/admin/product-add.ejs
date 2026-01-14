@@ -184,7 +184,7 @@
         <!-- CATEGORY -->
         <div class="col-md-6 mb-3">
           <label class="form-label">Category</label>
-          <select name="categoryId" class="form-control" required>
+          <select name="categoryId" id="categorySelect" class="form-control" required>
             <option value="">Select</option>
             <% categories.forEach(c => { %>
               <option value="<%= c._id %>"><%= c.name %></option>
@@ -195,12 +195,11 @@
         <!-- SUBCATEGORY -->
         <div class="col-md-6 mb-3">
           <label class="form-label">Subcategory</label>
-          <select name="subcategoryId" class="form-control" required>
-            <option value="">Select</option>
-            <% subcategories.forEach(s => { %>
-              <option value="<%= s._id %>"><%= s.fitName %></option>
-            <% }) %>
-          </select>
+<select name="subcategoryId" id="subcategorySelect" class="form-control" required>
+  <option value="">Select Category First</option>
+</select>
+
+
         </div>
       </div>
 
@@ -409,5 +408,35 @@ document.querySelector('.cropper-wrapper').style.display = 'none';
   });
 
 </script>
+<script>
+  const ALL_SUBCATEGORIES = <%- JSON.stringify(subcategories) %>;
+</script>
+<script>
+  const categorySelect = document.getElementById('categorySelect');
+  const subcategorySelect = document.getElementById('subcategorySelect');
+
+  categorySelect.addEventListener('change', function () {
+    const categoryId = this.value;
+
+    // reset dropdown
+    subcategorySelect.innerHTML = '<option value="">Select</option>';
+
+    if (!categoryId) return;
+
+    // filter subcategories by category
+    const filtered = ALL_SUBCATEGORIES.filter(
+      s => String(s.Category) === String(categoryId)
+    );
+
+    filtered.forEach(sub => {
+      const opt = document.createElement('option');
+      opt.value = sub._id;
+      opt.textContent = sub.fitName;
+      subcategorySelect.appendChild(opt);
+    });
+  });
+</script>
+
+
 
 <%- include('../partials/admin/footer') %>

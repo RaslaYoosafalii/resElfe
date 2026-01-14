@@ -24,6 +24,9 @@
     "nodemon": "^3.1.10",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "sharp": "^0.34.5"
+    "pdfkit": "^0.17.2",
+    "sharp": "^0.34.5",
+    "tslib": "^2.8.1",
+    "uuid": "^13.0.0"
   }
 }

@@ -1,12 +1,59 @@
+<style>
+      .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 60px;
+      background: #fff;
+    }
+
+    .navbar .logo {
+      font-size: 40px;
+      font-weight: 37;
+      color: #B2A9A1;
+    }
+
+    .navbar ul {
+      display: flex;
+      list-style: none;
+      gap: 25px;
+    }
+
+    .navbar a {
+      text-decoration: none;
+      color: #615A5A;
+      font-size: 15px;
+    }
+
+    .navbar .btn {
+      padding: 8px 15px;
+      border-radius: 5px;
+      background: #484848;
+      color: #fff;
+    }
+</style>
 <header class="navbar">
     <div class="logo">Elfé Lorienveil</div>
     <nav>
       <ul>
         <li><a href="/">Home</a></li>
-        <li><a href="/products">All Products</a></li>
         <li><a href="#">New Arrivals</a></li>
+        <li><a href="/products">All Products</a></li>
+        <li><a href="#">Wishlist</a></li>
+        <li><a href="/cart">Your Cart</a></li>
         <li><a href="/profile">profile</a></li>
         <li><a href="/logout" class="btn">logout</a></li>
       </ul>
     </nav>
   </header>
+   <script>
+  window.history.replaceState(null, null, window.location.href);
+</script>
+<script>
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+

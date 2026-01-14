@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Deleted Products</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --accent: #5a5252;
+      --muted: #efeeee;
+      --brown-text: #6f6766;
+      --table-head: #5a5252;
+      --soft-border: #e6e3e1;
+    }
+
+    body {
+      background:#f9f8f7;
+      font-family:'Poppins',sans-serif;
+      color:var(--brown-text);
+      margin:0;
+    }
+
+    .admin-container {
+      margin-left:260px;
+      margin-top:110px;
+      padding:28px 40px;
+    }
+
+    .topbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:25px;
+    }
+
+    .page-title h2 {
+      margin:0;
+      font-size:22px;
+      font-weight:700;
+    }
+
+    .btn-new {
+      background:var(--accent);
+      color:#fff;
+      border:none;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    .products-table {
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 12px;
+    }
+
+    .products-table thead th {
+      background:var(--table-head);
+      color:#fff;
+      padding:14px 18px;
+      border-radius:8px 8px 0 0;
+      font-size:14px;
+      text-align:left;
+    }
+
+    .products-table tbody td {
+      background:#f3f2f2;
+      padding:14px 18px;
+      font-size:15px;
+      vertical-align:middle;
+      color:var(--brown-text);
+    }
+
+    .product-identity {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .product-thumb {
+      width:54px;
+      height:54px;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px solid #ddd;
+    }
+
+    .product-thumb img {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .product-name {
+      font-weight:500;
+    }
+
+    .muted {
+      color:#7f7776;
+      font-size:14px;
+    }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      justify-content:center;
+    }
+
+    .icon-btn {
+      border:1px solid #d0cdcd;
+      padding:8px 14px;
+      border-radius:8px;
+      background:#fff;
+      cursor:pointer;
+      font-weight:600;
+      color:var(--accent);
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/admin/headerSidebar') %>
+
+  <div class="admin-container">
+
+    <div class="topbar">
+      <div class="page-title">
+        <h2>Deleted Products</h2>
+      </div>
+
+      <button
+        onclick="location.href='/admin/product'"
+        class="btn-new"
+        style="background:#e9e2e0;color:#5a5252;">
+        Back to Products
+      </button>
+    </div>
+
+    <table class="products-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Category</th>
+          <th>Subcategory</th>
+          <th style="text-align:center;">Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if (products.length) { %>
+          <% products.forEach(p => { %>
+            <tr>
+              <td>
+                <div class="product-identity">
+                  <div class="product-thumb">
+                    <img src="/uploads/products/<%= p.images?.[0] || 'placeholder.png' %>">
+                  </div>
+                  <div class="product-name"><%= p.productName %></div>
+                </div>
+              </td>
+
+              <td><%= p.categoryId?.name || '-' %></td>
+              <td><%= p.subcategoryId?.fitName || '-' %></td>
+
+              <td style="text-align:center;">
+                <div class="actions">
+                  <button
+                    class="icon-btn"
+                    data-action="restore"
+                    data-id="<%= p._id %>">
+                    Restore
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr>
+            <td colspan="4" style="text-align:center;padding:25px;">
+              No deleted products
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    document.addEventListener("click", e => {
+      const btn = e.target.closest("[data-action='restore']");
+      if (!btn) return;
+
+      const id = btn.dataset.id;
+
+      Swal.fire({
+        title: "Restore product?",
+        text: "This product will be visible again.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Restore"
+      }).then(async result => {
+        if (!result.isConfirmed) return;
+
+        const res = await fetch(`/admin/product/restore/${id}`, {
+          method: "POST"
+        });
+        const json = await res.json();
+
+        if (json.success) location.reload();
+        else Swal.fire("Error", json.message, "error");
+      });
+    });
+  </script>
+
+  <%- include('../partials/admin/footer') %>
+</body>
+</html>

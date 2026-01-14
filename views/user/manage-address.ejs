@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Manage Address</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Arial", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    /* ===== LAYOUT ===== */
+    .profile-wrapper {
+      display: flex;
+      padding: 40px 60px;
+      gap: 40px;
+    }
+
+    /* ===== SIDEBAR (UNCHANGED) ===== */
+    .sidebar {
+      width: 260px;
+      border: 1px solid #ddd;
+    }
+
+    .sidebar-header {
+      background: #5a5553;
+      color: #fff;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-header .avatar-small {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #d9d9d9;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .sidebar-menu li {
+      border-top: 1px solid #ddd;
+    }
+
+    .sidebar-menu a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      color: #333;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .sidebar-menu a:hover,
+    .sidebar-menu .active {
+      background-color: #f3f3f3;
+      font-weight: 600;
+    }
+
+    /* ===== ADDRESS CARD ===== */
+    .profile-card {
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      position: relative;
+    }
+
+    .profile-title {
+      text-align: center;
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+
+    .add-address-btn {
+      position: absolute;
+      top: 40px;
+      right: 40px;
+      background: rgb(90, 85, 83);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ===== ADDRESS LIST ===== */
+    .address-card {
+      background: #f3f3f3;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .address-name {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .address-text {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .address-actions {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .address-actions button {
+      background: #fff;
+      border: 1px solid #aaa;
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .address-type {
+      position: absolute;
+      bottom: 14px;
+      right: 20px;
+      background: #e0e0e0;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      color: #444;
+    }
+    .address-type-btn {
+     background: #e0e0e0;
+     font-size: 12px;
+     padding: 3px 10px;
+     border-radius: 6px;
+     margin-left: 10px;
+     color: #444;
+     font-weight: 500;
+     }
+     .address-actions button:last-child {
+     background: red;
+     border-color: red;
+     color: #fff;
+    }
+
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .profile-wrapper {
+        flex-direction: column;
+        padding: 20px;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      .profile-card {
+        padding: 25px;
+      }
+
+      .add-address-btn {
+        top: 25px;
+        right: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/user/loggedinHeader') %>
+
+  <div class="profile-wrapper">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="avatar-small"></div>
+        <strong><%= user?.name || 'User' %></strong>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li><a href="/profile">Profile</a></li>
+        <li><a href="#">Coupon</a></li>
+        <li><a href="#">Referral Code</a></li>
+        <li><a href="#">My Orders</a></li>
+        <li><a href="#">Wallet</a></li>
+        <li><a class="active" href="/address">Address</a></li>
+        <li><a href="#">Delete Account</a></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </aside>
+
+    <!-- ===== ADDRESS CONTENT ===== -->
+    <section class="profile-card">
+      <h2 class="profile-title">MANAGE ADDRESS</h2>
+
+      <button class="add-address-btn" onclick="location.href='/address/add'">
+        Add new Address
+      </button>
+
+      <% if (addresses && addresses.length > 0) { %>
+        <% addresses.forEach((addr, index) => { %>
+  <div class="address-card">
+
+  <div class="address-name">
+    <%= addr.name %>
+    <span class="address-type-btn"><%= addr.addressType %></span>
+  </div>
+
+  <div class="address-text">
+    <%= addr.mobileNumber %>
+  </div>
+
+  <div class="address-text">
+    <%= addr.address %>, <%= addr.locality %>, <%= addr.city %>, <%= addr.state %> - <%= addr.pincode %>
+  </div>
+
+  <% if (addr.landmark) { %>
+    <div class="address-text">
+      Landmark - <%= addr.landmark %>
+    </div>
+  <% } %>
+
+<% if (addr.alternativeNumber) { %>
+  <div class="address-text">
+    Alt number - <%= addr.alternativeNumber %>
+  </div>
+<% } %>
+
+  <div class="address-actions">
+    <button onclick="location.href='/address/edit/<%= index %>'">Edit</button>
+    <button onclick="deleteAddress('<%= index %>')">Delete</button>
+  </div>
+
+</div>
+        <% }) %>
+      <% } else { %>
+        <p style="text-align:center;color:#777;">No addresses found</p>
+      <% } %>
+    </section>
+  </div>
+
+  <%- include('../partials/user/footer') %>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    function deleteAddress(index) {
+      Swal.fire({
+        title: 'Delete address?',
+        text: 'This address will be permanently removed',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#aaa',
+        confirmButtonText: 'Yes, delete'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch(`/address/delete/${index}`, {
+            method: 'DELETE'
+          }).then(res => res.json())
+             .then(data => {
+               if (data.success && data.type === 'deleted') {
+                 Swal.fire('Deleted!', 'Address deleted successfully', 'success')
+             .then(() => location.reload());
+            }
+          })
+        }
+      });
+    }
+  </script>
+  <script>
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get('success') === 'added') {
+    Swal.fire('Success', 'Address added successfully', 'success');
+  }
+
+  if (params.get('success') === 'updated') {
+    Swal.fire('Success', 'Address updated successfully', 'success');
+  }
+
+  if (params.get('error') === 'saveFailed') {
+  Swal.fire('Error', 'Failed to save address. Try again.', 'error');
+}
+
+if (params.get('error') === 'sameNumber') {
+  Swal.fire('Error', 'Alternate number cannot be same as mobile', 'error');
+}
+
+</script>
+
+</body>
+</html>

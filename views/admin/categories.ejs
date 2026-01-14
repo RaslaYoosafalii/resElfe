@@ -245,7 +245,7 @@
     <h2 class="page-title">Category Management</h2>
 
     <% if (message) { %>
-      <div class="notice"><%= message %></div>
+      <div class="notice" id="flashMessage"><%= message %></div>
     <% } %>
 
     <!-- ADD CATEGORY -->
@@ -275,6 +275,13 @@
           <option value="10" <%= pagination.limit==10?'selected':'' %>>10</option>
           <option value="20" <%= pagination.limit==20?'selected':'' %>>20</option>
         </select>
+
+          <button
+    type="button"
+    class="btn-outline"
+    onclick="location.href='/admin/category/deleted'">
+    Deleted Categories
+  </button>
       </form>
     </div>
 
@@ -415,7 +422,7 @@
       if (action === 'delete-category') {
         Swal.fire({
           title: 'Delete category?',
-          text: 'This will delete the category and all its subcategories. This action cannot be undone.',
+          text: 'This will delete the category and all its subcategories.',
           icon: 'warning',
           showCancelButton: true,
           confirmButtonText: 'Yes, delete',
@@ -555,6 +562,16 @@
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
   </script>
+  <script>
+  const flash = document.getElementById('flashMessage');
+  if (flash) {
+    setTimeout(() => {
+      flash.style.opacity = '0';
+      flash.style.transition = 'opacity 0.4s ease';
+      setTimeout(() => flash.remove(), 400);
+    }, 1000); // 3 seconds
+  }
+</script>
 
 </body>
 </html>

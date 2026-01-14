@@ -153,7 +153,7 @@
         <!-- CATEGORY -->
         <div class="col-md-6 mb-3">
           <label class="form-label">Category</label>
-          <select name="categoryId" class="form-control" required>
+          <select name="categoryId" id="categorySelect" class="form-control" required>
             <% categories.forEach(c => { %>
               <option value="<%= c._id %>" <%= String(c._id) === String(product.categoryId) ? 'selected' : '' %>>
                 <%= c.name %>
@@ -165,13 +165,10 @@
         <!-- SUBCATEGORY -->
         <div class="col-md-6 mb-3">
           <label class="form-label">Subcategory</label>
-          <select name="subcategoryId" class="form-control" required>
-            <% subcategories.forEach(s => { %>
-              <option value="<%= s._id %>" <%= String(s._id) === String(product.subcategoryId) ? 'selected' : '' %>>
-                <%= s.fitName %>
-              </option>
-            <% }) %>
-          </select>
+<select name="subcategoryId" id="subcategorySelect" class="form-control" required>
+  <option value="">Select</option>
+</select>
+
         </div>
       </div>
 
@@ -309,5 +306,43 @@
     else document.write(await res.text());
   });
 </script>
+<script>
+  const ALL_SUBCATEGORIES = <%- JSON.stringify(subcategories) %>;
+  const CURRENT_CATEGORY_ID = "<%= product.categoryId %>";
+  const CURRENT_SUBCATEGORY_ID = "<%= product.subcategoryId %>";
+</script>
+<script>
+  const categorySelect = document.getElementById('categorySelect');
+  const subcategorySelect = document.getElementById('subcategorySelect');
+
+  function populateSubcategories(categoryId, selectedSubId = null) {
+    subcategorySelect.innerHTML = '<option value="">Select</option>';
+
+    ALL_SUBCATEGORIES
+      .filter(s => String(s.Category) === String(categoryId))
+      .forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s._id;
+        opt.textContent = s.fitName;
+
+        if (selectedSubId && String(s._id) === String(selectedSubId)) {
+          opt.selected = true;
+        }
+
+        subcategorySelect.appendChild(opt);
+      });
+  }
+
+  // 🔹 initial load (important!)
+  if (CURRENT_CATEGORY_ID) {
+    populateSubcategories(CURRENT_CATEGORY_ID, CURRENT_SUBCATEGORY_ID);
+  }
+
+  // 🔹 when category changes
+  categorySelect.addEventListener('change', function () {
+    populateSubcategories(this.value, null);
+  });
+</script>
+
 
 <%- include('../partials/admin/footer') %>

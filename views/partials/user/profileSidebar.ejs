@@ -1,0 +1,66 @@
+    
+    <style>
+         .sidebar {
+      width: 260px;
+      border: 1px solid #ddd;
+    }
+
+    .sidebar-header {
+      background: #5a5553;
+      color: #fff;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-header .avatar-small {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #d9d9d9;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .sidebar-menu li {
+      border-top: 1px solid #ddd;
+    }
+
+    .sidebar-menu a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      color: #333;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .sidebar-menu a:hover,
+    .sidebar-menu .active {
+      background-color: #f3f3f3;
+      font-weight: 600;
+    }
+    </style>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="avatar-small"></div>
+        <strong><%= user?.name || 'User' %></strong>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li><a class="active" href="/profile">Profile</a></li>
+        <li><a href="#">Coupon</a></li>
+        <li><a href="#">Referral Code</a></li>
+        <li><a href="#">My Orders</a></li>
+        <li><a href="#">Wallet</a></li>
+        <li><a href="#">Address</a></li>
+        <li><a href="#">Delete Account</a></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </aside>

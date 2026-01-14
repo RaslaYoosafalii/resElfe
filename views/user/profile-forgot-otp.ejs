@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Verify OTP</title>
+  <style>
+    body{font-family:Arial;background:#f4f4f4}
+    .card{max-width:420px;margin:80px auto;background:#fff;padding:40px;border-radius:8px}
+    input,button{width:100%;padding:12px;margin-top:15px}
+    button{background:#4a4745;color:#fff;border:none;border-radius:5px}
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2 style="text-align:center">OTP Verification</h2>
+
+  <form method="POST" action="/profile/forgot-password/verify">
+    <input type="text" name="otp" placeholder="Enter OTP" required />
+    <button type="submit">Verify OTP</button>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<% if (typeof message !== 'undefined' && message) { %>
+<script>
+  Swal.fire({
+    icon:'success',
+    text:"<%= message %>",
+    confirmButtonColor:'#4a4745'
+  })
+</script>
+<% } %>
+
+</body>
+</html>

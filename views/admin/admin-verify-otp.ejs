@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Confirm with OTP</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    /* EXACT SAME CSS AS USER */
+    :root{
+      --accent:#5a5252;
+      --muted:#f6f6f6;
+      --card-bg:#fff;
+      --shadow: 0 20px 40px rgba(0,0,0,0.06);
+      --text-muted:#7b6f6f;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:'Poppins',system-ui,Arial}
+    body{display:flex;align-items:center;justify-content:center;padding:40px 20px}
+
+    .card{
+      width:86vw; max-width:1100px;
+      border-radius:28px;
+      padding:72px 120px;
+      background:var(--card-bg);
+      box-shadow:var(--shadow);
+    }
+
+    h1{font-family:'Lora',serif;font-size:56px;text-align:center}
+    .lead{text-align:center}
+
+    .otp-row{display:flex;justify-content:center;gap:18px;margin-top:18px}
+    .otp-input{
+      width:64px;height:64px;border-radius:12px;
+      border:2px solid #e0e0e0;background:#f6f6f6;
+      font-size:20px;text-align:center;
+    }
+
+    .btn{
+      width:55%;padding:16px 20px;border-radius:26px;
+      background:var(--accent);color:#fff;
+      font-weight:700;border:none;font-size:20px;
+      margin:26px auto 0;display:block;
+    }
+
+    .help-row{margin-top:30px;text-align:center;color:var(--text-muted)}
+    .help-row button{background:none;border:none;color:inherit;cursor:pointer;text-decoration:underline;font-size:16px}
+    .back-link{margin-top:72px;text-align:center;color:var(--text-muted)}
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Confirm with OTP</h1>
+  <p class="lead">Please check admin email for OTP</p>
+
+  <% if (message) { %>
+    <script>
+      document.addEventListener('DOMContentLoaded', ()=> {
+        Swal.fire({ icon:'info', title:'Notice', text:"<%= message.replace(/"/g,'\\"') %>" });
+      });
+    </script>
+  <% } %>
+
+  <form id="otpForm" method="POST" action="/admin/verify-otp">
+    <div class="otp-row">
+      <input maxlength="1" class="otp-input">
+      <input maxlength="1" class="otp-input">
+      <input maxlength="1" class="otp-input">
+      <input maxlength="1" class="otp-input">
+    </div>
+    <input type="hidden" name="email" value="<%= email || '' %>">
+    <button class="btn">Confirm</button>
+  </form>
+
+  <div class="help-row">
+    <button id="resendBtn" type="button">Resend OTP</button>
+  </div>
+
+  <div class="back-link">
+    <a href="/admin/login" style="color:inherit;text-decoration:none;">Go back to Login page</a>
+  </div>
+</div>
+
+<script>
+const inputs=[...document.querySelectorAll('.otp-input')];
+const resendBtn=document.getElementById('resendBtn');
+const email="<%= email || '' %>";
+let timer;
+const RESEND_SECONDS=60;
+
+// OTP combine
+document.getElementById('otpForm').addEventListener('submit',e=>{
+  const otp=inputs.map(i=>i.value).join('');
+  if(otp.length<4){
+    e.preventDefault();
+    Swal.fire({icon:'error',title:'Invalid OTP',text:'Enter 4-digit OTP'});
+    return;
+  }
+  const h=document.createElement('input');
+  h.type='hidden';h.name='otp';h.value=otp;
+  e.target.appendChild(h);
+});
+
+// Countdown
+function startCountdown(sec){
+  let s=sec;
+  resendBtn.disabled=true;
+  resendBtn.textContent=`Resend OTP (${s}s)`;
+  timer=setInterval(()=>{
+    s--;
+    if(s<=0){
+      clearInterval(timer);
+      resendBtn.disabled=false;
+      resendBtn.textContent='Resend OTP';
+    }else{
+      resendBtn.textContent=`Resend OTP (${s}s)`;
+    }
+  },1000);
+}
+
+document.addEventListener('DOMContentLoaded',()=>email && startCountdown(RESEND_SECONDS));
+
+// Resend
+resendBtn.addEventListener('click',async()=>{
+  resendBtn.disabled=true;
+  try{
+    const res=await fetch('/admin/resend-otp',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email})
+    });
+    const data=await res.json();
+    if(res.ok && data.success){
+      Swal.fire({icon:'success',title:'OTP Sent',text:data.message});
+      startCountdown(RESEND_SECONDS);
+    }else{
+      Swal.fire({icon:'error',title:'Failed',text:data.message});
+      resendBtn.disabled=false;
+    }
+  }catch{
+    Swal.fire({icon:'error',title:'Server error'});
+    resendBtn.disabled=false;
+  }
+});
+</script>
+
+<script>
+
+const otpInputs = document.querySelectorAll('.otp-input');
+
+otpInputs.forEach((input, index) => {
+
+  input.addEventListener('input', () => {
+    // allow only digits
+    input.value = input.value.replace(/\D/g, '');
+
+    if (input.value && index < otpInputs.length - 1) {
+      otpInputs[index + 1].focus();
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !input.value && index > 0) {
+      otpInputs[index - 1].focus();
+    }
+  });
+
+});
+</script>
+
+</body>
+</html>

@@ -16,7 +16,9 @@ const listCategories = async (req, res) => {
     const { page, limit, q } = parsePaging(req);
 
     // build filter (search by name OR description; case-insensitive)
-    const filter = {};
+    
+    const filter = { isDeleted: { $ne: true } };
+
     if (q) {
       const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       filter.$or = [{ name: re }, { description: re }];
@@ -55,10 +57,13 @@ const listCategories = async (req, res) => {
     );
 
     const totalPages = Math.max(Math.ceil(total / limit), 1);
-
+  
+    const message = req.session.message || null;
+    req.session.message = null;
+    
     return res.render('categories', {
       categories: categoriesWithMeta,
-      message: null,
+      message,
       pagination: {
         total,
         totalPages,
@@ -160,6 +165,7 @@ const editSubCategory = async (req, res) => {
     // unique fitName check
     if (String(sub.fitName) !== String(fitName.trim())) {
       const exists = await SubCategory.findOne({
+        Category: sub.Category,
         fitName: fitName.trim(),
         _id: { $ne: id }
       });
@@ -207,6 +213,8 @@ const createCategory = async (req, res) => {
       isListed: true
     });
 
+    req.session.message = 'Category added successfully';
+
     console.log('createCategory: created', name);
     return res.redirect('/admin/category');
   } catch (err) {
@@ -225,7 +233,7 @@ const createSubCategory = async (req, res) => {
       return res.redirect('/admin/category');
     }
 
-    const exists = await SubCategory.findOne({ fitName: fitName.trim() });
+    const exists = await SubCategory.findOne({ Category: categoryId, fitName: fitName.trim() });
     if (exists) {
       console.log('createSubCategory failed: subcategory exists', fitName);
       return res.redirect('/admin/category');
@@ -235,7 +243,9 @@ const createSubCategory = async (req, res) => {
       Category: categoryId,
       fitName: fitName.trim()
     });
-
+  
+    req.session.message = 'Subcategory added successfully';
+   
     console.log('createSubCategory: created', fitName);
     return res.redirect('/admin/category');
   } catch (err) {
@@ -366,6 +376,14 @@ const deleteCategory = async (req, res) => {
         message: 'Invalid category id'
       });
     }
+ 
+   const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
 
     const productCount = await Product.countDocuments({ categoryId: id });
     if (productCount > 0) {
@@ -376,11 +394,13 @@ const deleteCategory = async (req, res) => {
       });
     }
 
-    await SubCategory.deleteMany({ Category: id });
-    await Category.findByIdAndDelete(id);
+    category.isDeleted = true;
+    category.isListed = false;
+    await category.save();
 
     console.log('deleteCategory:', id);
     return res.json({ success: true, message: 'Category deleted' });
+
   } catch (err) {
     console.error('deleteCategory error:', err);
     return res.status(500).json({ success: false, message: 'Server error' });
@@ -426,6 +446,70 @@ const deleteSubCategory = async (req, res) => {
   }
 };
 
+const restoreCategory = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category id'
+      });
+    }
+
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
+
+    if (!category.isDeleted) {
+      return res.json({
+        success: true,
+        message: 'Category already active'
+      });
+    }
+
+    category.isDeleted = false;
+    category.isListed = true;
+    await category.save();
+
+    console.log('restoreCategory:', id);
+
+    return res.json({
+      success: true,
+      message: 'Category restored successfully'
+    });
+
+  } catch (err) {
+    console.error('restoreCategory error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+const listDeletedCategories = async (req, res) => {
+  try {
+    const categories = await Category.find({ isDeleted: true })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.render('categories-deleted', {
+      categories
+    });
+  } catch (err) {
+    console.error('listDeletedCategories error:', err);
+    return res.status(500).render('error-page', {
+      message: 'Failed to load deleted categories'
+    });
+  }
+};
+
+
+
 export {
   listCategories,
   createCategory,
@@ -434,10 +518,12 @@ export {
   setCategoryOffer,
   deleteCategory,
   deleteSubCategory,
+  restoreCategory,
   getCategoryData,
   editCategory,
   editSubCategory,
-  getSubCategoryData
+  getSubCategoryData,
+  listDeletedCategories
 };
 
 export default{
@@ -448,8 +534,11 @@ export default{
   setCategoryOffer,
   deleteCategory,
   deleteSubCategory,
+  restoreCategory,
   getCategoryData,
   editCategory,
   editSubCategory,
-  getSubCategoryData
+  getSubCategoryData,
+  listDeletedCategories
+
 };

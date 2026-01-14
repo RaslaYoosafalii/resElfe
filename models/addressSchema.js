@@ -1,6 +1,6 @@
 // models/addressSchema.js
 import mongoose from 'mongoose';
-const { schema } = mongoose;
+const { Schema } = mongoose;
 
 const addressSchema = new Schema({
     userId: {
@@ -9,6 +9,10 @@ const addressSchema = new Schema({
       required: true
     },
     address: [{
+        address: {
+        type: String,
+        required: true
+        },
         state:{
             type:String,
             required:true
@@ -51,4 +55,4 @@ const addressSchema = new Schema({
 
 const Address = mongoose.model('Address', addressSchema);
 
-export default  Address;
+export default Address;

@@ -443,15 +443,20 @@ body {
 
                 <div class="size-btns">
                     <% sizeVariants.forEach(function(s) { %>
-                        <div 
-                            class="size-option <%= s.stock <= 0 ? 'disabled' : '' %>"
-                            onclick="selectSize(this, '<%= s.size %>', <%= s.stock %>)"
-                        >
-                            <%= s.size %>
-                        </div>
+<div 
+  class="size-option <%= s.stock <= 0 ? 'disabled' : '' %>"
+  onclick="selectSize(this, '<%= s.size %>', <%= s.stock %>, '<%= s._id %>')">
+  <%= s.size %>
+</div>
+
                     <% }) %>
                 </div>
             </div>
+            <div id="stockMessage"
+     style="margin-top:10px;font-size:13px;color:#c00;display:none;">
+</div>
+ <input type="hidden" id="selectedVariantId" value="">
+
 
             <!-- ADD TO BAG -->
             <div class="add-btn" onclick="addToCart()">ADD TO BAG</div>
@@ -487,6 +492,7 @@ body {
 
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 function changeImage(el) {
@@ -498,11 +504,26 @@ function changeImage(el) {
     el.classList.add("thumbnail-active");
 }
 
-function selectSize(el, size, stock) {
-    if (stock <= 0) return; // disable
+function selectSize(el, size, stock, variantId) {
+    var msg = document.getElementById('stockMessage');
+    var selectedInput = document.getElementById('selectedVariantId');
+
+    
+    if (stock <= 0) {
+        msg.innerText = 'Out of stock';
+        msg.style.display = 'block';
+        selectedInput.value = '';
+        return;
+    }
+
+    // ✅ IN STOCK → clear message
+    msg.innerText = '';
+    msg.style.display = 'none';
 
     document.querySelectorAll(".size-option").forEach(b => b.classList.remove("active"));
     el.classList.add("active");
+
+     selectedInput.value = variantId;
 
     // find the variant object for this size from a data structure rendered into the page
     var variantsData = <%- JSON.stringify(sizeVariants || []) %>;
@@ -529,9 +550,64 @@ function selectSize(el, size, stock) {
 }
 
 function addToCart() {
-    alert("Added to cart(haven't done the add to cart yet)");
+  const variantId = document.getElementById('selectedVariantId').value;
+  const msg = document.getElementById('stockMessage');
+
+ 
+  if (!variantId) {
+    msg.innerText = 'Please select a size';
+    msg.style.display = 'block';
+    return;
+  }
+
+  msg.innerText = '';
+  msg.style.display = 'none';
+
+  fetch('/cart/add', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ variantId })
+  })
+    .then(async res => {
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to add to cart');
+      }
+      return data;
+    })
+    .then(() => {
+  Swal.fire({
+    icon: 'success',
+    title: 'Added to cart',
+    showCancelButton: true,
+    confirmButtonText: 'Go to Cart',
+    cancelButtonText: 'Keep Shopping'
+  }).then(result => {
+    if (result.isConfirmed) {
+      window.location.href = '/cart';
+    }
+  });
+})
+.catch(err => {
+      // ❌ Error handling from backend
+      msg.innerText = err.message || 'Something went wrong';
+      msg.style.display = 'block';
+    });
 }
 </script>
+<script>
+  window.history.replaceState(null, null, window.location.href);
+</script>
+<script>
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
+
 
 <%- include('../partials/user/footer') %>
 

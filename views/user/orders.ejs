@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Orders</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+* { box-sizing: border-box; font-family: Arial, sans-serif; }
+body { margin:0; background:#fff; color:#222; }
+
+.container {
+  max-width:1200px;
+  margin:40px auto;
+  padding:0 20px;
+}
+
+.page-title {
+  font-size:28px;
+  margin-bottom:25px;
+}
+
+/* SEARCH */
+.search-box {
+  margin-bottom:25px;
+  display:flex;
+  gap:10px;
+}
+.search-box input {
+  flex:1;
+  padding:10px 14px;
+  border-radius:25px;
+  border:1px solid #ccc;
+}
+.search-box button {
+  padding:10px 20px;
+  border-radius:25px;
+  border:none;
+  background:#222;
+  color:#fff;
+  cursor:pointer;
+}
+
+/* ORDER CARD */
+.order-card {
+  border:1px solid #ddd;
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:20px;
+}
+
+.order-header {
+  display:flex;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.order-id {
+  font-weight:bold;
+}
+
+.status {
+  padding:5px 14px;
+  border-radius:20px;
+  font-size:13px;
+  background:#eee;
+}
+
+.status.delivered { background:#d4f5d4; }
+.status.cancelled { background:#ffd6d6; }
+.status.pending { background:#fff3cd; }
+
+.order-meta {
+  margin-top:10px;
+  font-size:14px;
+  color:#555;
+}
+
+/* ITEMS */
+.item {
+  display:flex;
+  gap:12px;
+  margin-top:15px;
+}
+.item img {
+  width:70px;
+  height:90px;
+  object-fit:cover;
+  border-radius:6px;
+}
+
+/* ACTIONS */
+.actions {
+  margin-top:15px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.btn {
+  padding:8px 18px;
+  border-radius:20px;
+  border:none;
+  cursor:pointer;
+  font-size:14px;
+}
+
+.btn-dark { background:#222; color:#fff; }
+.btn-outline {
+  background:#fff;
+  border:1px solid #222;
+}
+
+/* MODAL */
+.modal {
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  z-index:1000;
+}
+
+.modal-content {
+  background:#fff;
+  max-width:700px;
+  margin:50px auto;
+  border-radius:10px;
+  padding:25px;
+  max-height:85vh;
+  overflow:auto;
+}
+
+.close-btn {
+  float:right;
+  font-size:20px;
+  cursor:pointer;
+  border:none;
+  background:none;
+}
+textarea {
+  width:100%;
+  padding:10px;
+  border-radius:6px;
+  border:1px solid #ccc;
+  resize:none;
+}
+</style>
+</head>
+
+<body>
+
+<%- include('../partials/user/loggedinHeader') %>
+
+<div class="container">
+  <div class="page-title">My Orders</div>
+
+  <!-- SEARCH -->
+  <div class="search-box">
+    <input type="text" id="searchOrder" placeholder="Search by Order ID">
+    <button onclick="searchOrder()">Search</button>
+    <button id="clearSearch" onclick="clearSearch()" style="display:none">
+  Clear
+</button>
+  </div>
+
+  <% if (!orders || orders.length === 0) { %>
+    <p>No orders found.</p>
+  <% } %>
+
+  <% orders.forEach(order => { %>
+    <div class="order-card" data-orderid="<%= order.orderId %>">
+      <div class="order-header">
+        <div class="order-id">Order ID: <%= order.orderId %></div>
+        <div class="status <%= order.orderStatus %>"><%= order.orderStatus %></div>
+      </div>
+
+      <div class="order-meta">
+        Ordered on: <%= new Date(order.orderDate).toLocaleDateString() %><br>
+        Total: ₹<%= order.finalPrice %>
+      </div>
+
+      <% order.orderedItem.forEach(item => { %>
+        <div class="item">
+          <img src="/uploads/products/<%= item.productImages[0] %>">
+          <div>
+            <strong><%= item.productName %></strong><br>
+            Qty: <%= item.quantity %> | ₹<%= item.offerPrice %><br>
+            Status: <%= item.orderStatus %>
+          </div>
+        </div>
+      <% }) %>
+
+      <div class="actions">
+        <button class="btn btn-outline" onclick="viewDetails('<%= order.orderId %>')">Details</button>
+        <button class="btn btn-outline" onclick="downloadInvoice('<%= order.orderId %>')">Invoice</button>
+
+        <% if (order.orderStatus !== 'cancelled' && order.orderStatus !== 'delivered') { %>
+          <button class="btn btn-dark" onclick="cancelOrder('<%= order.orderId %>')">Cancel Order</button>
+        <% } %>
+
+        <% if (order.orderStatus === 'delivered') { %>
+          <button class="btn btn-dark" onclick="returnOrder('<%= order.orderId %>')">Return</button>
+        <% } %>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="detailModal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<%- include('../partials/user/footer') %>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+function searchOrder() {
+  const input = document.getElementById('searchOrder');
+  const val = input.value.trim();
+  const clearBtn = document.getElementById('clearSearch');
+
+  document.querySelectorAll('.order-card').forEach(card => {
+    card.style.display = card.dataset.orderid.includes(val) ? 'block' : 'none';
+  });
+
+  clearBtn.style.display = val ? 'inline-block' : 'none';
+}
+
+function clearSearch() {
+  document.getElementById('searchOrder').value = '';
+  document.querySelectorAll('.order-card').forEach(c => c.style.display='block');
+  document.getElementById('clearSearch').style.display = 'none';
+}
+
+
+function cancelOrder(orderId) {
+  Swal.fire({
+    title: 'Cancel Order?',
+    input: 'textarea',
+    inputPlaceholder: 'Reason (optional)',
+    showCancelButton: true,
+    confirmButtonText: 'Cancel Order'
+  }).then(res => {
+    if (!res.isConfirmed) return;
+    fetch('/orders/cancel', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ orderId, reason: res.value || "" })
+    })
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.success){
+        Swal.fire('Cancelled','Order cancelled successfully','success')
+          .then(()=>location.reload());
+      } else {
+        Swal.fire('Error',d.message,'error');
+      }
+    });
+  });
+}
+
+function returnOrder(orderId) {
+  Swal.fire({
+    title:'Return Order',
+    input:'textarea',
+    inputPlaceholder:'Reason (mandatory)',
+    showCancelButton:true,
+    confirmButtonText:'Request Return',
+    preConfirm:value=>{
+      if(!value || !value.trim()){
+        Swal.showValidationMessage('Return reason required');
+      }
+      return value;
+    }
+  }).then(res=>{
+    if(!res.isConfirmed) return;
+    fetch('/orders/return',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ orderId, reason: res.value })
+    })
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.success){
+        Swal.fire('Requested','Return request submitted','success')
+          .then(()=>location.reload());
+      } else {
+        Swal.fire('Error',d.message,'error');
+      }
+    });
+  });
+}
+
+function viewDetails(orderId){
+  fetch(`/orders/${orderId}`)
+    .then(r=>r.text())
+    .then(html=>{
+      document.getElementById('modalBody').innerHTML = html;
+      document.getElementById('detailModal').style.display='block';
+    });
+}
+
+function closeModal(){
+  document.getElementById('detailModal').style.display='none';
+}
+
+function downloadInvoice(orderId){
+  window.open(`/orders/invoice/${orderId}`, '_blank');
+}
+</script>
+
+</body>
+</html>

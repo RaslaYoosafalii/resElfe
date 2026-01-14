@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Order Successful</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #fff;
+}
+
+.wrapper {
+  max-width: 600px;
+  margin: 120px auto;
+  text-align: center;
+}
+
+.illustration {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 25px;
+  border-radius: 50%;
+  background: #f3f3f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+p {
+  color: #666;
+}
+
+.btn {
+  margin-top: 25px;
+  padding: 12px 22px;
+  border-radius: 25px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.btn-dark {
+  background: black;
+  color: white;
+}
+
+.btn-outline {
+  background: white;
+  border: 1px solid black;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+  <div class="illustration">✔</div>
+
+  <h2>Thank You for Your Order!</h2>
+  <p>Your order has been placed successfully.</p>
+
+  <button class="btn btn-dark" onclick="window.location.href='/orders'">
+    View Order
+  </button>
+
+  <br><br>
+
+  <button class="btn btn-outline" onclick="window.location.href='/products'">
+    Continue Shopping
+  </button>
+</div>
+
+</body>
+</html>

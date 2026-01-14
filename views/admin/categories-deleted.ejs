@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Deleted Categories</title>
+
+  <style>
+    .main-content { background:#f9f8f7; }
+    h2 { margin-bottom:20px; }
+    table { width:100%; border-collapse:collapse; background:#fff; border-radius:14px; overflow:hidden; }
+    th, td { padding:14px 16px; border-bottom:1px solid #eee; font-size:14px; }
+    th { background:#f4f2f0; text-align:left; }
+    .btn-restore {
+      background:#6c645c;
+      color:#fff;
+      border:none;
+      padding:6px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:12px;
+    }
+    .btn-outline {
+      border:1px solid #ccc;
+      background:#fff;
+      padding:6px 12px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/admin/headerSidebar') %>
+
+  <div class="main-content">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2>Deleted Categories</h2>
+      <button class="btn-outline" onclick="location.href='/admin/category'">Back to Categories</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (categories.length) { %>
+          <% categories.forEach(cat => { %>
+            <tr>
+              <td><strong><%= cat.name %></strong></td>
+              <td><%= cat.description %></td>
+              <td>
+                <button
+                  class="btn-restore"
+                  data-id="<%= cat._id %>">
+                  Restore
+                </button>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr>
+            <td colspan="3" style="text-align:center;">No deleted categories</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    document.addEventListener('click', async e => {
+      const btn = e.target.closest('.btn-restore');
+      if (!btn) return;
+
+      const id = btn.dataset.id;
+      const res = await fetch('/admin/category/restore/' + id, { method:'POST' });
+      const json = await res.json();
+
+      if (json.success) {
+        Swal.fire('Restored', json.message, 'success')
+          .then(() => location.reload());
+      } else {
+        Swal.fire('Error', json.message || 'Failed', 'error');
+      }
+    });
+  </script>
+
+  <%- include('../partials/admin/footer') %>
+</body>
+</html>

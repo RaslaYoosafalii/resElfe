@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Verify Email</title>
+</head>
+<body>
+
+<h2>Verify Email</h2>
+
+<% if (typeof message !== 'undefined' && message) { %>
+  <p><%= message %></p>
+<% } %>
+
+<form method="POST" action="/profile/verify-email-otp">
+  <input type="text" name="otp" placeholder="Enter OTP" required />
+  <button type="submit">Verify</button>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<% if (typeof otpSent !== 'undefined' && otpSent) { %>
+<script>
+  Swal.fire({
+    icon: 'success',
+    title: 'OTP Sent',
+    text: 'Email verification OTP sent successfully',
+    confirmButtonColor: '#4a4745'
+  });
+</script>
+<% } %>
+
+<% if (typeof emailVerified !== 'undefined' && emailVerified) { %>
+<script>
+  const fields = <%- JSON.stringify(updatedFields || []) %>;
+
+  let text = '';
+  if (fields.length === 1) {
+    text = `${fields[0]} updated successfully`;
+  } else if (fields.length === 2) {
+    text = `${fields[0]} and ${fields[1]} updated successfully`;
+  } else if (fields.length === 3) {
+    text = `${fields.join(', ')} updated successfully`;
+  }
+
+  Swal.fire({
+    icon: 'success',
+    title: 'Profile Updated',
+    text,
+    confirmButtonColor: '#4a4745'
+  }).then(() => {
+    window.location.href = '/profile';
+  });
+</script>
+<% } %>
+
+
+</body>
+</html>

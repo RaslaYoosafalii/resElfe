@@ -44,9 +44,31 @@ const listProducts = async (req, res) => {
     if (category && mongoose.Types.ObjectId.isValid(category)) {
       matchStage.categoryId = new mongoose.Types.ObjectId(category);
     }
-    if (subcategory && mongoose.Types.ObjectId.isValid(subcategory)) {
-      matchStage.subcategoryId = new mongoose.Types.ObjectId(subcategory);
+   
+    // ✅ FINAL subcategory filter logic
+// ✅ FINAL subcategory filtering logic (single source of truth)
+if (subcategory) {
+
+  // Case 1: category selected → subcategory is ObjectId
+  if (category && mongoose.Types.ObjectId.isValid(subcategory)) {
+    matchStage.subcategoryId = new mongoose.Types.ObjectId(subcategory);
+  }
+
+  // Case 2: category = ALL → subcategory is fitName
+  else if (!category) {
+    const subs = await SubCategory.find({ fitName: subcategory })
+      .select('_id')
+      .lean();
+
+    const ids = subs.map(s => s._id);
+
+    if (ids.length) {
+      matchStage.subcategoryId = { $in: ids };
     }
+  }
+}
+
+
 
     const pipeline = [
       { $match: matchStage },
@@ -160,12 +182,13 @@ const listProducts = async (req, res) => {
       { $project: { _discountPrices: 0 } }
     ];
 
-    if (minPrice != null || maxPrice != null) {
-      const priceCond = {};
-      if (minPrice != null) priceCond.$gte = minPrice;
-      if (maxPrice != null) priceCond.$lte = maxPrice;
-      pipeline.push({ $match: { minVariantPrice: priceCond } });
-    }
+if (minPrice != null || maxPrice != null) {
+  const priceCond = {};
+  if (minPrice != null) priceCond.$gte = minPrice;
+  if (maxPrice != null) priceCond.$lte = maxPrice;
+  pipeline.push({ $match: { _finalPrice: priceCond } });
+}
+
 
     pipeline.push({ $sort: buildSort(sort) });
     pipeline.push({ $skip: (page - 1) * limit });
@@ -197,24 +220,42 @@ const listProducts = async (req, res) => {
           as: 'variants'
         }
       },
-      {
-        $addFields: {
-          minVariantPrice: {
-            $cond: [
-              { $gt: [{ $size: '$variants' }, 0] },
-              { $min: '$variants.price' },
-              null
-            ]
+{
+  $addFields: {
+    _finalPrice: {
+      $cond: [
+        { $gt: [{ $size: '$variants' }, 0] },
+        {
+          $min: {
+            $map: {
+              input: '$variants',
+              as: 'v',
+              in: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$$v.discountPrice', null] },
+                      { $gt: ['$$v.discountPrice', 0] }
+                    ]
+                  },
+                  '$$v.discountPrice',
+                  '$$v.price'
+                ]
+              }
+            }
           }
-        }
-      }
-    ];
+        },
+        0
+      ]
+    }
+  }
+} ];
 
     if (minPrice != null || maxPrice != null) {
       const priceCond = {};
       if (minPrice != null) priceCond.$gte = minPrice;
       if (maxPrice != null) priceCond.$lte = maxPrice;
-      countPipeline.push({ $match: { minVariantPrice: priceCond } });
+      countPipeline.push({ $match: { _finalPrice: priceCond } });
     }
 
     countPipeline.push({ $count: 'total' });
@@ -223,13 +264,43 @@ const listProducts = async (req, res) => {
     const total = countResult?.[0]?.total || 0;
     const totalPages = Math.max(Math.ceil(total / limit), 1);
 
-    const categories = await Category.find({}).sort({ name: 1 }).lean();
-    const subcategories = await SubCategory.find({}).sort({ fitName: 1 }).lean();
+    const categories = await Category.find({isDeleted: { $ne: true },isListed: true}).sort({ name: 1 }).lean();
+    
+let subcategories;
+
+if (category && mongoose.Types.ObjectId.isValid(category)) {
+  // category selected → ONLY its subcategories
+  subcategories = await SubCategory.find({
+    Category: new mongoose.Types.ObjectId(category)
+  }).sort({ fitName: 1 }).lean();
+} else {
+  // category = ALL → subcategories of all active categories
+  const activeCategoryIds = categories.map(c => c._id);
+  subcategories = await SubCategory.find({
+    Category: { $in: activeCategoryIds }
+  }).sort({ fitName: 1 }).lean();
+}
+
+
+
+   let finalSubcategories = subcategories;
+
+// ✅ Only dedupe when category = ALL
+if (!category) {
+  const map = new Map();
+  for (const s of subcategories) {
+    if (!map.has(s.fitName)) {
+      map.set(s.fitName, s);
+    }
+  }
+  finalSubcategories = Array.from(map.values());
+}
+
 
     return res.render('allProducts', {
       products,
       categories,
-      subcategories,
+      subcategories: finalSubcategories,
       pagination: {
         q,
         sort,

@@ -85,7 +85,7 @@ let findFilter = { isDeleted: { $ne: true } };
 
 const loadAddProduct = async (req, res) => {
   try {
-    const categories = await Category.find().lean();
+const categories = await Category.find({isDeleted: { $ne: true },isListed: true}).lean();
     // optionally fetch subcategories list too
     const subcategories = await SubCategory.find().lean();
     return res.render('product-add', { categories, subcategories, message: null });
@@ -236,7 +236,7 @@ const loadEditProduct = async (req, res) => {
     const variants = await Varient.find({ productId: product._id }).lean();
 
     // categories and subcategories
-    const categories = await Category.find().lean();
+    const categories = await Category.find({isDeleted: { $ne: true }, isListed: true}).lean();
     const subcategories = await SubCategory.find().lean();
 
     return res.render('product-edit', {
@@ -444,7 +444,7 @@ const updateProduct = [
 ];
 
 
-const HARD_DELETE_REMOVE_FILES = true; // set false if don't want image files removed physically
+// const HARD_DELETE_REMOVE_FILES = true; 
 
 const deleteProduct = async (req, res) => {
   try {
@@ -454,37 +454,97 @@ const deleteProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid id' });
     }
 
-    const prod = await Product.findById(id);
-    if (!prod) {
+    const product = await Product.findById(id);
+    if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
 
-    //DELETE product images from filesystem
-    if (HARD_DELETE_REMOVE_FILES && prod.images && prod.images.length) {
-      prod.images.forEach(img => {
-        const filePath = path.join(__dirname, '../../public/uploads/products/', img);
-        fs.unlink(filePath, (err) => {
-          if (err) console.log(`Could not delete image: ${filePath}`);
-        });
-      });
-    }
+ // SOFT DELETE PRODUCT
+    product.isDeleted = true;
+    product.isListed = false; 
+    await product.save();
 
-    // DELETE variants belonging to product
-    await Varient.deleteMany({ productId: id });
+    // unlist variants
+    await Varient.updateMany(
+      { productId: id },
+      { $set: { isListed: false } }
+    );
 
-    //DELETE product from DB
-    await Product.deleteOne({ _id: id });
 
-    console.log('deleteProduct:', id);
 
-    return res.json({ success: true, message: 'Product permanently deleted' });
+    console.log('delete Product:', id);
+
+    return res.json({ success: true, message: 'Product deleted' });
 
   } catch (err) {
     console.error('deleteProduct error:', err);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+const restoreProduct = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid id' });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    if (!product.isDeleted) {
+      return res.json({ success: true, message: 'Product already active' });
+    }
+
+    // RESTORE PRODUCT
+    product.isDeleted = false;
+    product.isListed = true;
+    await product.save();
+
+    // RESTORE VARIANTS
+    await Varient.updateMany(
+      { productId: id },
+      { $set: { isListed: true } }
+    );
+
+    console.log('restoreProduct:', id);
+
+    return res.json({
+      success: true,
+      message: 'Product restored successfully'
+    });
+
+  } catch (err) {
+    console.error('restoreProduct error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+const listDeletedProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ isDeleted: true })
+      .populate("categoryId")
+      .populate("subcategoryId")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    return res.render("products-deleted", {
+      products
+    });
+  } catch (err) {
+    console.error("listDeletedProducts error:", err);
+    return res.status(500).render("error-page", {
+      message: "Failed to load deleted products"
+    });
+  }
+};
+
 
 
 export {
@@ -493,7 +553,9 @@ export {
   addProduct,
   deleteProduct,
   updateProduct,
-  loadEditProduct
+  loadEditProduct,
+  restoreProduct,
+  listDeletedProducts
 };
 
 export default{
@@ -502,5 +564,7 @@ export default{
   addProduct,
   deleteProduct,
   updateProduct,
-  loadEditProduct
+  loadEditProduct,
+  restoreProduct,
+  listDeletedProducts
 };

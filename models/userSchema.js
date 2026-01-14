@@ -21,6 +21,8 @@ const userSchema = new Schema({
     default: null,
     sparse: true
    },
+   profileImage: String,
+
     createdAt:{
         type:Date,
         default:Date.now

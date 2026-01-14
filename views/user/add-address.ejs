@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add New Address</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Arial", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    /* ===== LAYOUT ===== */
+    .profile-wrapper {
+      display: flex;
+      padding: 40px 60px;
+      gap: 40px;
+    }
+
+    /* ===== SIDEBAR (UNCHANGED) ===== */
+    .sidebar {
+      width: 260px;
+      border: 1px solid #ddd;
+    }
+
+    .sidebar-header {
+      background: #5a5553;
+      color: #fff;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-header .avatar-small {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #d9d9d9;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .sidebar-menu li {
+      border-top: 1px solid #ddd;
+    }
+
+    .sidebar-menu a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      color: #333;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .sidebar-menu a:hover,
+    .sidebar-menu .active {
+      background-color: #f3f3f3;
+      font-weight: 600;
+    }
+
+    /* ===== MAIN CARD ===== */
+    .profile-card {
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+    }
+
+    .profile-title {
+      text-align: center;
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+
+    /* ===== FORM ===== */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px 30px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full {
+      grid-column: span 2;
+    }
+
+    .form-group label {
+      font-size: 14px;
+      color: #555;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+      background: #f5f5f5;
+    }
+
+    textarea {
+      resize: none;
+      height: 80px;
+    }
+
+    /* ===== RADIO ===== */
+    .radio-group {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    /* ===== ACTIONS ===== */
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 40px;
+    }
+
+    .btn-save {
+      background: #5a5553;
+      color: #fff;
+      border: none;
+      padding: 8px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      background: #fff;
+      color: #333;
+      border: 1px solid #aaa;
+      padding: 8px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+ 
+  .error-text {
+    color: red;
+    font-size: 12px;
+    display: none;
+  }
+
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .profile-wrapper {
+        flex-direction: column;
+        padding: 20px;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.full {
+        grid-column: span 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <%- include('../partials/user/loggedinHeader') %>
+
+  <div class="profile-wrapper">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="avatar-small"></div>
+        <strong><%= user?.name || 'User' %></strong>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li><a href="/profile">Profile</a></li>
+        <li><a href="#">Coupon</a></li>
+        <li><a href="#">Referral Code</a></li>
+        <li><a href="#">My Orders</a></li>
+        <li><a href="#">Wallet</a></li>
+        <li><a class="active" href="/address">Address</a></li>
+        <li><a href="#">Delete Account</a></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </aside>
+
+    <!-- ===== ADD ADDRESS ===== -->
+    <section class="profile-card">
+      <h2 class="profile-title">ADD NEW ADDRESS</h2>
+
+      <form method="POST" action="/address/add" onsubmit="return handleSubmit(event)">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" placeholder="Enter your name" required oninput="validateForm()">
+            <span class="error-text">Required field</span>
+          </div>
+
+          <div class="form-group">
+            <label>Mobile Number</label>
+            <input type="text" name="mobileNumber" inputmode="numeric" pattern="[0-9]*" placeholder="Enter your Mobile number" required oninput="this.value=this.value.replace(/[^0-9]/g,''); validateForm()">
+            <span class="error-text">Enter valid 10 digit number</span>
+          </div>
+
+          <div class="form-group">
+            <label>Pincode</label>
+            <input type="number" name="pincode" inputmode="numeric" pattern="[0-9]*" placeholder="Enter your pincode" required oninput="validateForm()">
+            <span class="error-text">Required field</span>
+          </div>
+
+          <div class="form-group">
+            <label>Locality</label>
+            <input type="text" name="locality" placeholder="Enter your locality" required oninput="validateForm()">
+            <span class="error-text">Required field</span>
+          </div>
+
+          <div class="form-group full">
+            <label>Address</label>
+            <textarea name="address" placeholder="Address (area, city)" required oninput="validateForm()"></textarea>
+            <span class="error-text">Required field</span>
+          </div>
+
+          <div class="form-group">
+            <label>City/Dist/Town</label>
+            <input type="text" name="city" placeholder="Enter city/dist/town" required oninput="validateForm()">
+            <span class="error-text">Required field</span>
+          </div>
+
+          <div class="form-group">
+            <label>State</label>
+            <select name="state" required onchange="validateForm()">
+              <option value="">--- select state ---</option>
+              <option value="Kerala">Kerala</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
+              <option value="Karnataka">Karnataka</option>
+            </select>
+            <span class="error-text">Required field</span>
+          </div>
+
+          <div class="form-group">
+            <label>Landmark</label>
+            <input type="text" name="landmark" placeholder="Enter landmark" required oninput="validateForm()">
+            <span class="error-text">Required field</span>
+          </div>
+
+          <div class="form-group">
+            <label>Alternate Mobile Number</label>
+            <input type="text" name="alternativeNumber" inputmode="numeric" pattern="[0-9]*" placeholder="Alternate Mobile number (optional)" oninput="this.value=this.value.replace(/[^0-9]/g,''); validateForm()">
+            <span class="error-text">Enter valid 10 digit number</span>
+          </div>
+
+          <div class="form-group full">
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="addressType" value="Home" checked required>
+                Home
+              </label>
+              <label>
+                <input type="radio" name="addressType" value="Work">
+                Work
+              </label>
+              <span class="error-text">Required field</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+         <button type="submit" class="btn-save" disabled>Save</button>
+          <button type="button" class="btn-cancel" onclick="location.href='/address'">Cancel</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <%- include('../partials/user/footer') %>
+</body>
+
+<script>
+function validateForm() {
+  let valid = true;
+
+  const mobile = document.querySelector('[name="mobileNumber"]');
+  const alt = document.querySelector('[name="alternativeNumber"]');
+  const saveBtn = document.querySelector('.btn-save');
+
+  // reset errors
+  document.querySelectorAll('.error-text').forEach(e => e.style.display = 'none');
+
+  // required fields
+document.querySelectorAll('[required]').forEach(input => {
+  if (input.type === 'radio') {
+    const group = document.getElementsByName(input.name);
+    const checked = Array.from(group).some(r => r.checked);
+    if (!checked) {
+      input.closest('.form-group, .radio-group')
+           .querySelector('.error-text').style.display = 'block';
+      valid = false;
+    }
+  } else if (!input.value.trim()) {
+    input.nextElementSibling.style.display = 'block';
+    valid = false;
+  }
+});
+
+
+  // mobile 10 digit validation
+if (mobile.value) {
+  if (!/^\d{10}$/.test(mobile.value)) {
+    mobile.nextElementSibling.style.display = 'block';
+    valid = false;
+  }
+}
+
+
+  // alternate 10 digit validation
+  if (alt.value) {
+  if (!/^\d{10}$/.test(alt.value)) {
+    alt.nextElementSibling.style.display = 'block';
+    valid = false;
+  }
+}
+
+  if (alt.value && mobile.value === alt.value) {
+    alt.nextElementSibling.textContent =
+      'Alternate number cannot be same as mobile';
+    alt.nextElementSibling.style.display = 'block';
+    valid = false;
+  }
+
+  saveBtn.disabled = !valid;
+}
+</script>
+<script>
+function handleSubmit(e) {
+  validateForm();
+  if (document.querySelector('.btn-save').disabled) {
+    e.preventDefault();
+    return false;
+  }
+  return true;
+}
+</script>
+
+
+</html>
