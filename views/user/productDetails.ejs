@@ -459,17 +459,56 @@ body {
 
 
             <!-- ADD TO BAG -->
-            <div class="add-btn" onclick="addToCart()">ADD TO BAG</div>
+<div style="display:flex; align-items:center; gap:14px; margin-top:25px;">
+  <div class="add-btn" onclick="addToCart()">ADD TO BAG</div>
+
+<div
+  onclick="toggleWishlist()"
+  style="cursor:pointer;display:flex;align-items:center;margin-top:21px;"
+  title="Wishlist"
+>
+  <svg
+    id="wishlistIcon"
+    xmlns="http://www.w3.org/2000/svg"
+    width="26"
+    height="26"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#111"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M20.8 4.6c-1.8-1.8-4.7-1.8-6.5 0L12 6.9l-2.3-2.3c-1.8-1.8-4.7-1.8-6.5 0-1.8 1.8-1.8 4.7 0 6.5l8.8 8.8 8.8-8.8c1.8-1.8 1.8-4.7 0-6.5z"/>
+  </svg>
+</div>
+
+
+</div>
+
 
         </div>
 
     </div>
 
     <!-- DESCRIPTION -->
-    <div class="desc-section">
-        <div class="desc-title">DESCRIPTION & FIT</div>
-        <div class="desc-text"><%= product.description %></div>
-    </div>
+  <div class="desc-section">
+  <div class="desc-title">DESCRIPTION & FIT</div>
+
+  <div
+    class="desc-text"
+    id="productDesc"
+    data-full="<%- product.description %>"
+  ></div>
+
+  <button
+    id="readMoreBtn"
+    style="margin-top:14px;background:none;border:none;color:#000; font-size: 12px ;font-weight: normal;cursor:pointer;display:none; text-decoration: underline;"
+  >
+    READ MORE
+  </button>
+</div>
+
 
     <!-- RECOMMENDATIONS -->
     <div class="recommend-title">You May Also Like</div>
@@ -492,6 +531,7 @@ body {
 
 
 </div>
+<%- include('../partials/user/footer') %>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
@@ -591,7 +631,7 @@ function addToCart() {
   });
 })
 .catch(err => {
-      // ❌ Error handling from backend
+      // Error handling from backend
       msg.innerText = err.message || 'Something went wrong';
       msg.style.display = 'block';
     });
@@ -608,8 +648,77 @@ function addToCart() {
   });
 </script>
 
+<script>
+let isWishlisted = <%= isInWishlist ? 'true' : 'false' %>;
+const productId = "<%= product._id %>";
 
-<%- include('../partials/user/footer') %>
+function updateHeart(active) {
+  const icon = document.getElementById('wishlistIcon');
+  icon.setAttribute('fill', active ? '#111' : 'none');
+  icon.setAttribute('stroke', '#111');
+  isWishlisted = active;
+}
+
+function toggleWishlist() {
+
+
+  const url = isWishlisted ? '/wishlist/remove' : '/wishlist/add';
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (!data.success && !isWishlisted) return;
+
+    updateHeart(!isWishlisted);
+
+    Swal.fire({
+      icon: 'success',
+      title: isWishlisted ? 'Added to wishlist' : 'Removed from wishlist',
+      timer: 1200,
+      showConfirmButton: false
+    });
+  })
+  .catch(() => {
+    Swal.fire({ icon:'error', title:'Something went wrong' });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateHeart(isWishlisted);
+});
+
+</script>
+<script>
+  (function () {
+    const LIMIT = 400;
+    const descEl = document.getElementById('productDesc');
+    const btn = document.getElementById('readMoreBtn');
+
+    if (!descEl) return;
+
+    const fullText = descEl.dataset.full || '';
+    if (fullText.length <= LIMIT) {
+      descEl.textContent = fullText;
+      return;
+    }
+
+    let expanded = false;
+    const shortText = fullText.slice(0, LIMIT) + '...';
+
+    descEl.textContent = shortText;
+    btn.style.display = 'inline';
+
+    btn.addEventListener('click', () => {
+      expanded = !expanded;
+      descEl.textContent = expanded ? fullText : shortText;
+      btn.textContent = expanded ? 'READ LESS' : 'READ MORE';
+    });
+  })();
+</script>
 
 </body>
 </html>

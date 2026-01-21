@@ -30,7 +30,7 @@ const addToCart = async (req, res) => {
       });
     }
 
-    // 🔍 Product validation
+    //Product validation
     const product = await Product.findOne({
       _id: variant.productId,
       isListed: true,
@@ -44,7 +44,7 @@ const addToCart = async (req, res) => {
       });
     }
 
-    // 🔍 Category validation
+    //Category validation
     const category = await Category.findOne({
       _id: product.categoryId,
       isListed: true,
@@ -58,7 +58,7 @@ const addToCart = async (req, res) => {
       });
     }
 
-    // 💰 price resolution
+    //price resolution
     const unitPrice =
       variant.discountPrice && variant.discountPrice > 0
         ? variant.discountPrice
@@ -77,7 +77,7 @@ const addToCart = async (req, res) => {
         i.color === variant.color
     );
 
-    // ➕ Increase quantity
+    //increase quantity
     if (existingItem) {
       if (existingItem.quantity >= MAX_QTY_PER_PRODUCT) {
         return res.status(400).json({
@@ -96,7 +96,7 @@ const addToCart = async (req, res) => {
       existingItem.quantity += 1;
       existingItem.totalPrice = existingItem.quantity * unitPrice;
     } 
-    // ➕ New item
+    //new item
     else {
       cart.items.push({
         productId: product._id,
@@ -110,7 +110,7 @@ const addToCart = async (req, res) => {
 
     await cart.save();
 
-    // ❌ Remove from wishlist if exists
+    // remove from wishlist if exists
     await Wishlist.updateOne(
       { userId },
       { $pull: { products: { productId: product._id } } }
@@ -124,9 +124,7 @@ const addToCart = async (req, res) => {
   }
 };
 
-/**
- * 🛒 LOAD CART
- */
+
 const loadCart = async (req, res) => {
   try {
     const userId = req.session.user;
@@ -274,9 +272,7 @@ item.totalPrice = newQty * item.price;
   }
 };
 
-/**
- * ❌ REMOVE ITEM
- */
+
 const removeCartItem = async (req, res) => {
   try {
     const userId = req.session.user;

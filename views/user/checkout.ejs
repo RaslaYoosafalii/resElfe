@@ -243,23 +243,45 @@ body {
       <!-- ADDRESS -->
       <div class="address-box">
         <h3>Select Delivery Address</h3>
-        
-<% addresses.address.forEach((a, i) => { %>
-  <div class="address-item">
-    <input 
-      type="radio"
-      name="addressId"
-      value="<%= i %>"
-      <%= i === 0 ? 'checked' : '' %>
-    >
-    <div>
-      <strong><%= a.name %></strong><br>
-      <%= a.address %>, <%= a.locality %>, <%= a.city %><br>
-      <%= a.state %> - <%= a.pincode %><br>
-      📞 <%= a.mobileNumber %>
-    </div>
+
+
+<% if (!addresses || !addresses.address?.length) { %>
+  <div style="
+    margin-top:12px;
+    padding:12px;
+    border:1px dashed #aaa;
+    border-radius:6px;
+    color:#555;
+    font-size:14px;
+  ">
+    No delivery address found.  
+    <strong>Please add an address to continue checkout.</strong>
   </div>
-<% }) %>
+<% } %>
+
+<% if (addresses && Array.isArray(addresses.address) && addresses.address.length) { %>
+  <% addresses.address.forEach((a, i) => { %>
+    <div class="address-item">
+      <input 
+        type="radio"
+        name="addressId"
+        value="<%= i %>"
+        <%= i === 0 ? 'checked' : '' %>
+      >
+      <div>
+        <strong><%= a.name %></strong><br>
+        <%= a.address %>, <%= a.locality %>, <%= a.city %><br>
+        <%= a.state %> - <%= a.pincode %><br>
+        📞 <%= a.mobileNumber %>
+      </div>
+    </div>
+  <% }) %>
+<% } else { %>
+  <p style="color:#777;margin-top:10px;">
+    No saved addresses. Please add a delivery address to continue.
+  </p>
+<% } %>
+
 
 <button class="btn btn-outline" onclick="openAddAddressModal()">
   Add New Address
@@ -300,31 +322,47 @@ body {
 
     <!-- RIGHT -->
     <div>
-      <div class="summary-box">
-        <h3>Price Summary</h3>
+<div class="summary-box">
+  <h3>Price Summary</h3>
 
-        <div class="summary-row">
-          <span>MRP Total</span>
-          <span>Rs. <%= summary.baseTotal %></span>
-        </div>
+  <% if (summary) { %>
 
-        <div class="summary-row">
-          <span>Discount</span>
-          <span>-<%= summary.discountPct %>%</span>
-        </div>
+    <div class="summary-row">
+      <span>MRP Total</span>
+      <span>Rs. <%= summary.baseTotal %></span>
+    </div>
 
-        <div class="summary-row">
-          <span>Shipping</span>
-          <span>Free</span>
-        </div>
+    <div class="summary-row">
+      <span>Discount</span>
+      <span>-<%= summary.discountPct %>%</span>
+    </div>
 
-        <div class="summary-row">
-          <strong>Payable</strong>
-          <strong>Rs. <%= summary.finalTotal %></strong>
-        </div>
+    <div class="summary-row">
+      <span>Shipping</span>
+      <span>Free</span>
+    </div>
 
-        <button class="place-btn" onclick="placeOrder()">Place Order</button>
-      </div>
+    <div class="summary-row">
+      <strong>Payable</strong>
+      <strong>Rs. <%= summary.finalTotal %></strong>
+    </div>
+
+  <% } else { %>
+
+    <p style="color:#777;font-size:14px;margin-top:10px;">
+      Price summary will appear after adding a delivery address.
+    </p>
+
+  <% } %>
+
+  <button
+    class="place-btn"
+    <%= !addresses || !addresses.address?.length ? 'disabled' : '' %>
+    onclick="placeOrder()">
+    Place Order
+  </button>
+</div>
+
     </div>
 
   </div>
@@ -653,7 +691,7 @@ document.getElementById('addAddressForm')?.addEventListener('submit', async e =>
 });
 </script>
 <script>
-const addresses = <%- JSON.stringify(addresses.address) %>;
+const addresses = <%- JSON.stringify(addresses?.address || []) %>;
 
 function editSelectedAddress() {
   const selected = document.querySelector('input[name="addressId"]:checked');

@@ -8,33 +8,39 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #fff;
+  background: #769a6f;
 }
 
 .wrapper {
-  max-width: 600px;
+  max-width: 100%;
   margin: 120px auto;
   text-align: center;
 }
 
 .illustration {
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
   margin: 0 auto 25px;
   border-radius: 50%;
-  background: #f3f3f3;
+  background: #688761;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 50px;
+  font-size: 80px;
 }
 
-h2 {
+h3 {
   margin-bottom: 10px;
+  font-size: 30px;
+  color: rgb(30, 29, 29);;
 }
 
-p {
-  color: #666;
+h1 {
+  color: #f1f1f1;
+  opacity: 50%;
+  margin-top: 18px;
+  font-size: 60px;
+
 }
 
 .btn {
@@ -47,13 +53,16 @@ p {
 }
 
 .btn-dark {
-  background: black;
+  background: rgb(39, 37, 37);
   color: white;
+  padding-left: 45px;
+  padding-right: 45px;
+  
 }
 
 .btn-outline {
-  background: white;
-  border: 1px solid black;
+  background:  #769a6f;
+  border: 0.5px solid rgb(42, 41, 41);
 }
 </style>
 </head>
@@ -61,14 +70,16 @@ p {
 <body>
 
 <div class="wrapper">
-  <div class="illustration">✔</div>
+  <div class="illustration" style="margin-top: 220px; ;">✔️</div>
 
-  <h2>Thank You for Your Order!</h2>
-  <p>Your order has been placed successfully.</p>
+  <h3>Thank You for Your Order!</h2>
+  <h1>Your order has been placed successfully.</h3>
 
-  <button class="btn btn-dark" onclick="window.location.href='/orders'">
-    View Order
-  </button>
+<button class="btn btn-dark"
+ onclick="window.location.href='/orders?open=<%= orderId %>'">
+ View Order
+</button>
+
 
   <br><br>
 
@@ -76,6 +87,11 @@ p {
     Continue Shopping
   </button>
 </div>
+<script>
+history.pushState(null,null,location.href);
+window.onpopstate = function(){ history.go(1); };
+</script>
 
 </body>
+
 </html>

@@ -139,7 +139,7 @@ const placeOrder = async (req, res) => {
 
     res.json({
       success: true,
-      orderId: order._id
+      orderId: order.orderId
     });
 
   } catch (err) {
@@ -151,6 +151,7 @@ const placeOrder = async (req, res) => {
 const orderSuccess = async (req, res) => {
   res.render('order-success', { orderId: req.params.orderId });
 };
+
 const loadOrders = async (req, res) => {
   try {
     const userId = req.session.user;
@@ -159,6 +160,7 @@ const loadOrders = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const total = await Order.countDocuments({ userId });
+
       const orders = await Order.find({ userId })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -168,7 +170,8 @@ const loadOrders = async (req, res) => {
     res.render('orders', { 
         orders,
         currentPage: page,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit),
+        user: req.user  
      });
 
   } catch (err) {
@@ -176,6 +179,7 @@ const loadOrders = async (req, res) => {
     res.redirect('/pageNotFound');
   }
 };
+
 const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -194,6 +198,7 @@ const getOrderDetails = async (req, res) => {
     res.status(500).send('Something went wrong');
   }
 };
+
 const cancelOrder = async (req, res) => {
   try {
     const userId = req.session.user;
@@ -212,7 +217,7 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    // 🔁 Cancel specific product
+   //cancel single product
     if (productId) {
       const item = order.orderedItem.find(
         i => i.product.toString() === productId
@@ -222,6 +227,14 @@ const cancelOrder = async (req, res) => {
         return res.json({ success: false, message: 'Invalid item' });
       }
 
+
+      if (['delivered', 'returnRequested', 'returned'].includes(item.orderStatus)) {
+  return res.json({
+    success: false,
+    message: 'Delivered or returned items cannot be cancelled'
+  });
+}
+      // cancel ONLY this item
       item.orderStatus = 'cancelled';
       item.cancellationReason = reason || '';
 
@@ -229,30 +242,57 @@ const cancelOrder = async (req, res) => {
         { productId: item.product },
         { $inc: { stock: item.quantity } }
       );
-    } 
-    // after item cancellation
-    const activeItems = order.orderedItem.filter(
-      i => i.orderStatus !== 'cancelled'
-    );
+ 
+
+
+//recalculate order status
+const activeItems = order.orderedItem.filter(
+  i => i.orderStatus !== 'cancelled'
+);
 
 if (activeItems.length === 0) {
   order.orderStatus = 'cancelled';
+} else if (activeItems.some(i => i.orderStatus === 'out for delivery')) {
+  order.orderStatus = 'out for delivery';
+} else if (activeItems.some(i => i.orderStatus === 'shipped')) {
+  order.orderStatus = 'shipped';
+} else {
+  order.orderStatus = 'pending';
 }
 
-    // 🔁 Cancel entire order
-    else {
-      order.orderStatus = 'cancelled';
 
-      for (const item of order.orderedItem) {
-        if (item.orderStatus !== 'cancelled') {
-          item.orderStatus = 'cancelled';
-          item.cancellationReason = reason || '';
+//recalculate price box( exclude cancelled product )   
+const payableItems = order.orderedItem.filter(
+  i => i.orderStatus !== 'cancelled'
+);
 
-          await Varient.updateOne(
-            { productId: item.product },
-            { $inc: { stock: item.quantity } }
-          );
-        }
+const newItemsTotal = payableItems.reduce(
+  (sum, i) => sum + i.offerPrice,
+  0
+);
+
+order.itemsTotal = newItemsTotal;
+order.finalPrice =
+  newItemsTotal - order.discount + order.shippingCharge;
+
+
+      await order.save();
+      return res.json({ success: true });
+    }
+
+
+     //cancel entire order  
+    order.orderStatus = 'cancelled';
+
+    for (const item of order.orderedItem) {
+      if (item.orderStatus !== 'cancelled') {
+        item.orderStatus = 'cancelled';
+        item.cancellationReason = reason || '';
+
+        await Varient.updateOne(
+          { productId: item.product },
+          { $inc: { stock: item.quantity } }
+        );
       }
     }
 
@@ -264,43 +304,14 @@ if (activeItems.length === 0) {
     res.json({ success: false, message: 'Cancellation failed' });
   }
 };
+
 const returnOrder = async (req, res) => {
-  try {
-    const userId = req.session.user;
-    const { orderId, reason } = req.body;
-
-    if (!reason || !reason.trim()) {
-      return res.json({
-        success: false,
-        message: 'Return reason is required'
-      });
-    }
-
-    const order = await Order.findOne({ orderId, userId });
-
-    if (!order || order.orderStatus !== 'delivered') {
-      return res.json({
-        success: false,
-        message: 'Return not allowed'
-      });
-    }
-
-    order.orderStatus = 'returnRequested';
-
-    order.orderedItem.forEach(item => {
-      item.returnReason = reason;
-      item.orderStatus = 'returnRequested';
-    });
-
-    await order.save();
-
-    res.json({ success: true });
-
-  } catch (err) {
-    console.error('returnOrder error', err);
-    res.json({ success: false, message: 'Return request failed' });
-  }
+  return res.json({
+    success: false,
+    message: 'Please return items individually'
+  });
 };
+
 
 const returnSingleItem = async (req, res) => {
   try {
@@ -325,11 +336,6 @@ const returnSingleItem = async (req, res) => {
     item.orderStatus = 'returnRequested';
     item.returnReason = reason;
 
-    await Varient.updateOne(
-      { productId: item.product },
-      { $inc: { stock: item.quantity } }
-    );
-
     await order.save();
     res.json({ success: true });
 
@@ -347,7 +353,8 @@ const downloadInvoice = async (req, res) => {
     const order = await Order.findOne({ orderId, userId }).lean();
     if (!order) return res.status(404).send('Order not found');
 
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
+
     res.setHeader(
       'Content-Disposition',
       `attachment; filename=invoice-${order.orderId}.pdf`
@@ -356,22 +363,139 @@ const downloadInvoice = async (req, res) => {
 
     doc.pipe(res);
 
-    doc.fontSize(20).text('INVOICE', { align: 'center' });
-    doc.moveDown();
+    //header
+    doc
+      .font('Helvetica')
+      .fontSize(22)
+      .text('ELFE LOREINVEIL', { align: 'center' });
 
-    doc.fontSize(12).text(`Order ID: ${order.orderId}`);
-    doc.text(`Order Date: ${new Date(order.orderDate).toDateString()}`);
-    doc.text(`Payment Method: ${order.paymentMethod}`);
-    doc.moveDown();
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(18)
+      .text('INVOICE', { align: 'center' });
+
+    doc.moveDown(1);
+
+     //customer details
+    const addr = order.address;
+
+    doc.font('Helvetica').fontSize(11);
+    doc.text(`Order ID: ${order.orderId}`);
+    doc.text(`Date: ${new Date(order.orderDate).toLocaleDateString()}`);
+    doc.text(`Customer: ${addr.name}`);
+    doc.text(`Phone: ${addr.mobileNumber}`);
+    doc.text(
+      `Address: ${addr.address}, ${addr.locality}, ${addr.city}, ${addr.state} - ${addr.pincode}`
+    );
+
+    doc.moveDown(2);
+
+    //table header
+    const tableTop = doc.y;
+    const itemX = 50;
+    const qtyX = 300;
+    const priceX = 360;
+    const totalX = 450;
+    const rowHeight = 24;
+
+    doc
+      .rect(itemX, tableTop, 500, rowHeight)
+      .fill('#eeeeee')
+      .stroke();
+
+    doc
+      .fillColor('#000')
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .text('Item', itemX + 5, tableTop + 7)
+      .text('Qty', qtyX, tableTop + 7)
+      .text('Price', priceX, tableTop + 7)
+      .text('Total', totalX, tableTop + 7);
+
+    doc.font('Helvetica');
+
+    //table rows
+    let y = tableTop + rowHeight;
+    let subtotal = 0;
 
     order.orderedItem.forEach(item => {
-      doc.text(
-        `${item.productName} | Qty: ${item.quantity} | ₹${item.offerPrice}`
-      );
+      subtotal += item.offerPrice;
+
+      doc.rect(itemX, y, 500, rowHeight).stroke();
+
+      doc
+        .fontSize(11)
+        .text(item.productName, itemX + 5, y + 7)
+        .text(item.quantity.toString(), qtyX, y + 7)
+        .text(item.price.toString(), priceX, y + 7)
+        .text(`Rs.${item.offerPrice}`, totalX, y + 7);
+
+      y += rowHeight;
     });
 
-    doc.moveDown();
-    doc.text(`Total Amount: ₹${order.finalPrice}`, { bold: true });
+    doc.moveDown(3);
+
+
+    // Determine invoice payment status
+const isFullyCancelled =
+  order.orderStatus === 'cancelled' ||
+  order.orderedItem.every(i => i.orderStatus === 'cancelled');
+
+const invoicePaymentStatus = isFullyCancelled
+  ? 'Not Paid'
+  : order.paymentStatus;
+
+
+
+// Y position just below the table
+const summaryY = y + 20;
+
+// LEFT BLOCK — Payment info
+const leftX = 50;
+
+doc
+  .font('Helvetica')
+  .fontSize(11)
+  .text(`Payment Method: ${order.paymentMethod}`, leftX, summaryY)
+  .text(`Payment Status: ${invoicePaymentStatus}`, leftX, summaryY + 16)
+  .text(`Order Status: ${order.orderStatus}`, leftX, summaryY + 32);
+
+// right block — Price summary
+const rightX = 360;
+
+doc
+  .font('Helvetica')
+  .fontSize(11)
+  .text(`Subtotal: Rs.${subtotal}`, rightX, summaryY)
+  .text(`Discount: Rs.${order.discount}`, rightX, summaryY + 16)
+  .font('Helvetica-Bold')
+  .text(`Final Amount: Rs.${order.finalPrice}`, rightX, summaryY + 32);
+
+
+// Thank you message
+doc
+  .font('Helvetica')
+  .fontSize(12)
+  .fillColor('#000')
+  .text(
+    'Thank you for shopping with us!',
+    0,
+    summaryY + 80,
+    { align: 'center' }
+  );
+
+// Website (light)
+doc
+  .moveDown(0.5)
+  .font('Helvetica')
+  .fontSize(9)
+  .fillColor('#888')
+  .text(
+    'www.elfein.com',
+    { align: 'center' }
+  )
+  .fillColor('#000'); // reset color
+
 
     doc.end();
 
@@ -380,6 +504,30 @@ const downloadInvoice = async (req, res) => {
     res.status(500).send('Invoice generation failed');
   }
 };
+const cancelReturnRequest = async (req, res) => {
+  const { orderId, productId } = req.body;
+  const userId = req.session.user;
+
+  const order = await Order.findOne({ orderId, userId });
+  if (!order) return res.json({ success:false });
+
+  const item = order.orderedItem.find(
+    i => i.product.toString() === productId
+  );
+
+  if (!item || item.orderStatus !== 'returnRequested') {
+    return res.json({ success:false });
+  }
+
+  item.orderStatus = 'delivered';
+  item.returnReason = '';
+
+  await order.save();
+  res.json({ success:true });
+};
+
+
+
 
 
 export {
@@ -391,7 +539,8 @@ export {
   cancelOrder,
   returnOrder,
   returnSingleItem,
-  downloadInvoice
+  downloadInvoice,
+  cancelReturnRequest
 };
 
 export default {
@@ -403,5 +552,6 @@ export default {
   cancelOrder,
   returnOrder,
   returnSingleItem,
-  downloadInvoice
+  downloadInvoice,
+  cancelReturnRequest
 };

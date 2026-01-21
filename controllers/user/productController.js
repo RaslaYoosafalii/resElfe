@@ -1,6 +1,9 @@
 // controllers/user/productController.js
 import { Product, Varient } from '../../models/productSchema.js';
 import { Category, SubCategory } from '../../models/categorySchema.js';
+import Wishlist from '../../models/wishlistSchema.js';
+import Cart from '../../models/cartSchema.js';
+
 import mongoose from 'mongoose';
 
 function parseQuery(req) {
@@ -430,13 +433,37 @@ const recommendations = await Product.aggregate([
 ]);
 
 
+const userId = req.session.user;
+
+let isInWishlist = false;
+let isInCart = false;
+
+if (userId) {
+  const wishlist = await Wishlist.findOne({
+    userId,
+    'products.productId': product._id
+  }).lean();
+
+  isInWishlist = !!wishlist;
+
+  const cart = await Cart.findOne({
+    userId,
+    'items.productId': product._id
+  }).lean();
+
+  isInCart = !!cart;
+}
+
+
     return res.render('productDetails', {
       product,
       variants,
       sizeVariants,
       category,
       subcategory,
-      recommendations
+      recommendations,
+      isInWishlist,
+      isInCart
     });
 
   } catch (err) {

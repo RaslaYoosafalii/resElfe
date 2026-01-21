@@ -40,7 +40,7 @@ const orderSchema = new Schema({
         },
         orderStatus: {
             type: String,
-            enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'returnRequested','rejected', 'returned','failed'],
+            enum: ['pending','shipped','out for delivery', 'delivered', 'cancelled', 'returnRequested','rejected', 'returned','failed'],
             default: 'pending'
         }, 
         returnReason: {   
@@ -91,7 +91,7 @@ const orderSchema = new Schema({
     orderStatus: {
         type: String,
         required: true,
-        enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'returnRequested', 'returned','failed'],
+        enum: ['pending','shipped','out for delivery', 'delivered', 'cancelled', 'returnRequested', 'returned','failed'],
         default: 'pending'
     },
     createdAt: {

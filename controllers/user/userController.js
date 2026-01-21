@@ -30,7 +30,10 @@ const loadHome = async (req, res) => {
       const userData = await User.findById(user);
       res.render('loggedinHome', { user: userData });
     } else {
-      res.render('homepage');
+      res.render('homepage', {
+  query: req.query
+});
+
     }
   } catch (error) {
     console.log('home page not found');
@@ -281,12 +284,31 @@ const forgotChangePassword = async (req, res) => {
     req.session.resetOtp = null;
     req.session.otpCreatedAt = null;
 
+
+// detect fetch / ajax request
+if (req.headers['content-type']?.includes('application/json')) {
+  return res.json({
+    success: true,
+    message: 'Password changed successfully',
+    redirectUrl: '/login'
+  });
+}
+
   return res.render('profile-reset-password', {
   success: true
 });
 
   } catch (error) {
+
     console.error('forgotChangePassword error', error);
+
+  if (req.headers['content-type']?.includes('application/json')) {
+  return res.status(500).json({
+    success: false,
+    message: 'Unable to change password. Please try again later.'
+  });
+}
+
     return res.render('change-password', {
       message: 'Server error. Please try again.'
     });
@@ -508,11 +530,13 @@ const loadUserprofile = async (req, res) => {
     const addressData = await Address.findOne({ userId }).lean();
     const orders = await Order.find({ userId }).sort({ createdAt: -1 }).lean();
 
-    res.render('profile', {
-      user,
-      addresses: addressData?.address || [],
-      orders
-    });
+   res.render('profile', {
+  user,
+  addresses: addressData?.address || [],
+  orders,
+  passwordChanged: req.query.passwordChanged === '1'
+});
+
   } catch (error) {
     console.error('loadUserprofile error', error);
     res.redirect('/pageNotFound');
@@ -538,7 +562,7 @@ const updateProfile = async (req, res) => {
 
     const user = await User.findById(userId);
    const file = req.file;
-    // 🔐 EMAIL CHANGE DETECTED → OTP FLOW
+    // email change detect-> otp flow
     if (email && email !== user.email) {
       const existing = await User.findOne({ email: email.toLowerCase() });
       if (existing) {
@@ -591,7 +615,7 @@ if (
       });
     }
 
-// ===== PROFILE IMAGE HANDLING =====
+// profile image handling
 let imageUpdated = false;
 
 if (file) {
@@ -633,6 +657,17 @@ if (
   String(mobileNumber) !== String(user.mobileNumber || '')
 ) {
   updatedFields.add('number');
+}
+// apply changes
+if (name && name !== user.name) {
+  user.name = name;
+}
+
+if (
+  mobileNumber &&
+  String(mobileNumber) !== String(user.mobileNumber || '')
+) {
+  user.mobileNumber = mobileNumber;
 }
 
 
@@ -911,12 +946,14 @@ const profileForgotPasswordRequest = async (req, res) => {
 
     const otp = generateOTP();
 
-    req.session.profileReset = {
-      email: user.email,
-      otp,
-      otpCreatedAt: Date.now(),
-      otpLastSentAt: Date.now()
-    };
+req.session.profileReset = {
+  email: user.email,
+  otp,
+  otpCreatedAt: Date.now(),
+  otpLastSentAt: Date.now(),
+  allowed: true
+};
+
 
     await sendVerificationEmail(user.email, otp);
     console.log('profile forgot password otp:', otp);
@@ -938,6 +975,11 @@ const profileForgotPasswordRequest = async (req, res) => {
 const profileForgotVerifyOtp = async (req, res) => {
   const { otp } = req.body;
   const reset = req.session.profileReset;
+
+
+  if (!reset || !reset.allowed) {
+  return res.redirect('/profile/change-password');
+}
 
   if (!reset) {
     return res.render('profile-forgot-password', {
@@ -961,6 +1003,10 @@ const profileForgotResetPassword = async (req, res) => {
   const { newPassword, confirmPassword } = req.body;
   const reset = req.session.profileReset;
 
+ if (!req.session.profileReset || !req.session.profileReset.allowed) {
+  return res.redirect('/profile/change-password');
+}
+
   if (!reset) {
     return res.render('profile-forgot-password', {
       message: 'Session expired'
@@ -978,11 +1024,11 @@ const profileForgotResetPassword = async (req, res) => {
     { password: await bcrypt.hash(newPassword, 10) }
   );
 
-  req.session.profileReset = null;
 
-  res.render('profile-reset-password', {
-    success: true
-  });
+req.session.profileReset = null;
+
+return res.redirect('/profile?passwordChanged=1');
+
 };
 
 
@@ -1195,25 +1241,24 @@ const deleteAddress = async (req, res) => {
 
 
 
-
 const logout = async (req, res) => {
   try {
-    req.session.destroy(() => {
-      res.clearCookie('connect.sid', { path: '/' });
-      res.setHeader(
-        'Cache-Control',
-        'no-store, no-cache, must-revalidate, proxy-revalidate, private'
-      );
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      
-      return res.redirect('/');
-    });
+    delete req.session.user; 
+
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate, private'
+    );
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    return res.redirect('/');
   } catch (error) {
     console.log('Logout Error', error);
     res.redirect('/pageNotFound');
   }
 };
+
 
 export {
   loadHome,

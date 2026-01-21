@@ -5,6 +5,7 @@ import userController from '../controllers/user/userController.js'
 import productController from '../controllers/user/productController.js'
 import cartController from '../controllers/user/cartController.js'
 import orderController from '../controllers/user/orderController.js';
+import wishlistController from '../controllers/user/wishlistController.js';
 import passport from '../config/passport.js'
 import {userAuth, noCache} from "../middlewares/auth.js"
 import { upload } from '../config/upload.js';
@@ -14,13 +15,13 @@ router.get('/pageNotFound', userController.pageNotFound);
 router.get('/', noCache, userController.loadHome);
 
 router.get('/signup',userController.loadSignupPage);
-router.post('/signup', (req, res, next) => { console.log('[ROUTE] POST /signup', req.body?.email); next(); }, userController.signup);
+router.post('/signup', (req, res, next) => { console.log('POST /signup', req.body?.email); next(); }, userController.signup);
 
 router.post('/verify-otp', userController.verifyOtp)
 router.post('/resend-otp', userController.resendOtp);
 
 router.get('/login',noCache, userController.loadLoginPage)
-router.post('/login', (req, res, next) => { console.log('[ROUTE] POST /login', req.body?.email); next(); }, userController.login);
+router.post('/login', (req, res, next) => { console.log('POST /login', req.body?.email); next(); }, userController.login);
 
 router.get('/forgot-password', (req,res) => res.render('forgot-password'));
 router.post('/forgot-password', userController.forgotPasswordRequest);
@@ -43,19 +44,22 @@ router.get('/auth/google/callback', passport.authenticate('google', {failureRedi
     }
 })
 
-router.get('/products', noCache, userAuth, productController.listProducts);        // All products page
+//product management
+router.get('/products', noCache, userAuth, productController.listProducts);        
 router.get('/product/:id',noCache, userAuth, productController.productDetails); 
 
+
+//profile management
 router.get('/profile', noCache, userAuth, userController.loadUserprofile);
 router.get('/profile/change-password',noCache,userAuth,userController.loadChangePassword);
-router.post('/profile/change-password', userAuth, userController.changeProfilePassword);
-router.get('/profile/forgot-password', userController.loadProfileForgotPassword)
-router.post('/profile/forgot-password', userController.profileForgotPasswordRequest)
-router.post('/profile/forgot-password/verify', userController.profileForgotVerifyOtp)
-router.post('/profile/forgot-password/reset', userController.profileForgotResetPassword)
-router.post('/profile/change-email',userAuth,userController.requestEmailChange);
-router.post('/profile/verify-email-otp',userAuth,userController.verifyEmailChangeOtp);
-router.post('/profile/edit',userAuth, upload.single('profileImage'), userController.updateProfile);
+router.post('/profile/change-password', userAuth, noCache,userController.changeProfilePassword);
+router.get('/profile/forgot-password',userAuth, noCache, userController.loadProfileForgotPassword)
+router.post('/profile/forgot-password', userAuth, noCache, userController.profileForgotPasswordRequest)
+router.post('/profile/forgot-password/verify',userAuth, noCache,  userController.profileForgotVerifyOtp)
+router.post('/profile/forgot-password/reset',userAuth, noCache, userController.profileForgotResetPassword)
+router.post('/profile/change-email',userAuth, noCache, userController.requestEmailChange);
+router.post('/profile/verify-email-otp',userAuth, noCache, userController.verifyEmailChangeOtp);
+router.post('/profile/edit',userAuth, noCache, upload.single('profileImage'), userController.updateProfile);
 router.get('/profile/edit', noCache, userAuth, userController.loadEditProfile);
 router.delete('/profile/delete-image',userAuth,userController.deleteProfileImage);
 
@@ -78,16 +82,22 @@ router.post('/cart/remove',userAuth, cartController.removeCartItem);
 // checkout management
 router.get('/checkout', noCache, userAuth, orderController.loadCheckout);
 router.post('/order/place', userAuth, orderController.placeOrder);
-router.get('/order/success/:orderId', userAuth, orderController.orderSuccess);
+router.get('/order/success/:orderId', noCache, userAuth, orderController.orderSuccess);
+
 
 //order management
-
 router.get('/orders', userAuth, orderController.loadOrders);
 router.get('/orders/:orderId', userAuth, orderController.getOrderDetails);
 router.post('/orders/cancel', userAuth, orderController.cancelOrder);
 router.post('/orders/return', userAuth, orderController.returnOrder);
 router.get('/orders/invoice/:orderId', userAuth, orderController.downloadInvoice);
 router.post('/orders/return-item', userAuth, orderController.returnSingleItem);
+router.post('/orders/cancel-return', userAuth, orderController.cancelReturnRequest);
+
+// wishlist
+router.get('/wishlist', userAuth, wishlistController.loadWishlist);
+router.post('/wishlist/add', userAuth, wishlistController.addToWishlist);
+router.post('/wishlist/remove', userAuth, wishlistController.removeFromWishlist);
 
 
 export default router;

@@ -137,6 +137,7 @@ const customerInfo = async (req, res) => {
     const totalPages = Math.max(Math.ceil(total / limit), 1);
 
     return res.render('customers', {
+      allowRender: true,
       adminUser: req.session.admin || null,
       customers,
       pagination: {

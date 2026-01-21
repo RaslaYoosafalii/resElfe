@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Order Details</title>
+
+<style>
+.container{max-width:1000px;margin:40px auto;font-family:Arial}
+.item{display:flex;gap:15px;margin-bottom:15px}
+.item img{width:80px;height:100px;object-fit:cover;border-radius:6px}
+.badge{padding:4px 10px;border-radius:14px;background:#eee}
+</style>
+</head>
+
+<body>
+
+
+<div class="container">
+<h2>Order <%= order.orderId %></h2>
+
+<p>
+Order Date: <%= new Date(order.orderDate).toDateString() %><br>
+Payment: <%= order.paymentMethod %> | <%= order.paymentStatus %><br>
+Status: <%= order.orderStatus %>
+<% if(order.deliveredOn){ %>
+<br>Delivered On: <%= new Date(order.deliveredOn).toDateString() %>
+<% } %>
+</p>
+
+<h3>Delivery Address</h3>
+<p>
+<%= order.address.name %>, <%= order.address.address %>,
+<%= order.address.city %> - <%= order.address.pincode %>
+</p>
+
+<h3>Items</h3>
+
+<% order.orderedItem.forEach(i => { %>
+<div class="item">
+  <img src="/uploads/products/<%= i.productImages[0] %>">
+
+  <div>
+    <strong><%= i.productName %></strong><br>
+    Qty: <%= i.quantity %><br>
+    Price: ₹<%= i.offerPrice %><br>
+    <span class="badge"><%= i.orderStatus %></span><br><br>
+ 
+<% if (i.orderStatus === 'delivered') { %>
+  <button class="btn btn-dark"
+    onclick="returnItem('<%= order.orderId %>', '<%= i.product %>')">
+    Return Item
+  </button>
+<% } %>
+
+<% if (i.orderStatus === 'returnRequested') { %>
+  <button class="btn btn-outline"
+    onclick="cancelReturn('<%= order.orderId %>', '<%= i.product %>')">
+    Cancel Return Request
+  </button>
+<% } %>
+
+
+
+  </div>
+</div>
+<% }) %>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+
+</body>
+</html>

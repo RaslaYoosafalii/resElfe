@@ -18,7 +18,7 @@
       list-style: none;
       gap: 25px;
     }
-
+   
     .navbar a {
       text-decoration: none;
       color: #615A5A;
@@ -39,13 +39,15 @@
         <li><a href="/">Home</a></li>
         <li><a href="#">New Arrivals</a></li>
         <li><a href="/products">All Products</a></li>
-        <li><a href="#">Wishlist</a></li>
+        <li><a href="/wishlist">Wishlist</a></li>
         <li><a href="/cart">Your Cart</a></li>
-        <li><a href="/profile">profile</a></li>
-        <li><a href="/logout" class="btn">logout</a></li>
+        <li><a href="/profile">Profile</a></li>
+        <li><a href="/logout" class="btn logout-btn">Logout</a></li>
       </ul>
     </nav>
   </header>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
    <script>
   window.history.replaceState(null, null, window.location.href);
 </script>
@@ -56,4 +58,30 @@
     }
   });
 </script>
+<script>
+  document.addEventListener('click', function (e) {
+    const logoutLink = e.target.closest('.logout-btn');
+    if (!logoutLink) return;
+
+    e.preventDefault();
+
+    Swal.fire({
+      title: 'Confirm Logout',
+      text: 'Are you sure you want to logout?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, logout',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#484848',
+      cancelButtonColor: '#aaa',
+      reverseButtons: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = logoutLink.getAttribute('href');
+      }
+    });
+  });
+</script>
+
+
 

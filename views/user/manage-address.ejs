@@ -21,6 +21,7 @@
       display: flex;
       padding: 40px 60px;
       gap: 40px;
+       align-items: flex-start; 
     }
 
     /* ===== SIDEBAR (UNCHANGED) ===== */
@@ -194,23 +195,7 @@
   <div class="profile-wrapper">
 
     <!-- ===== SIDEBAR ===== -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="avatar-small"></div>
-        <strong><%= user?.name || 'User' %></strong>
-      </div>
-
-      <ul class="sidebar-menu">
-        <li><a href="/profile">Profile</a></li>
-        <li><a href="#">Coupon</a></li>
-        <li><a href="#">Referral Code</a></li>
-        <li><a href="#">My Orders</a></li>
-        <li><a href="#">Wallet</a></li>
-        <li><a class="active" href="/address">Address</a></li>
-        <li><a href="#">Delete Account</a></li>
-        <li><a href="/logout">Logout</a></li>
-      </ul>
-    </aside>
+  <%- include('../partials/user/profileSidebar') %>
 
     <!-- ===== ADDRESS CONTENT ===== -->
     <section class="profile-card">

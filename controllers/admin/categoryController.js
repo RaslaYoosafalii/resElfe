@@ -10,13 +10,12 @@ function parsePaging(req) {
   return { page, limit, q };
 }
 
-// Show category list, subcategories and simple actions
+
 const listCategories = async (req, res) => {
   try {
     const { page, limit, q } = parsePaging(req);
 
-    // build filter (search by name OR description; case-insensitive)
-    
+  
     const filter = { isDeleted: { $ne: true } };
 
     if (q) {
@@ -62,6 +61,7 @@ const listCategories = async (req, res) => {
     req.session.message = null;
     
     return res.render('categories', {
+      allowRender: true, 
       categories: categoriesWithMeta,
       message,
       pagination: {
@@ -193,6 +193,7 @@ const createCategory = async (req, res) => {
     const { name, description } = req.body;
     if (!name || !description) {
       return res.render('admin/categories', {
+         allowRender: true, 
         categories: [],
         message: 'Name and description are required'
       });
@@ -202,6 +203,7 @@ const createCategory = async (req, res) => {
     if (exists) {
       console.log('createCategory failed: category exists named', name);
       return res.render('admin/categories', {
+         allowRender: true,
         categories: [],
         message: 'Category already exists'
       });
@@ -277,7 +279,7 @@ const toggleCategoryList = async (req, res) => {
   }
 };
 
-// Set or clear an offer for a category
+
 const setCategoryOffer = async (req, res) => {
   try {
     const id = req.params.id;
@@ -305,6 +307,7 @@ const setCategoryOffer = async (req, res) => {
     const numericValue = Number(valueTrim);
     if (Number.isNaN(numericValue) || numericValue < 0) {
       return res.render('categories', {
+         allowRender: true,
         categories: [],
         message: 'Invalid offer value'
       });
@@ -313,6 +316,7 @@ const setCategoryOffer = async (req, res) => {
     if (offerType === 'percent') {
       if (numericValue <= 0 || numericValue > 100) {
         return res.render('categories', {
+           allowRender: true,
           categories: [],
           message: 'Percentage must be between 1 and 100'
         });
@@ -498,6 +502,7 @@ const listDeletedCategories = async (req, res) => {
       .lean();
 
     return res.render('categories-deleted', {
+       allowRender: true,
       categories
     });
   } catch (err) {

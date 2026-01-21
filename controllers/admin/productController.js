@@ -68,6 +68,7 @@ let findFilter = { isDeleted: { $ne: true } };
     });
 
     return res.render("products-list", {
+      allowRender: true,
       products: filteredProducts,
       page,
       totalPages,
@@ -88,7 +89,7 @@ const loadAddProduct = async (req, res) => {
 const categories = await Category.find({isDeleted: { $ne: true },isListed: true}).lean();
     // optionally fetch subcategories list too
     const subcategories = await SubCategory.find().lean();
-    return res.render('product-add', { categories, subcategories, message: null });
+    return res.render('product-add', {allowRender: true, categories, subcategories, message: null });
   } catch (err) {
     console.error('loadAddProduct error:', err);
     return res.status(500).render('error-page', { message: 'Failed to load add product page' });
@@ -113,12 +114,12 @@ const addProduct = [
       if (!productName || !description || !categoryId || !subcategoryId) {
         // cleanup uploaded files
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', { categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Missing required fields' });
+        return res.status(400).render('product-add', {allowRender: true, categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Missing required fields' });
       }
 
       if (!mongoose.Types.ObjectId.isValid(categoryId) || !mongoose.Types.ObjectId.isValid(subcategoryId)) {
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', { categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Invalid category/subcategory' });
+        return res.status(400).render('product-add', {allowRender: true, categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Invalid category/subcategory' });
       }
 
       // parse variants
@@ -127,13 +128,13 @@ const addProduct = [
         variantList = variants ? JSON.parse(variants) : [];
       } catch (e) {
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', { categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Invalid variants data' });
+        return res.status(400).render('product-add', {allowRender: true, categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Invalid variants data' });
       }
 
       // validate variants: at least one variant, stock non-negative, price positive
       if (!Array.isArray(variantList) || variantList.length === 0) {
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', { categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Please add at least one variant' });
+        return res.status(400).render('product-add', {allowRender: true, categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Please add at least one variant' });
       }
 
       for (const v of variantList) {
@@ -142,7 +143,7 @@ const addProduct = [
         v.stock = Number(v.stock);
         if (!v.size || v.price <= 0 || isNaN(v.price) || isNaN(v.stock) || v.stock < 0) {
           (req.files || []).forEach(f => fs.unlinkSync(f.path));
-          return res.status(400).render('product-add', { categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Invalid variant values (price>0, stock>=0, size required)' });
+          return res.status(400).render('product-add', {allowRender: true, categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'Invalid variant values (price>0, stock>=0, size required)' });
         }
       }
 
@@ -150,7 +151,7 @@ const addProduct = [
       const files = req.files || [];
       if (files.length < 3) {
         files.forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', { categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'At least 3 images are required' });
+        return res.status(400).render('product-add', {allowRender: true, categories: await Category.find().lean(), subcategories: await SubCategory.find().lean(), message: 'At least 3 images are required' });
       }
 
       // Process images with sharp (resize & create thumbnail)
@@ -193,7 +194,7 @@ const addProduct = [
       await newProduct.save();
 
 
-      const Varient = require('../../models/productSchema').Varient;
+   
       const variantDocs = variantList.map(v => ({
         productId: newProduct._id,
         size: v.size,
@@ -240,6 +241,7 @@ const loadEditProduct = async (req, res) => {
     const subcategories = await SubCategory.find().lean();
 
     return res.render('product-edit', {
+      allowRender: true,
       product,
       variants,
       categories,
@@ -275,7 +277,7 @@ const updateProduct = [
         description,
         categoryId,
         subcategoryId,
-        variants,            // JSON string of variants (with flags for existing/removed)
+        variants,          
         existingImagesKeep   // optional list of filenames to keep (sent from form as JSON or hidden fields)
       } = req.body;
 
@@ -283,6 +285,7 @@ const updateProduct = [
       if (!productName || !description || !categoryId || !subcategoryId) {
         (req.files || []).forEach(f => safeUnlink(f.path));
         return res.status(400).render('product-edit', {
+          allowRender: true,
           product: product.toObject(),
           variants: await Varient.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
@@ -294,6 +297,7 @@ const updateProduct = [
       if (!mongoose.Types.ObjectId.isValid(categoryId) || !mongoose.Types.ObjectId.isValid(subcategoryId)) {
         (req.files || []).forEach(f => safeUnlink(f.path));
         return res.status(400).render('product-edit', {
+          allowRender: true,
           product: product.toObject(),
           variants: await Varient.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
@@ -309,6 +313,7 @@ const updateProduct = [
       } catch (e) {
         (req.files || []).forEach(f => safeUnlink(f.path));
         return res.status(400).render('product-edit', {
+          allowRender: true,
           product: product.toObject(),
           variants: await Varient.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
@@ -335,6 +340,7 @@ const updateProduct = [
           if (!v.size || price <= 0 || isNaN(price) || isNaN(stock) || stock < 0) {
             (req.files || []).forEach(f => safeUnlink(f.path));
             return res.status(400).render('product-edit', {
+              allowRender: true,
               product: product.toObject(),
               variants: await Varient.find({ productId: id }).lean(),
               categories: await Category.find().lean(),
@@ -352,6 +358,7 @@ const updateProduct = [
           if (!v.size || price <= 0 || isNaN(price) || isNaN(stock) || stock < 0) {
             (req.files || []).forEach(f => safeUnlink(f.path));
             return res.status(400).render('product-edit', {
+              allowRender: true,
               product: product.toObject(),
               variants: await Varient.find({ productId: id }).lean(),
               categories: await Category.find().lean(),
@@ -401,9 +408,11 @@ const updateProduct = [
 
       // Validate at least 1 image remains (or enforce >=3 if desired)
       if (finalImages.length < 1) {
+
         // you may require >=3; change number accordingly
         (newFiles || []).forEach(f => safeUnlink(f.path));
         return res.status(400).render('product-edit', {
+          allowRender: true,
           product: product.toObject(),
           variants: await Varient.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
@@ -460,7 +469,7 @@ const deleteProduct = async (req, res) => {
     }
 
 
- // SOFT DELETE PRODUCT
+    //soft delete
     product.isDeleted = true;
     product.isListed = false; 
     await product.save();
@@ -482,6 +491,8 @@ const deleteProduct = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+
 const restoreProduct = async (req, res) => {
   try {
     const id = req.params.id;
@@ -499,12 +510,12 @@ const restoreProduct = async (req, res) => {
       return res.json({ success: true, message: 'Product already active' });
     }
 
-    // RESTORE PRODUCT
+    //restore product
     product.isDeleted = false;
     product.isListed = true;
     await product.save();
 
-    // RESTORE VARIANTS
+    //restore varient
     await Varient.updateMany(
       { productId: id },
       { $set: { isListed: true } }
@@ -535,6 +546,7 @@ const listDeletedProducts = async (req, res) => {
       .lean();
 
     return res.render("products-deleted", {
+      allowRender: true,
       products
     });
   } catch (err) {

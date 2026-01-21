@@ -58,7 +58,7 @@ const noCache = (req, res, next) => {
   next();
 };
 
-app.use(noCache);
+// app.use(noCache);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -70,6 +70,11 @@ app.set('views', [path.join(__dirname, 'views/user'), path.join(__dirname, 'view
 app.get('/ping', (req, res) => {
   console.log('PING endpoint hit');
   res.send('pong');
+});
+
+app.use((req, res, next) => {
+  res.locals.allowRender = false;
+  next();
 });
 
 //routers

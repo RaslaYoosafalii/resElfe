@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Returns & Refunds</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --accent:#5a5252;
+      --muted:#efeeee;
+      --brown-text:#6f6766;
+      --soft-border:#e6e3e1;
+      --card-bg:#f3f2f2;
+    }
+
+    body {
+      background:#f9f8f7;
+      font-family:'Poppins',sans-serif;
+      margin:0;
+      color:var(--brown-text);
+    }
+
+    .admin-container {
+      margin-left:260px;
+      margin-top:110px;
+      padding:28px 40px;
+    }
+
+    .page-title {
+      font-size:22px;
+      font-weight:700;
+      margin-bottom:25px;
+    }
+
+    .card {
+      background:var(--card-bg);
+      padding:20px;
+      border-radius:12px;
+      margin-bottom:22px;
+    }
+
+    table {
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 12px;
+    }
+
+    thead th {
+      background:var(--accent);
+      color:#fff;
+      padding:14px 16px;
+      font-size:14px;
+      text-align:left;
+    }
+
+    tbody td {
+      background:#fff;
+      padding:14px 16px;
+      font-size:14px;
+      vertical-align:middle;
+    }
+
+    .product {
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .product img {
+      width:48px;
+      height:48px;
+      object-fit:cover;
+      border-radius:6px;
+      border:1px solid #ddd;
+    }
+
+    .badge {
+      padding:6px 12px;
+      border-radius:20px;
+      font-size:12px;
+      font-weight:600;
+      text-transform:capitalize;
+      display:inline-block;
+    }
+
+    .returnRequested { background:#fff3cd; color:#856404; }
+    .returned { background:#d4edda; color:#155724; }
+    .rejected { background:#f8d7da; color:#721c24; }
+
+    .actions {
+      display:flex;
+      gap:8px;
+    }
+
+    .btn {
+      padding:6px 14px;
+      border-radius:8px;
+      border:none;
+      font-size:13px;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    .btn-approve {
+      background:#d4edda;
+      color:#155724;
+    }
+
+    .btn-reject {
+      background:#f8d7da;
+      color:#721c24;
+    }
+
+    .btn-refund {
+      background:#e2e3ff;
+      color:#383d7a;
+    }
+  </style>
+</head>
+
+<body>
+
+<%- include('../partials/admin/headerSidebar') %>
+
+<div class="admin-container">
+
+  <div class="page-title">Returns & Refund Management</div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Customer</th>
+          <th>Product</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+      <% if (orders && orders.length) { %>
+
+        <% orders.forEach(order => { %>
+          <% order.orderedItem
+            .filter(i => i.orderStatus === 'returnRequested')
+            .forEach(item => { %>
+
+            <tr data-order="<%= order._id %>" data-product="<%= item.product %>">
+              <td>
+                <strong><%= order.orderId %></strong><br>
+                <small><%= new Date(order.orderDate).toLocaleDateString() %></small>
+              </td>
+
+              <td>
+                <strong><%= order.userId?.name || 'N/A' %></strong><br>
+                <small><%= order.userId?.email %></small>
+              </td>
+
+              <td>
+                <div class="product">
+                  <% if (item.productImages?.length) { %>
+                    <img src="/uploads/products/<%= item.productImages[0] %>">
+                  <% } %>
+                  <div>
+                    <strong><%= item.productName %></strong><br>
+                    Qty: <%= item.quantity %> | ₹ <%= item.offerPrice %>
+                  </div>
+                </div>
+              </td>
+
+              <td>
+                <%= item.returnReason || '—' %>
+              </td>
+
+              <td>
+                <span class="badge <%= item.orderStatus %>">
+                  <%= item.orderStatus %>
+                </span>
+              </td>
+
+              <td>
+                <div class="actions">
+                  <button class="btn btn-approve">Approve</button>
+                  <button class="btn btn-reject">Reject</button>
+                  <button class="btn btn-refund">Refund</button>
+                </div>
+              </td>
+            </tr>
+
+          <% }) %>
+        <% }) %>
+
+      <% } else { %>
+        <tr>
+          <td colspan="6" style="text-align:center;padding:25px;">
+            No return requests found
+          </td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<%- include('../partials/admin/footer') %>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.querySelectorAll(".btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const action = btn.classList.contains("btn-approve")
+      ? "approve"
+      : btn.classList.contains("btn-reject")
+      ? "reject"
+      : "refund";
+
+    const row = btn.closest("tr");
+    const orderId = row.dataset.order;
+    const productId = row.dataset.product;
+
+    const res = await fetch("/admin/refund/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, productId, action })
+    });
+
+    const json = await res.json();
+
+    if (json.success) location.reload();
+    else Swal.fire("Error", "Action failed", "error");
+  });
+});
+</script>
+
+</body>
+</html>

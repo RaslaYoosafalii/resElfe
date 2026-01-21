@@ -254,5 +254,21 @@
   </section>
   <!-- Footer -->
   <%-include('../partials/user/footer')%>
+
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<% if (typeof blocked !== 'undefined' || (typeof query !== 'undefined' && query.blocked)) { %>
+<script>
+  Swal.fire({
+    icon: 'error',
+    title: 'Access Restricted',
+    text: "You've been blocked by the admin.",
+    confirmButtonColor: '#4a4745'
+  });
+</script>
+<% } %>
+
 </body>
 </html>

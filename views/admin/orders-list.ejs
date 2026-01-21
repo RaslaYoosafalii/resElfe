@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Orders management</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --accent:#5a5252;
+      --muted:#efeeee;
+      --brown-text:#6f6766;
+      --table-head:#5a5252;
+      --soft-border:#e6e3e1;
+    }
+
+    body {
+      background:#f9f8f7;
+      font-family:'Poppins',sans-serif;
+      margin:0;
+      color:var(--brown-text);
+    }
+
+    .admin-container {
+      margin-left:260px;
+      margin-top:110px;
+      padding:28px 40px;
+    }
+
+    .topbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:25px;
+    }
+
+    .page-title h2 {
+      margin:0;
+      font-size:22px;
+      font-weight:700;
+    }
+
+    .search-add {
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .search-box {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:#fff;
+      border:1px solid var(--soft-border);
+      padding:8px 12px;
+      border-radius:8px;
+      position:relative;
+    }
+
+    .search-box input {
+      border:none;
+      outline:none;
+      width:220px;
+    }
+
+    #clearSearch {
+      position:absolute;
+      right:8px;
+      background:none;
+      border:none;
+      cursor:pointer;
+      color:#7f7776;
+    }
+
+    select {
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid var(--soft-border);
+      background:#fff;
+      cursor:pointer;
+    }
+
+    .orders-table {
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 12px;
+    }
+
+    .orders-table thead th {
+      background:var(--table-head);
+      color:#fff;
+      padding:14px 18px;
+      font-size:14px;
+      text-align:left;
+    }
+
+    .orders-table tbody td {
+      background:#f3f2f2;
+      padding:14px 18px;
+      font-size:14px;
+      vertical-align:middle;
+    }
+
+    .badge {
+      padding:6px 10px;
+      border-radius:20px;
+      font-size:12px;
+      font-weight:600;
+      text-transform:capitalize;
+    }
+
+    .pending { background:#fff3cd; color:#856404; }
+    .confirmed { background:#e2e3ff; color:#383d7a; }
+    .shipped { background:#d1ecf1; color:#0c5460; }
+    .delivered { background:#d4edda; color:#155724; }
+    .cancelled { background:#f8d7da; color:#721c24; }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      justify-content:center;
+    }
+
+    .icon-btn {
+      border:1px solid #d0cdcd;
+      padding:8px;
+      border-radius:8px;
+      background:transparent;
+      cursor:pointer;
+    }
+
+    .table-footer {
+      display:flex;
+      justify-content:flex-end;
+      margin-top:25px;
+    }
+
+    .pagination {
+      display:flex;
+      gap:8px;
+    }
+
+    .page-btn {
+      padding:8px 12px;
+      border:1px solid var(--soft-border);
+      background:#fff;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    .page-btn.active {
+      background:#e9e2e0;
+      font-weight:700;
+      color:var(--accent);
+    }
+  </style>
+</head>
+
+<body>
+
+<%- include('../partials/admin/headerSidebar') %>
+
+<div class="admin-container">
+
+  <div class="topbar">
+    <div class="page-title">
+      <h2>Orders management</h2>
+    </div>
+
+    <div class="search-add">
+      <div class="search-box">
+        <input id="searchInput" placeholder="Search order / user" value="<%= search || '' %>">
+        <% if (search) { %>
+          <button id="clearSearch">clear</button>
+        <% } %>
+      </div>
+
+      <select id="statusFilter">
+        <option value="">All status</option>
+     <% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => { %>
+          <option value="<%= s %>" <%= status === s ? 'selected' : '' %>><%= s %></option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+
+  <table class="orders-table">
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>User</th>
+        <th>Amount</th>
+        <th>Payment</th>
+        <th>Status</th>
+        <th>Date</th>
+        <th style="text-align:center;">Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+    <% if (orders.length) { %>
+      <% orders.forEach(o => { %>
+        <tr>
+          <td>
+  <div style="font-weight:600;">
+    <%= o.orderedItem?.[0]?.productName || 'Product' %>
+  </div>
+  <div style="font-size:12px; color:#7f7776;">
+    <%= o.orderId %>
+  </div>
+</td>
+
+
+          <td>
+            <strong><%= o.userId?.name || 'N/A' %></strong><br>
+            <span class="muted"><%= o.userId?.email %></span>
+          </td>
+
+          <td>₹ <%= o.finalPrice %></td>
+          <td><%= o.paymentMethod %></td>
+
+          <td>
+            <select 
+              class="orderStatus"
+              data-id="<%= o._id %>"
+              data-current="<%= o.orderStatus %>">
+             <% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => { %>
+                <option value="<%= s %>" <%= o.orderStatus === s ? 'selected' : '' %>><%= s %></option>
+              <% }) %>
+            </select>
+          </td>
+
+          <td>
+            <%= new Date(o.orderDate).toLocaleString("en-GB") %>
+          </td>
+
+          <td>
+            <div class="actions">
+              <a href="/admin/order/<%= o._id %>" class="icon-btn">
+                <i class="bi bi-eye"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    <% } else { %>
+      <tr>
+        <td colspan="7" style="text-align:center;padding:25px;">No orders found</td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table>
+
+  <div class="table-footer">
+    <div class="pagination">
+      <% for(let i=1;i<=totalPages;i++){ %>
+        <a class="page-btn <%= page===i?'active':'' %>"
+           href="?page=<%= i %><%= search?'&search='+search:'' %><%= status?'&status='+status:'' %>">
+          <%= i %>
+        </a>
+      <% } %>
+    </div>
+  </div>
+
+</div>
+
+<%- include('../partials/admin/footer') %>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.querySelectorAll(".orderStatus").forEach(select => {
+  select.addEventListener("change", async e => {
+    const orderId = select.dataset.id;
+    const prev = select.dataset.current;
+    const next = select.value;
+
+    const result = await Swal.fire({
+      title: "Change order status?",
+      text: `${prev} → ${next}`,
+      icon: "warning",
+      showCancelButton: true
+    });
+
+    if (!result.isConfirmed) {
+      select.value = prev;
+      return;
+    }
+
+    const res = await fetch(`/admin/order/status/${orderId}`, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ status: next })
+    });
+
+    const json = await res.json();
+
+    if (json.success) location.reload();
+    else {
+      Swal.fire("Error", json.message, "error");
+      select.value = prev;
+    }
+  });
+});
+
+document.getElementById("searchInput")?.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    location.href = "?search=" + encodeURIComponent(e.target.value);
+  }
+});
+
+document.getElementById("clearSearch")?.addEventListener("click", () => {
+  location.href = location.pathname;
+});
+
+document.getElementById("statusFilter")?.addEventListener("change", e => {
+  const val = e.target.value;
+  location.href = val ? "?status=" + val : location.pathname;
+});
+</script>
+
+</body>
+</html>

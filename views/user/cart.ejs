@@ -6,34 +6,84 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-* {
-  box-sizing: border-box;
-  font-family: Arial, sans-serif;
-}
-
-body {
-  margin: 0;
-  background: #fff;
-  color: #333;
-}
 
 .container {
   max-width: 1200px;
   margin: 40px auto;
   padding: 0 20px;
+  padding-bottom: 52px;
+}
+ /* Navbar */
+      * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      color: #615A5A;
+      background: #fff;
+    }
+
+     /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 60px;
+      background: #fff;
+
+    }
+
+    .navbar .logo {
+      font-size: 40px;
+      font-weight: 37;
+      color: #B2A9A1;
+    }
+
+    .navbar ul {
+      display: flex;
+      list-style: none;
+      gap: 25px;
+      
+    }
+
+    .navbar a {
+      text-decoration: none;
+      color: #615A5A;
+      font-size: 15px;
+      
+    }
+
+    .navbar .btn {
+      padding: 8px 15px;
+      border-radius: 5px;
+      background: #484848;
+      color: #fff;
+    }
+
+    
+
+    
+.page-head{
+  text-align:center;
+  margin-bottom:20px;
+  color: black;
+}
+.page-head h2{
+  margin:0;
+  font-size:28px;
+  letter-spacing:1px;
+  font-weight:700;
 }
 
-.cart-title {
-  font-size: 28px;
-  font-weight: bold;
-  margin-bottom: 25px;
-}
 .btn-continue {
   padding: 12px 22px;
   background: rgb(45, 42, 42);
   color: white;
   border: none;
-  margin-top: 25px;
+  margin-top: 45px;
   border-radius: 20px;
   font-size: medium;
   cursor: pointer;
@@ -169,15 +219,16 @@ body {
   background: #999;
   cursor: not-allowed;
 }
-.footer-spacer {
-  height: 100px;
-}
+
+
 
 .empty-cart {
   text-align: center;
-  margin-top: 80px;
+  margin-top: 100px;
+  margin-bottom: 113px;
   color: #666;
 }
+
 </style>
 </head>
 
@@ -187,14 +238,19 @@ body {
 
 <div class="container">
 
-  <div class="cart-title">My Cart</div>
+
+  <div class="page-head">
+    <h2>MY CART</h2>
+  </div>
 
   <% if (!cart || !cart.items || cart.items.length === 0) { %>
 
     <div class="empty-cart">
-      <h3>Your cart is empty</h3>
-      <p>Looks like you haven’t added anything yet.</p>
-      <button class="btn-continue" onclick="window.location.href='/products'">Continue Shopping</button>
+      <h3 style="font-size: 100px; color: #958989; opacity: 50%;">Your cart is empty</h3>
+      <p style="font-size: medium; margin-top: 9px;">Looks like you haven’t added anything yet.</p>
+      <button class="btn-continue" onclick="window.location.href='/products'">
+        Continue Shopping
+      </button>
     </div>
 
   <% } else { %>
@@ -229,15 +285,15 @@ body {
               <h4><%= item.productName %></h4>
 
               <select onchange="changeSize('<%= item._id %>', this.value)">
-  <% item.variants.forEach(v => { %>
-    <option 
-      value="<%= v._id %>"
-      <%= v.size === item.size ? 'selected' : '' %>
-      <%= v.stock <= 0 ? 'disabled' : '' %>>
-      <%= v.size %><%= v.stock <= 0 ? ' (Out of stock)' : '' %>
-    </option>
-  <% }) %>
-</select>
+                <% item.variants.forEach(v => { %>
+                  <option 
+                    value="<%= v._id %>"
+                    <%= v.size === item.size ? 'selected' : '' %>
+                    <%= v.stock <= 0 ? 'disabled' : '' %>>
+                    <%= v.size %><%= v.stock <= 0 ? ' (Out of stock)' : '' %>
+                  </option>
+                <% }) %>
+              </select>
 
               <p>Color: <%= item.color || '-' %></p>
 
@@ -263,27 +319,23 @@ body {
               <%= isOut || item.quantity >= item.maxQty ? 'disabled' : '' %>>
               +
             </button>
-           <div class="stock-warning" id="stock-msg-<%= item._id %>" style="display:none">
+            <div class="stock-warning" id="stock-msg-<%= item._id %>" style="display:none">
               No more stock left
-           </div>
-
-
+            </div>
           </div>
         </td>
 
-<td class="price">
-  <% if (item.basePrice > item.price) { %>
-    <div style="font-size:12px;color:#888;text-decoration:line-through">
-      Rs. <%= item.basePrice * item.quantity %>
-    </div>
-  <% } %>
-  <strong>Rs. <%= item.totalPrice %></strong>
-</td>
-
+        <td class="price">
+          <% if (item.basePrice > item.price) { %>
+            <div style="font-size:12px;color:#888;text-decoration:line-through">
+              Rs. <%= item.basePrice * item.quantity %>
+            </div>
+          <% } %>
+          <strong>Rs. <%= item.totalPrice %></strong>
+        </td>
 
         <td>
-          <button class="remove-btn"
-            onclick="removeItem('<%= item._id %>')">
+          <button onclick="removeCartItem('<%= item._id %>', '<%= item.productId._id %>')">
             Remove
           </button>
         </td>
@@ -295,35 +347,34 @@ body {
 
   <div class="cart-summary">
     <div class="summary-box">
-<%
-let baseTotal = 0;
-let finalTotal = 0;
+      <%
+      let baseTotal = 0;
+      let finalTotal = 0;
 
-cart.items.forEach(i => {
-  baseTotal += i.basePrice * i.quantity;
-  finalTotal += i.totalPrice;
-});
+      cart.items.forEach(i => {
+        baseTotal += i.basePrice * i.quantity;
+        finalTotal += i.totalPrice;
+      });
 
-let discountPct = baseTotal
-  ? Math.round(((baseTotal - finalTotal) / baseTotal) * 100)
-  : 0;
-%>
+      let discountPct = baseTotal
+        ? Math.round(((baseTotal - finalTotal) / baseTotal) * 100)
+        : 0;
+      %>
 
-<div class="summary-row">
-  <span>MRP Total</span>
-  <span>Rs. <%= baseTotal %></span>
-</div>
+      <div class="summary-row">
+        <span>MRP Total</span>
+        <span>Rs. <%= baseTotal %></span>
+      </div>
 
-<div class="summary-row">
-  <span>Discount</span>
-  <span>-<%= discountPct %>%</span>
-</div>
+      <div class="summary-row">
+        <span>Discount</span>
+        <span>-<%= discountPct %>%</span>
+      </div>
 
-<div class="summary-row">
-  <strong>Payable</strong>
-  <strong>Rs. <%= finalTotal %></strong>
-</div>
-
+      <div class="summary-row">
+        <strong>Payable</strong>
+        <strong>Rs. <%= finalTotal %></strong>
+      </div>
 
       <button class="checkout-btn"
         <%= hasOutOfStock ? 'disabled' : '' %>
@@ -341,9 +392,12 @@ let discountPct = baseTotal
 
   <% } %>
 </div>
+
 <div class="footer-spacer"></div>
 
 <%- include('../partials/user/footer') %>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 function updateQty(itemId, delta) {
   fetch('/cart/update', {
@@ -363,20 +417,36 @@ function updateQty(itemId, delta) {
   });
 }
 
+function removeCartItem(itemId, productId) {
+  Swal.fire({
+    title: 'Remove item?',
+    text: 'Move this item to wishlist?',
+    showCancelButton: true,
+    confirmButtonText: 'Move to Wishlist',
+    cancelButtonText: 'Just Remove'
+  }).then(result => {
 
-function removeItem(itemId) {
-  if (!confirm('Remove this item from cart?')) return;
+    if (result.isConfirmed) {
+      fetch('/wishlist/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId })
+      });
+    }
 
-  fetch('/cart/remove', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ itemId })
-  }).then(() => location.reload());
+    fetch('/cart/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId })
+    })
+    .then(() => location.reload());
+  });
 }
 
 function proceedCheckout() {
   window.location.href = '/checkout';
 }
+
 function changeSize(itemId, variantId) {
   fetch('/cart/change-size', {
     method: 'POST',
@@ -392,9 +462,7 @@ function changeSize(itemId, variantId) {
     }
   });
 }
-
 </script>
-
 
 </body>
 </html>

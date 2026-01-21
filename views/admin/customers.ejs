@@ -289,10 +289,16 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-  async function postJson(url) {
-    const res = await fetch(url, { method: 'POST', headers: { Accept: 'application/json' } });
-    return res.json();
-  }
+  
+async function postJson(url) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    credentials: 'same-origin'   // ✅ REQUIRED
+  });
+  return res.json();
+}
+
 
   /* CLEAR SEARCH */
   document.getElementById('clearSearch').onclick = () => {

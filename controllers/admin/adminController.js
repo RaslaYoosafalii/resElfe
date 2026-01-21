@@ -61,7 +61,8 @@ const loadDashboard = async (req, res) => {
       res.set('Pragma', 'no-cache');
       res.set('Expires', '0');
 
-      res.render('dashboard');
+      res.render('dashboard', { allowRender: true });
+
     } catch (error) {
       res.redirect('/errorPage');
     }
@@ -93,7 +94,7 @@ const logout = async (req, res) => {
       res.set('Expires', '0');
 
       console.log('admin logged out');
-      return res.redirect('/admin/login');
+     return res.redirect(303, '/admin/login');
     });
   } catch (error) {
     console.log('Error logging out', error);
@@ -136,7 +137,6 @@ const adminForgotPasswordRequest = async (req, res) => {
   try {
     const { email } = req.body;
     
-        // ✅ COOLDOWN CHECK (ABSOLUTELY NECESSARY)
     if (
       req.session.adminForgotLastRequest &&
       Date.now() - req.session.adminForgotLastRequest < OTP_COOLDOWN
@@ -165,11 +165,11 @@ const adminForgotPasswordRequest = async (req, res) => {
     req.session.adminResetOtp = otp;
     req.session.adminResetEmail = email.toLowerCase();
     req.session.adminOtpCreatedAt = Date.now();
-    req.session.adminForgotLastRequest = Date.now(); // ✅ lock submit
+    req.session.adminForgotLastRequest = Date.now(); 
 
     const emailSent = await sendVerificationEmail(email, otp);
     if (!emailSent) {
-      return res.render('admin-forgot-passwo-d', {
+      return res.render('admin-forgot-password', {
         message: 'Failed to send OTP'
       });
     }
@@ -302,7 +302,7 @@ const adminResendOtp = async (req, res) => {
         message: 'Failed to send OTP'
       });
     }
-
+    console.log('otp sent: ', otp)
     return res.json({
       success: true,
       message: 'OTP resent successfully'
