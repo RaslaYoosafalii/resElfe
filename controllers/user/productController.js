@@ -48,8 +48,8 @@ const listProducts = async (req, res) => {
       matchStage.categoryId = new mongoose.Types.ObjectId(category);
     }
    
-    // ✅ FINAL subcategory filter logic
-// ✅ FINAL subcategory filtering logic (single source of truth)
+
+// subcategory filtering logic (single source of truth)
 if (subcategory) {
 
   // Case 1: category selected → subcategory is ObjectId
@@ -299,11 +299,13 @@ if (!category) {
   finalSubcategories = Array.from(map.values());
 }
 
+const isLoggedIn = !!req.session.user;
 
     return res.render('allProducts', {
       products,
       categories,
       subcategories: finalSubcategories,
+       isLoggedIn,
       pagination: {
         q,
         sort,
@@ -336,11 +338,12 @@ const productDetails = async (req, res) => {
       });
     }
 
-    const product = await Product.findOne({
-      _id: id,
-      isListed: true,
-      isDeleted: { $ne: true }
-    }).lean();
+    // const product = await Product.findOne({
+    //   _id: id,
+    //   isListed: true,
+    //   isDeleted: { $ne: true }
+    // }).lean();
+    const product = await Product.findById(id).lean();
 
     if (!product) {
       return res.status(404).render('error-page', {
@@ -348,10 +351,15 @@ const productDetails = async (req, res) => {
       });
     }
 
-    const variants = await Varient.find({
+    const isUnavailable = product.isDeleted || !product.isListed;
+
+   const variants = isUnavailable
+  ? []
+  : await Varient.find({
       productId: product._id,
       isListed: true
     }).lean();
+
 
     const category = await Category.findById(product.categoryId).lean();
     const subcategory = product.subcategoryId
@@ -434,6 +442,7 @@ const recommendations = await Product.aggregate([
 
 
 const userId = req.session.user;
+const isLoggedIn = !!userId;
 
 let isInWishlist = false;
 let isInCart = false;
@@ -462,8 +471,11 @@ if (userId) {
       category,
       subcategory,
       recommendations,
+      isLoggedIn,
       isInWishlist,
-      isInCart
+      isInCart,
+      isUnavailable,
+      
     });
 
   } catch (err) {

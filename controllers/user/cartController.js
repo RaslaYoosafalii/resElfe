@@ -148,6 +148,12 @@ const currentVariant = await Varient.findOne({
   isListed: true
 }).lean();
 
+const productUnavailable =
+  !item.productId ||
+  item.productId.isDeleted ||
+  !item.productId.isListed;
+
+  
 const variants = await Varient.find({
   productId: item.productId._id,
   isListed: true
@@ -156,15 +162,19 @@ const variants = await Varient.find({
 const basePrice = currentVariant ? currentVariant.price : item.price;
 
 
-        return {
-          ...item,
-          productName: item.productId.productName,
-          productImage: item.productId.images?.[0],
-          stock: currentVariant ? currentVariant.stock : 0,
-          maxQty: MAX_QTY_PER_PRODUCT,
-          basePrice,
-          variants 
-        };
+
+
+     return {
+  ...item,
+  productName: item.productId.productName,
+  productImage: item.productId.images?.[0],
+  stock: currentVariant ? currentVariant.stock : 0,
+  maxQty: MAX_QTY_PER_PRODUCT,
+  basePrice,
+  variants,
+  isUnavailable: productUnavailable
+};
+
       })
     );
 

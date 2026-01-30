@@ -127,6 +127,8 @@ const loadWishlist = async (req, res) => {
       const p = w.productId;
       const priceInfo = priceMap[String(p._id)] || {};
 
+
+      const isUnavailable = p.isDeleted || !p.isListed;
       return {
         _id: p._id,
         productName: p.productName,
@@ -136,7 +138,8 @@ const loadWishlist = async (req, res) => {
         minVariantDiscountPrice:
           priceInfo.minDiscountPrice < priceInfo.minPrice
             ? priceInfo.minDiscountPrice
-            : null
+            : null,
+            isUnavailable
       };
     });
 

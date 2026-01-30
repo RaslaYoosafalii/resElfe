@@ -228,6 +228,10 @@
   margin-bottom: 113px;
   color: #666;
 }
+.qty-btn.fake-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 </style>
 </head>
@@ -255,6 +259,11 @@
 
   <% } else { %>
 
+  <% 
+      let hasOutOfStock = false;
+      let hasUnavailable = false; 
+      let grandTotal = 0;
+    %>
   <table class="cart-table">
     <thead>
       <tr>
@@ -266,25 +275,27 @@
     </thead>
 
     <tbody>
-    <% 
-      let hasOutOfStock = false;
-      let grandTotal = 0;
-    %>
 
     <% cart.items.forEach(item => { 
          const isOut = item.stock <= 0;
+         const isUnavailable = item.isUnavailable;
+
          if (isOut) hasOutOfStock = true;
-         if (!isOut) grandTotal += item.totalPrice;
+          if (isUnavailable) hasUnavailable = true; 
+         if (!isOut && !isUnavailable) grandTotal += item.totalPrice;
     %>
 
-      <tr class="<%= isOut ? 'out-of-stock' : '' %>">
+     <tr class="<%= (isOut || isUnavailable) ? 'out-of-stock' : '' %>">
         <td>
           <div class="cart-product">
             <img src="/uploads/products/<%= item.productImage %>">
             <div>
               <h4><%= item.productName %></h4>
 
-              <select onchange="changeSize('<%= item._id %>', this.value)">
+            <select
+             onchange="changeSize('<%= item._id %>', this.value)"
+            <%= isUnavailable ? 'disabled' : '' %>>
+
                 <% item.variants.forEach(v => { %>
                   <option 
                     value="<%= v._id %>"
@@ -297,29 +308,36 @@
 
               <p>Color: <%= item.color || '-' %></p>
 
-              <% if (isOut) { %>
-                <div class="stock-warning">Out of stock</div>
-              <% } %>
+             <% if (isUnavailable) { %>
+  <div class="stock-warning">Product no longer available</div>
+<% } else if (isOut) { %>
+  <div class="stock-warning">Out of stock</div>
+<% } %>
+
             </div>
           </div>
         </td>
 
         <td>
+           <div style="display:flex;flex-direction:column; align-items:flex-start;"></div>
           <div class="qty-wrap">
             <button class="qty-btn"
               onclick="updateQty('<%= item._id %>', -1)"
-              <%= item.quantity <= 1 || isOut ? 'disabled' : '' %>>
+            <%= item.quantity <= 1 || isOut ? 'disabled' : '' %>>
               −
             </button>
 
             <div class="qty-count"><%= item.quantity %></div>
 
-            <button class="qty-btn"
-              onclick="updateQty('<%= item._id %>', 1)"
-              <%= isOut || item.quantity >= item.maxQty ? 'disabled' : '' %>>
-              +
-            </button>
-            <div class="stock-warning" id="stock-msg-<%= item._id %>" style="display:none">
+ <button
+  class="qty-btn <%= (item.quantity >= item.stock) ? 'fake-disabled' : '' %>"
+  onclick="updateQty('<%= item._id %>', 1)">
+  +
+</button>
+
+
+             </div>
+            <div class="stock-warning" id="stock-msg-<%= item._id %>" style="display:none; padding-left: 6px;">
               No more stock left
             </div>
           </div>
@@ -335,7 +353,7 @@
         </td>
 
         <td>
-          <button onclick="removeCartItem('<%= item._id %>', '<%= item.productId._id %>')">
+       <button onclick="removeCartItem('<%= item._id %>', '<%= item.productId._id %>', <%= item.isUnavailable ? 'true' : 'false' %>)">
             Remove
           </button>
         </td>
@@ -344,6 +362,11 @@
     <% }) %>
     </tbody>
   </table>
+    <% if (hasUnavailable) { %>
+  <p style="font-size:12px;color:#c00;margin-top:8px;">
+    Remove unavailable items to continue.
+  </p>
+<% } %>
 
   <div class="cart-summary">
     <div class="summary-box">
@@ -376,9 +399,9 @@
         <strong>Rs. <%= finalTotal %></strong>
       </div>
 
-      <button class="checkout-btn"
-        <%= hasOutOfStock ? 'disabled' : '' %>
-        onclick="proceedCheckout()">
+ <button class="checkout-btn"
+  <%= (hasOutOfStock || hasUnavailable) ? 'disabled' : '' %>
+  onclick="proceedCheckout()">
         Proceed to Checkout
       </button>
 
@@ -389,8 +412,9 @@
       <% } %>
     </div>
   </div>
+  
+<% } %>
 
-  <% } %>
 </div>
 
 <div class="footer-spacer"></div>
@@ -417,7 +441,26 @@ function updateQty(itemId, delta) {
   });
 }
 
-function removeCartItem(itemId, productId) {
+function removeCartItem(itemId, productId, isUnavailable) {
+
+//incase of unavailable
+  if (isUnavailable) {
+    Swal.fire({
+      title: 'Remove item?',
+      text: 'This item is no longer available.',
+      confirmButtonText: 'Remove',
+      showCancelButton: false
+    }).then(() => {
+      fetch('/cart/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId })
+      }).then(() => location.reload());
+    });
+    return;
+  }
+
+//normal case
   Swal.fire({
     title: 'Remove item?',
     text: 'Move this item to wishlist?',

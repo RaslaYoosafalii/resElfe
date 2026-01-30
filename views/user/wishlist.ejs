@@ -454,6 +454,67 @@
 }
 
 
+.product-card.disabled .product-thumb {
+  pointer-events: none;
+  cursor: not-allowed;
+}
+/* Fade image */
+.product-card.disabled .product-thumb img {
+  opacity: 0.45;
+}
+
+/* Fade product text */
+.product-card.disabled .product-title,
+.product-card.disabled .product-desc,
+.product-card.disabled .product-price {
+  opacity: 0.45;
+}
+
+/* .unavailable-text {
+  font-size: 12px;
+  color: #c00;
+  margin-top: 6px;
+} */
+ 
+/* Fade only product visuals, not actions */
+/* .product-card.disabled .product-thumb,
+.product-card.disabled .product-meta > :not(.wishlist-btn):not(.unavailable-text) {
+  opacity: 0.45;
+} */
+
+/* Ensure actions stay fully visible */
+.product-card.disabled .wishlist-btn,
+.product-card.disabled .unavailable-text {
+  opacity: 1;
+}
+.product-card.disabled .wishlist-btn,
+.product-card.disabled .unavailable-overlay {
+  opacity: 1;
+}
+.unavailable-thumb {
+  position: relative;
+}
+
+.unavailable-thumb img {
+  opacity: 0.45;
+}
+
+.unavailable-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: last baseline;
+  justify-content: left;
+  text-align: left;
+  font-size: 13px;
+  color: #c00;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 14px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+
     /* Responsive */
     @media (max-width:1100px){
       .container{ margin:24px auto; }
@@ -485,15 +546,27 @@
     <div class="products-grid">
 
       <% products.forEach(function(p){ %>
-        <div class="product-card">
+        <div class="product-card <%= p.isUnavailable ? 'disabled' : '' %>">
 
-          <a class="product-thumb" href="/product/<%= p._id %>">
-            <img src="/uploads/products/<%= p.images[0] %>" alt="<%= p.productName %>">
-          </a>
+  <% if (!p.isUnavailable) { %>
+    <a class="product-thumb" href="/product/<%= p._id %>">
+      <img src="/uploads/products/<%= p.images[0] %>" alt="<%= p.productName %>">
+    </a>
+  
+  <% } else { %>
+<div class="product-thumb unavailable-thumb">
+  <img src="/uploads/products/<%= p.images[0] %>" alt="<%= p.productName %>">
+  <div class="unavailable-overlay">
+    Product unavailable<br>
+    It may have been removed
+  </div>
+</div>
+
+  <% } %>
 
           <div class="product-meta">
             <div class="product-title"><%= p.productName %></div>
-
+         
             <div class="product-desc">
               <%= p.subcategoryName || '' %>
             </div>
@@ -519,7 +592,6 @@
                 <span>Rs. <%= mrp.toLocaleString('en-IN') %></span>
               <% } %>
             </div>
-
             <!-- ACTIONS -->
 
 <button class="wishlist-btn secondary"

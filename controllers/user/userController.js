@@ -1129,6 +1129,30 @@ const addAddress = async (req, res) => {
     return res.redirect('/address?error=saveFailed');
   }
 };
+const setDefaultAddress = async (req, res) => {
+  try {
+    const userId = req.session.user;
+    const index = parseInt(req.params.index);
+
+    const addressDoc = await Address.findOne({ userId });
+    if (!addressDoc || !addressDoc.address[index]) {
+      return res.json({ success: false });
+    }
+
+    // 🔁 Clear previous default
+    addressDoc.address.forEach(a => (a.isDefault = false));
+
+    // ✅ Set new default
+    addressDoc.address[index].isDefault = true;
+
+    await addressDoc.save();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('setDefaultAddress error', err);
+    res.json({ success: false });
+  }
+};
+
 
 const loadEditAddress = async (req, res) => {
   try {
@@ -1196,18 +1220,20 @@ const editAddress = async (req, res) => {
 }
 
 
-    addressDoc.address[index] = {
-      name,
-      mobileNumber,
-      pincode,
-      locality,
-      city,
-      state,
-      landmark,
-      alternativeNumber: alternativeNumber || null,
-      addressType,
-      address
-    };
+addressDoc.address[index] = {
+  ...addressDoc.address[index].toObject(),
+  name,
+  mobileNumber,
+  pincode,
+  locality,
+  city,
+  state,
+  landmark,
+  alternativeNumber: alternativeNumber || null,
+  addressType,
+  address
+};
+
 
     await addressDoc.save();
 
@@ -1288,6 +1314,7 @@ export {
   deleteProfileImage,
   loadManageAddress,
   loadAddAddress,
+  setDefaultAddress,
   addAddress,
   loadEditAddress,
   editAddress,
@@ -1324,6 +1351,7 @@ export default{
   loadManageAddress,
   loadAddAddress,
   addAddress,
+  setDefaultAddress,
   loadEditAddress,
   editAddress,
   deleteAddress,

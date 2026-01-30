@@ -365,14 +365,32 @@ body {
     text-decoration: none;
     color: inherit;
 }
+.unavailable-box {
+  background:#f8f8f8;
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
+button[disabled] {
+  opacity:0.5;
+  cursor:not-allowed;
+}
+.disabled-action {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto; /* allow click so message logic still works */
+}
 
 </style>
 
 </head>
 <body>
 
-<%- include('../partials/user/loggedinHeader') %>
-
+  <% if (isLoggedIn) { %>
+  <%- include('../partials/user/loggedinHeader') %>
+<% } else { %>
+  <%- include('../partials/user/header') %>
+<% } %>
 <div class="container">
 
     <!-- BREADCRUMB -->
@@ -406,11 +424,7 @@ body {
 
 <div class="product-title"><%= product.productName %></div>
 
-<% if (subcategory && subcategory.fitName) { %>
-  <div class="subcat-text" style="margin-top:6px;color:#666;font-size:14px;">
-    <%= subcategory.fitName %>
-  </div>
-<% } %>
+
 
 <% 
   // safe defaults — use first variant if present
@@ -433,9 +447,16 @@ body {
 
             <div class="mrp-text">MRP inclusive of all taxes</div>
 
-            <div class="color-text">
-                COLOUR: <%= variants[0].color %>
-            </div>
+  <% if (variants && variants.length) { %>
+  <div class="color-text">
+    COLOUR: <%= variants[0].color %>
+  </div>
+<% } %>
+<% if (subcategory && subcategory.fitName) { %>
+  <div class="subcat-text" style="margin-top:6px;color:#666;font-size:14px;">
+    <%= subcategory.fitName %>
+  </div>
+<% } %>
 
             <!-- SIZE SELECTOR -->
             <div class="size-box-wrap">
@@ -457,16 +478,32 @@ body {
 </div>
  <input type="hidden" id="selectedVariantId" value="">
 
-
+<% if (isUnavailable) { %>
+  <div class="unavailable-box" style="color:#c00">
+    <h2>This product is currently unavailable</h2>
+    <p style="color: #222;">
+      It may have been removed or is out of stock.<br>
+      Explore similar products you might like.
+    </p>
+  </div>
+<% } %>
             <!-- ADD TO BAG -->
 <div style="display:flex; align-items:center; gap:14px; margin-top:25px;">
-  <div class="add-btn" onclick="addToCart()">ADD TO BAG</div>
+ <div
+  class="add-btn <%= isUnavailable ? 'disabled-action' : '' %>"
+  onclick="addToCart()"
+>
+  ADD TO BAG
+</div>
+
 
 <div
   onclick="toggleWishlist()"
+  class="<%= isUnavailable ? 'disabled-action' : '' %>"
   style="cursor:pointer;display:flex;align-items:center;margin-top:21px;"
   title="Wishlist"
 >
+
   <svg
     id="wishlistIcon"
     xmlns="http://www.w3.org/2000/svg"
@@ -590,6 +627,24 @@ function selectSize(el, size, stock, variantId) {
 }
 
 function addToCart() {
+    if (!<%= isLoggedIn ? 'true' : 'false' %>) {
+    Swal.fire({
+      
+      title: 'Login required',
+      text: 'Please log in to add items to your cart',
+      showCancelButton: true,
+      confirmButtonText: 'Login',
+      confirmButtonColor: '#484848',
+      cancelButtonText: 'Cancel'
+    }).then(result => {
+      if (result.isConfirmed) {
+        window.location.href = '/login';
+      }
+    });
+    return;
+  }
+  
+   if (<%= isUnavailable ? 'true' : 'false' %>) return;
   const variantId = document.getElementById('selectedVariantId').value;
   const msg = document.getElementById('stockMessage');
 
@@ -661,6 +716,22 @@ function updateHeart(active) {
 
 function toggleWishlist() {
 
+    if (!<%= isLoggedIn ? 'true' : 'false' %>) {
+    Swal.fire({
+      title: 'Login required',
+      text: 'Please log in to use wishlist',
+      showCancelButton: true,
+      confirmButtonText: 'Login',
+      confirmButtonColor: '#484848',
+      cancelButtonText: 'Cancel'
+    }).then(result => {
+      if (result.isConfirmed) {
+        window.location.href = '/login';
+      }
+    });
+    return;
+  }
+  if (<%= isUnavailable ? 'true' : 'false' %>) return;
 
   const url = isWishlisted ? '/wishlist/remove' : '/wishlist/add';
 

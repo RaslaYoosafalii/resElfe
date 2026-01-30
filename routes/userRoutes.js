@@ -45,8 +45,8 @@ router.get('/auth/google/callback', passport.authenticate('google', {failureRedi
 })
 
 //product management
-router.get('/products', noCache, userAuth, productController.listProducts);        
-router.get('/product/:id',noCache, userAuth, productController.productDetails); 
+router.get('/products', noCache, productController.listProducts);        
+router.get('/product/:id',noCache,productController.productDetails); 
 
 
 //profile management
@@ -70,6 +70,7 @@ router.post('/address/add', userAuth, userController.addAddress);
 router.get('/address/edit/:index', noCache, userAuth, userController.loadEditAddress);
 router.post('/address/edit/:index', userAuth, userController.editAddress);
 router.delete('/address/delete/:index', userAuth, userController.deleteAddress);
+router.post('/address/set-default/:index',userAuth,userController.setDefaultAddress);
 
 
 //cart management

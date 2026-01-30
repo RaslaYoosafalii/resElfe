@@ -221,6 +221,17 @@ body {
     font-size: 12px;
     display: none;
   }
+  .product-unavailable {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.unavailable-text {
+  color: #b00;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 
 </style>
 </head>
@@ -260,14 +271,20 @@ body {
 <% } %>
 
 <% if (addresses && Array.isArray(addresses.address) && addresses.address.length) { %>
+  <%
+const defaultIndex = addresses.address.findIndex(a => a.isDefault);
+const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
+%>
+
   <% addresses.address.forEach((a, i) => { %>
     <div class="address-item">
-      <input 
-        type="radio"
-        name="addressId"
-        value="<%= i %>"
-        <%= i === 0 ? 'checked' : '' %>
-      >
+    <input 
+  type="radio"
+  name="addressId"
+  value="<%= i %>"
+  <%= i === selectedIndex ? 'checked' : '' %>
+>
+
       <div>
         <strong><%= a.name %></strong><br>
         <%= a.address %>, <%= a.locality %>, <%= a.city %><br>
@@ -298,12 +315,16 @@ body {
         <h3>Order Items</h3>
 
         <% cart.items.forEach(item => { %>
-          <div class="product-row">
+<div class="product-row <%= item.isUnavailable ? 'product-unavailable' : '' %>">
            <img src="<%= item.productImage  ? '/uploads/products/' + item.productImage  : '/images/placeholder.png' %>">
             <div>
               <strong><%= item.productName %></strong><br>
               Size: <%= item.size %> | Qty: <%= item.quantity %><br>
               Rs. <%= item.totalPrice %>
+              <% if (item.isUnavailable) { %>
+  <div class="unavailable-text" style="font-weight: lighter;">Product unavailable<br>remove product from cart to continue</div>
+<% } %>
+
             </div>
           </div>
         <% }) %>
@@ -317,7 +338,6 @@ body {
           Cash on Delivery
         </label>
       </div>
-
     </div>
 
     <!-- RIGHT -->
@@ -633,12 +653,20 @@ function placeOrder() {
     })
     .then(res => res.json())
     .then(data => {
-      if (!data.success) {
-        Swal.fire('Error', data.message, 'error');
-      } else {
-        window.location.href = `/order/success/${data.orderId}`;
-      }
+  if (!data.success) {
+    Swal.fire({
+      title: 'Error placing order',
+      html: data.message.replace(/\n/g, '<br>'),
+      icon: 'error',
+      confirmButtonText: 'Go to Cart'
+    }).then(() => {
+      window.location.href = '/cart';
     });
+  } else {
+    window.location.href = `/order/success/${data.orderId}`;
+  }
+});
+
   });
 }
 </script>
@@ -846,10 +874,5 @@ function attachLiveValidation(form) {
   });
 }
 </script>
-<script>
-attachLiveValidation(document.getElementById('addAddressForm'));
-attachLiveValidation(document.getElementById('editAddressForm'));
-</script>
-
 </body>
 </html>

@@ -9,6 +9,22 @@
 .item{display:flex;gap:15px;margin-bottom:15px}
 .item img{width:80px;height:100px;object-fit:cover;border-radius:6px}
 .badge{padding:4px 10px;border-radius:14px;background:#eee}
+.btn{
+  padding:8px 16px;
+  border-radius:20px;
+  border:none;
+  cursor:pointer;
+  font-size:14px;
+}
+.btn-dark{
+  background:#222;
+  color:#fff;
+}
+.btn-outline{
+  background:#fff;
+  border:1px solid #222;
+}
+
 </style>
 </head>
 
@@ -43,8 +59,24 @@ Status: <%= order.orderStatus %>
     <strong><%= i.productName %></strong><br>
     Qty: <%= i.quantity %><br>
     Price: ₹<%= i.offerPrice %><br>
-    <span class="badge"><%= i.orderStatus %></span><br><br>
+   <span class="badge">
+  <% if (i.orderStatus === 'rejected') { %>
+    Return request rejected (Delivered)
+  <% } else { %>
+    <%= i.orderStatus %>
+  <% } %>
+</span><br><br>
+
  
+<% if (
+  !['delivered', 'cancelled', 'returnRequested', 'returned'].includes(i.orderStatus)
+) { %>
+  <button class="btn btn-dark"
+    onclick="cancelItem('<%= order.orderId %>', '<%= i.product %>')">
+    Cancel Item
+  </button>
+<% } %>
+
 <% if (i.orderStatus === 'delivered') { %>
   <button class="btn btn-dark"
     onclick="returnItem('<%= order.orderId %>', '<%= i.product %>')">
@@ -58,7 +90,6 @@ Status: <%= order.orderStatus %>
     Cancel Return Request
   </button>
 <% } %>
-
 
 
   </div>

@@ -209,9 +209,16 @@
         <% addresses.forEach((addr, index) => { %>
   <div class="address-card">
 
+
   <div class="address-name">
     <%= addr.name %>
     <span class="address-type-btn"><%= addr.addressType %></span>
+
+      <% if (addr.isDefault) { %>
+        <span class="address-type-btn" style="background:#434343;color:#fff;">
+         Default
+       </span>
+      <% } %>
   </div>
 
   <div class="address-text">
@@ -235,6 +242,11 @@
 <% } %>
 
   <div class="address-actions">
+    <% if (!addr.isDefault) { %>
+  <button onclick="setDefaultAddress('<%= index %>')" style="background-color: #acacac; color: #ffffff;">
+    Set Default
+  </button>
+<% } %>
     <button onclick="location.href='/address/edit/<%= index %>'">Edit</button>
     <button onclick="deleteAddress('<%= index %>')">Delete</button>
   </div>
@@ -269,7 +281,10 @@
              .then(data => {
                if (data.success && data.type === 'deleted') {
                  Swal.fire('Deleted!', 'Address deleted successfully', 'success')
-             .then(() => location.reload());
+             .then(() => {
+  window.location.href = '/address';
+});
+
             }
           })
         }
@@ -283,9 +298,12 @@
     Swal.fire('Success', 'Address added successfully', 'success');
   }
 
-  if (params.get('success') === 'updated') {
-    Swal.fire('Success', 'Address updated successfully', 'success');
-  }
+if (params.get('success') === 'updated') {
+  Swal.fire('Success', 'Address updated successfully', 'success')
+    .then(() => {
+      window.history.replaceState({}, document.title, '/address');
+    });
+}
 
   if (params.get('error') === 'saveFailed') {
   Swal.fire('Error', 'Failed to save address. Try again.', 'error');
@@ -296,6 +314,23 @@ if (params.get('error') === 'sameNumber') {
 }
 
 </script>
+<script>
+function setDefaultAddress(index) {
+  fetch(`/address/set-default/${index}`, {
+    method: 'POST'
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      Swal.fire('Updated', 'Default address updated', 'success')
+        .then(() => location.reload());
+    } else {
+      Swal.fire('Error', 'Unable to set default address', 'error');
+    }
+  });
+}
+</script>
+
 
 </body>
 </html>

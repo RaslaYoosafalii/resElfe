@@ -74,17 +74,10 @@ const loadDashboard = async (req, res) => {
 // logout
 const logout = async (req, res) => {
   try {
-    // capture admin id for logging before session is destroyed
+    
     const adminId = req.session?.admin;
 
-    req.session.destroy((err) => {
-      if (err) {
-        console.log('error destroying session', err);
-        return res.redirect('/errorPage');
-      }
-
-      // clear the session cookie in the browser
-      res.clearCookie('connect.sid', { path: '/' });
+     delete req.session.admin; 
 
       res.set(
         'Cache-Control',
@@ -95,7 +88,7 @@ const logout = async (req, res) => {
 
       console.log('admin logged out');
      return res.redirect(303, '/admin/login');
-    });
+    
   } catch (error) {
     console.log('Error logging out', error);
     return res.redirect('/errorPage');

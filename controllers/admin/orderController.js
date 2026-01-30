@@ -99,7 +99,7 @@ const allowedStatus = [
 
     for (const item of order.orderedItem) {
       if (
-        ["cancelled", "returnRequested", "returned", "rejected"].includes(
+        ["cancelled", "returnRequested", "returned", "returnRejected"].includes(
           item.orderStatus
         )
       ) {
@@ -231,6 +231,7 @@ const handleReturnAction = async (req, res) => {
     //return reject
     if (action === "reject") {
       item.orderStatus = "rejected";
+      item.deliveredOn = item.deliveredOn || new Date();
     }
 
     //refund

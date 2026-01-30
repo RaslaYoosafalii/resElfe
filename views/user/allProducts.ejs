@@ -444,7 +444,12 @@
   </style>
 </head>
 <body>
+  <% if (isLoggedIn) { %>
   <%- include('../partials/user/loggedinHeader') %>
+<% } else { %>
+  <%- include('../partials/user/header') %>
+<% } %>
+
 
   <div class="container">
     <div class="page-head">

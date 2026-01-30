@@ -16,7 +16,7 @@ const listCategories = async (req, res) => {
     const { page, limit, q } = parsePaging(req);
 
   
-    const filter = { isDeleted: { $ne: true } };
+    const filter = { isDeleted: { $ne: true } };  
 
     if (q) {
       const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -42,7 +42,7 @@ const listCategories = async (req, res) => {
       m[key].push(s);
       return m;
     }, {});
-
+    
     // calculate product counts for each category
     const categoriesWithMeta = await Promise.all(
       categories.map(async (cat) => {

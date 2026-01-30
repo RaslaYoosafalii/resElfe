@@ -278,7 +278,11 @@ No orders found matching your search.
           <div>
             <strong><%= item.productName %></strong><br>
             Qty: <%= item.quantity %> | ₹<%= item.offerPrice %><br>
-            Status: <%= item.orderStatus %>
+            Status:   <% if (item.orderStatus === 'rejected') { %>
+    Return request rejected (Delivered)
+  <% } else { %>
+    <%= item.orderStatus %>
+  <% } %>
           </div>
         </div>
       <% }) %>

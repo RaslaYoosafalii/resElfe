@@ -15,7 +15,8 @@ const loadCheckout = async (req, res) => {
      cart.items = cart.items.map(item => ({
         ...item,
          productName: item.productId.productName,
-         productImage: item.productId.images?.[0] || null
+         productImage: item.productId.images?.[0] || null,
+         isUnavailable: item.productId.isDeleted || !item.productId.isListed
       }));
 
     if (!cart || cart.items.length === 0) {
@@ -80,6 +81,20 @@ const placeOrder = async (req, res) => {
 
     // 🔒 Stock validation (STRICT)
     for (const item of cart.items) {
+
+     const product = await Product.findOne({
+    _id: item.productId,
+    isDeleted: { $ne: true },
+    isListed: true
+  }).lean();
+
+  if (!product) {
+    return res.json({
+      success: false,
+      message: `${item.productId.productName} is unavailable<br>Please remove unavailable product from the cart continue`
+    });
+  }
+
       const variant = await Varient.findOne({
         productId: item.productId,
         size: item.size,
@@ -90,10 +105,11 @@ const placeOrder = async (req, res) => {
       if (!variant || variant.stock < item.quantity) {
         return res.json({
           success: false,
-          message: `${item.productId.productName} is out of stock`
+          message: `${item.productId.productName} is out of stock<br>Please remove out-of-stock product from the cart continue`
         });
       }
     }
+    
 
     let itemsTotal = 0;
     const orderedItem = cart.items.map(i => {
