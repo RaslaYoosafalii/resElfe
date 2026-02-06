@@ -190,15 +190,48 @@
 <div>
   <div class="label">Order Status</div>
   <div class="value">
-    <select
-      id="orderStatusSelect"
-      data-id="<%= order._id %>"
-      data-current="<%= order.orderStatus %>">
-      <% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => { %>
-        <option value="<%= s %>" <%= order.orderStatus === s ? 'selected' : '' %>>
-          <%= s %>
-        </option>
-      <% }) %>
+    <%
+  const flow = ['pending','shipped','out for delivery','delivered'];
+  const currentStatus = order.orderStatus;
+  const currentStatusIndex = flow.indexOf(currentStatus);
+%>
+
+<select
+  id="orderStatusSelect"
+  data-id="<%= order._id %>"
+  data-current="<%= order.orderStatus %>"
+>
+
+<% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => {
+     let disabled = false;
+
+     // forward-only, one-step rule
+     if (flow.includes(currentStatus) && flow.includes(s)) {
+       disabled =
+         flow.indexOf(s) !== currentStatusIndex + 1 &&
+         s !== currentStatus;
+     }
+
+     // cancellation allowed only from pending
+     if (s === 'cancelled' && currentStatus !== 'pending') {
+       disabled = true;
+     }
+
+     // once delivered or cancelled nothing else selectable
+     if (['delivered','cancelled'].includes(currentStatus) && s !== currentStatus) {
+       disabled = true;
+     }
+%>
+
+  <option
+    value="<%= s %>"
+    <%= currentStatus === s ? 'selected' : '' %>
+    <%= disabled ? 'disabled' : '' %>>
+    <%= s %>
+  </option>
+
+<% }) %>
+
     </select>
   </div>
 </div>

@@ -56,7 +56,8 @@ const orderSchema = new Schema({
         }
     }],
     orderDate: {
-        type: Date
+        type: Date,
+        default: Date.now
     },
     itemsTotal: {
         type: Number,
@@ -93,14 +94,6 @@ const orderSchema = new Schema({
         required: true,
         enum: ['pending','shipped','out for delivery', 'delivered', 'cancelled', 'returnRequested', 'returned','failed'],
         default: 'pending'
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-        required: true
-    },
-    updatedAt: {
-        type: Date
     },
     deliveredOn: {
         type: Date

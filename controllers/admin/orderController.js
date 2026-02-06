@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import Order from "../../models/orderSchema.js";
 import User from "../../models/userSchema.js";
-import { Varient } from "../../models/productSchema.js";
+import { Variant } from "../../models/productSchema.js";
 
 
 const listOrders = async (req, res) => {
@@ -78,6 +78,12 @@ const allowedStatus = [
   "delivered",
   "cancelled"
 ];
+const statusFlow = [
+  "pending",
+  "shipped",
+  "out for delivery",
+  "delivered"
+];
 
     if (!allowedStatus.includes(status)) {
       return res.json({ success: false, message: "Invalid status" });
@@ -87,19 +93,43 @@ const allowedStatus = [
     if (!order) {
       return res.json({ success: false, message: "Order not found" });
     }
+    const currentStatus = order.orderStatus;
 
-    //Immutable states
-    if (["delivered", "cancelled"].includes(order.orderStatus)) {
-      return res.json({
-        success: false,
-        message: "Order cannot be modified"
-      });
-    }
+// Delivered or cancelled → immutable
+if (["delivered", "cancelled"].includes(currentStatus)) {
+  return res.json({
+    success: false,
+    message: "This order status can no longer be changed"
+  });
+}
+
+// Cancelled is only allowed from pending
+if (status === "cancelled" && currentStatus !== "pending") {
+  return res.json({
+    success: false,
+    message: "Only pending orders can be cancelled"
+  });
+}
+
+// Validate forward-only one-step flow
+const currentStatusIndex = statusFlow.indexOf(currentStatus);
+const nextStatusIndex = statusFlow.indexOf(status);
+
+// Trying to jump or reverse
+if (currentStatusIndex !== -1 && nextStatusIndex !== -1) {
+  if (nextStatusIndex !== currentStatusIndex + 1) {
+    return res.json({
+      success: false,
+      message: `Invalid status transition: ${currentStatus} → ${status}`
+    });
+  }
+}
+
 
 
     for (const item of order.orderedItem) {
       if (
-        ["cancelled", "returnRequested", "returned", "returnRejected"].includes(
+        ["cancelled", "returnRequested", "returned", "rejected"].includes(
           item.orderStatus
         )
       ) {
@@ -222,7 +252,7 @@ const handleReturnAction = async (req, res) => {
     if (action === "approve") {
       item.orderStatus = "returned";
 
-      await Varient.updateOne(
+      await Variant.updateOne(
         { productId: item.product },
         { $inc: { stock: item.quantity } }
       );

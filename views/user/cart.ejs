@@ -353,7 +353,7 @@
         </td>
 
         <td>
-       <button onclick="removeCartItem('<%= item._id %>', '<%= item.productId._id %>', <%= item.isUnavailable ? 'true' : 'false' %>)">
+       <button onclick="removeCartItem('<%= item._id %>', '<%= item.productId._id %>',  item.isUnavailable ? 'true' : 'false' )">
             Remove
           </button>
         </td>
@@ -379,8 +379,8 @@
         finalTotal += i.totalPrice;
       });
 
-      let discountPct = baseTotal
-        ? Math.round(((baseTotal - finalTotal) / baseTotal) * 100)
+      let discount = baseTotal
+        ? Math.round((baseTotal - finalTotal))
         : 0;
       %>
 
@@ -391,7 +391,7 @@
 
       <div class="summary-row">
         <span>Discount</span>
-        <span>-<%= discountPct %>%</span>
+        <span>- Rs. <%= discount %></span>
       </div>
 
       <div class="summary-row">

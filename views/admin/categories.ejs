@@ -518,11 +518,7 @@
 
       // ----------------- EDIT SUBCATEGORY (modal) -----------------
       if (action === 'edit-sub') {
-        // fetch subcategory by using data endpoint of its parent? We can fetch SubCategory by id using the same category/data route not available.
-        // Simpler: call an endpoint to get subcategory or reuse category/data for parent category. For speed, call server endpoint /admin/category/data? Not available for sub.
-        // Instead fetch minimal data: we can ask server to return sub info at /admin/category/data/:parentId and then find sub.
-        // We'll try fetching both parent categories to locate sub: simpler approach - fetch /admin/category/subdata/:id would be cleaner (but not yet implemented).
-        // To avoid new endpoint, call /admin/category/subdata/<id> — implement server side if needed. For now assume /admin/category/subdata exists.
+
         fetch('/admin/category/subdata/' + id)
           .then(r => r.json())
           .then(data => {
@@ -575,4 +571,3 @@
 
 </body>
 </html>
-d

@@ -147,6 +147,8 @@
       background:#fff;
       border-radius:8px;
       cursor:pointer;
+      color: #5a5252;
+      text-decoration: none;
     }
 
     .page-btn.active {
@@ -225,8 +227,27 @@
               class="orderStatus"
               data-id="<%= o._id %>"
               data-current="<%= o.orderStatus %>">
-             <% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => { %>
-                <option value="<%= s %>" <%= o.orderStatus === s ? 'selected' : '' %>><%= s %></option>
+<%
+  const flow = ['pending','shipped','out for delivery','delivered'];
+  const currentIndex = flow.indexOf(o.orderStatus);
+%>
+
+<% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => {
+     let disabled = false;
+
+     if (flow.includes(o.orderStatus) && flow.includes(s)) {
+       disabled = flow.indexOf(s) !== currentIndex + 1 && s !== o.orderStatus;
+     }
+
+     if (o.orderStatus === 'delivered') disabled = true;
+     if (s === 'cancelled' && o.orderStatus !== 'pending') disabled = true;
+%>
+<option
+  value="<%= s %>"
+  <%= o.orderStatus === s ? 'selected' : '' %>
+  <%= disabled ? 'disabled' : '' %>>
+  <%= s %>
+</option>
               <% }) %>
             </select>
           </td>
@@ -254,12 +275,22 @@
 
   <div class="table-footer">
     <div class="pagination">
+         <% if (page > 1) { %>
+          <a class="page-btn" href="?page=<%= page - 1 %>">
+            &lt;
+          </a>
+        <% } %>
       <% for(let i=1;i<=totalPages;i++){ %>
         <a class="page-btn <%= page===i?'active':'' %>"
            href="?page=<%= i %><%= search?'&search='+search:'' %><%= status?'&status='+status:'' %>">
           <%= i %>
         </a>
       <% } %>
+         <% if (page < totalPages) { %>
+          <a class="page-btn" href="?page=<%= page +1 %>">
+            &gt;
+          </a>
+        <% } %>
     </div>
   </div>
 

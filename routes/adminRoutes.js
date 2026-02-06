@@ -41,6 +41,7 @@ router.post('/resend-otp', adminResendOtp);
 
 
 router.post('/change-password', adminChangePassword);
+
 router.get('/change-password', (req, res) => {
   if (!req.session.adminResetEmail) {
     return res.redirect('/admin/login');

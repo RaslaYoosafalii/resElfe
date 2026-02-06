@@ -1,6 +1,6 @@
 
 // controllers/admin/productController.js
-import { Product, Varient } from '../../models/productSchema.js';
+import { Product, Variant } from '../../models/productSchema.js';
 import { Category, SubCategory } from '../../models/categorySchema.js';
 import mongoose from 'mongoose';
 import sharp from 'sharp';
@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 const listProducts = async (req, res) => {
   try {
     let page = parseInt(req.query.page) || 1;
-    let limit = parseInt(req.query.limit) || 10;
+    let limit = 10;
     if (limit < 1) limit = 10;
 
     const search = req.query.search ? req.query.search.trim() : "";
@@ -52,7 +52,7 @@ let findFilter = { isDeleted: { $ne: true } };
     }
 
     //total stock
-    const variants = await Varient.find({
+    const variants = await Variant.find({
       productId: { $in: products.map(p => p._id) }
     }).lean();
 
@@ -205,7 +205,7 @@ const addProduct = [
         stock: v.stock,
         isListed: true
       }));
-      await Varient.insertMany(variantDocs);
+      await Variant.insertMany(variantDocs);
 
       console.log('addProduct: created', newProduct._id);
       return res.redirect('/admin/product');
@@ -234,7 +234,7 @@ const loadEditProduct = async (req, res) => {
     if (!product) return res.redirect('/admin/product');
 
     // fetch variants for this product
-    const variants = await Varient.find({ productId: product._id }).lean();
+    const variants = await Variant.find({ productId: product._id }).lean();
 
     // categories and subcategories
     const categories = await Category.find({isDeleted: { $ne: true }, isListed: true}).lean();
@@ -287,7 +287,7 @@ const updateProduct = [
         return res.status(400).render('product-edit', {
           allowRender: true,
           product: product.toObject(),
-          variants: await Varient.find({ productId: id }).lean(),
+          variants: await Variant.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
           subcategories: await SubCategory.find().lean(),
           message: 'Missing required fields'
@@ -299,7 +299,7 @@ const updateProduct = [
         return res.status(400).render('product-edit', {
           allowRender: true,
           product: product.toObject(),
-          variants: await Varient.find({ productId: id }).lean(),
+          variants: await Variant.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
           subcategories: await SubCategory.find().lean(),
           message: 'Invalid category/subcategory'
@@ -315,7 +315,7 @@ const updateProduct = [
         return res.status(400).render('product-edit', {
           allowRender: true,
           product: product.toObject(),
-          variants: await Varient.find({ productId: id }).lean(),
+          variants: await Variant.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
           subcategories: await SubCategory.find().lean(),
           message: 'Invalid variants data'
@@ -342,7 +342,7 @@ const updateProduct = [
             return res.status(400).render('product-edit', {
               allowRender: true,
               product: product.toObject(),
-              variants: await Varient.find({ productId: id }).lean(),
+              variants: await Variant.find({ productId: id }).lean(),
               categories: await Category.find().lean(),
               subcategories: await SubCategory.find().lean(),
               message: 'Invalid existing variant values (price>0, stock>=0, size required)'
@@ -360,7 +360,7 @@ const updateProduct = [
             return res.status(400).render('product-edit', {
               allowRender: true,
               product: product.toObject(),
-              variants: await Varient.find({ productId: id }).lean(),
+              variants: await Variant.find({ productId: id }).lean(),
               categories: await Category.find().lean(),
               subcategories: await SubCategory.find().lean(),
               message: 'Invalid new variant values (price>0, stock>=0, size required)'
@@ -414,7 +414,7 @@ const updateProduct = [
         return res.status(400).render('product-edit', {
           allowRender: true,
           product: product.toObject(),
-          variants: await Varient.find({ productId: id }).lean(),
+          variants: await Variant.find({ productId: id }).lean(),
           categories: await Category.find().lean(),
           subcategories: await SubCategory.find().lean(),
           message: 'At least one image must remain for the product'
@@ -431,15 +431,15 @@ const updateProduct = [
 
       // Apply variant deletions, updates, inserts
       if (toDeleteVariantIds.length) {
-        await Varient.deleteMany({ _id: { $in: toDeleteVariantIds }, productId: product._id });
+        await Variant.deleteMany({ _id: { $in: toDeleteVariantIds }, productId: product._id });
       }
       for (const uv of toUpdateVariants) {
-        await Varient.findByIdAndUpdate(uv._id, { size: uv.size, color: uv.color, price: uv.price, discountPrice: (typeof uv.discountPrice !== 'undefined') ? uv.discountPrice : null, stock: uv.stock });
+        await Variant.findByIdAndUpdate(uv._id, { size: uv.size, color: uv.color, price: uv.price, discountPrice: (typeof uv.discountPrice !== 'undefined') ? uv.discountPrice : null, stock: uv.stock });
 
       }
       if (toInsertVariants.length) {
         const docs = toInsertVariants.map(v => ({ productId: product._id, size: v.size, color: v.color, price: v.price, discountPrice: (typeof v.discountPrice !== 'undefined') ? v.discountPrice : null, stock: v.stock, images: [], isListed: true }));
-        await Varient.insertMany(docs);
+        await Variant.insertMany(docs);
       }
 
       console.log('updateProduct:', id);
@@ -475,7 +475,7 @@ const deleteProduct = async (req, res) => {
     await product.save();
 
     // unlist variants
-    await Varient.updateMany(
+    await Variant.updateMany(
       { productId: id },
       { $set: { isListed: false } }
     );
@@ -515,8 +515,8 @@ const restoreProduct = async (req, res) => {
     product.isListed = true;
     await product.save();
 
-    //restore varient
-    await Varient.updateMany(
+    //restore variant
+    await Variant.updateMany(
       { productId: id },
       { $set: { isListed: true } }
     );
@@ -528,6 +528,7 @@ const restoreProduct = async (req, res) => {
       message: 'Product restored successfully'
     });
 
+    
   } catch (err) {
     console.error('restoreProduct error:', err);
     return res.status(500).json({

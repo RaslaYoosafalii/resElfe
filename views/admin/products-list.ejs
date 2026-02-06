@@ -155,12 +155,15 @@
       border:1px solid var(--soft-border);
       background:#fff;
       border-radius:8px;
+      color: #5a5252;
+      text-decoration: none;
       cursor:pointer;
     }
     .page-btn.active {
       background:#e9e2e0;
       font-weight:700;
       color:var(--accent);
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -172,7 +175,6 @@
     
     <div class="topbar">
       <div class="page-title"><h2>Products management</h2></div>
-
       <div class="search-add">
         <div class="search-box">
           <i class="bi bi-search"></i>
@@ -267,20 +269,20 @@
 
         <!-- Prev -->
         <% if (page > 1) { %>
-          <a class="page-btn" href="/admin/product?page=<%= page - 1 %>&limit=<%= limit %>">
-            <i class="bi bi-chevron-left"></i>
+          <a class="page-btn" href="/admin/product?page=<%= page - 1 %>">
+            &lt;
           </a>
         <% } %>
 
         <% for (let i = 1; i <= totalPages; i++) { %>
-            <a href="/admin/product?page=<%= i %>&limit=<%= limit %><%= search ? '&search=' + search : '' %>"
+            <a href="/admin/product?page=<%= i %>"
             class="page-btn <%= page === i ? 'active' : '' %>"><%= i %></a>
         <% } %>
 
         <!-- Next -->
         <% if (page < totalPages) { %>
-          <a class="page-btn" href="/admin/product?page=<%= page + 1 %>&limit=<%= limit %>">
-            <i class="bi bi-chevron-right"></i>
+          <a class="page-btn" href="/admin/product?page=<%= page + 1 %>">
+            &gt;
           </a>
         <% } %>
 

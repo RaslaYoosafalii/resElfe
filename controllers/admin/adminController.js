@@ -10,6 +10,7 @@ const OTP_COOLDOWN = 60 * 1000;
 const errorPage = async (req, res) => {
   res.render('admin/error-page');
 };
+const isValidString = v => typeof v === 'string' && v.trim().length > 0;
 
 // load login page
 const loadLogin = async (req, res) => {
@@ -24,7 +25,11 @@ const loadLogin = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
+    
+    if (!isValidString(email) || !isValidString(password)) {
+      req.session.message = 'Invalid email or password';
+      return res.redirect('/admin/login');
+    }
     const admin = await User.findOne({ isAdmin: true, email: email });
 
     if (!admin || !(await bcrypt.compare(password, admin.password))) {
@@ -129,7 +134,14 @@ const loadAdminForgotPassword = async (req, res) => {
 const adminForgotPasswordRequest = async (req, res) => {
   try {
     const { email } = req.body;
-    
+
+
+if (!isValidString(email)) {
+  return res.render('admin-forgot-password', {
+    message: 'Invalid email'
+  });
+}
+
     if (
       req.session.adminForgotLastRequest &&
       Date.now() - req.session.adminForgotLastRequest < OTP_COOLDOWN
@@ -188,7 +200,16 @@ const loadAdminOtpPage = async (req, res) => {
 const adminVerifyOtp = async (req, res) => {
   const { otp } = req.body;
   const email = req.session.adminResetEmail;
+  
+  if (!isValidString(otp)) {
+  return res.render('admin-verify-otp', {
+    email,
+    message: 'Invalid OTP'
+  });
+}
 
+
+ 
   if (!email || !req.session.adminResetOtp) {
     return res.render('admin-verify-otp', {
       email: null,
@@ -230,6 +251,13 @@ const adminChangePassword = async (req, res) => {
       });
     }
 
+    if ( !isValidString(newPassword) || newPassword.length < 6 || !/^(?=.*[A-Za-z])(?=.*\d)/.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters and should contain at least one letter and one number'
+      });
+    }
+
     if (newPassword !== confirmPassword) {
       return res.status(400).json({
         success: false,
@@ -262,6 +290,13 @@ const adminChangePassword = async (req, res) => {
 const adminResendOtp = async (req, res) => {
   try {
     const { email } = req.body;
+
+  if (!isValidString(email)) {
+  return res.status(400).json({
+    success: false,
+    message: 'Invalid email'
+  });
+}
 
     if (
       !req.session.adminResetEmail ||

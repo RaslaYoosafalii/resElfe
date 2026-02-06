@@ -16,7 +16,7 @@ const categorySchema = new Schema({
         required: false,
         default: 0
     },
-    offerIsPercent: {            // <-- NEW flag
+    offerIsPercent: {           
         type: Boolean,
         default: false
     },

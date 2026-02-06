@@ -1,7 +1,7 @@
 // controllers/user/cartController.js
 import Cart from '../../models/cartSchema.js';
 import Wishlist from '../../models/wishlistSchema.js';
-import { Product, Varient } from '../../models/productSchema.js';
+import { Product, Variant } from '../../models/productSchema.js';
 import { Category } from '../../models/categorySchema.js';
 import mongoose from 'mongoose';
 
@@ -18,7 +18,7 @@ const addToCart = async (req, res) => {
     }
 
     // 🔍 Variant validation
-    const variant = await Varient.findOne({
+    const variant = await Variant.findOne({
       _id: variantId,
       isListed: true
     }).lean();
@@ -141,7 +141,7 @@ const loadCart = async (req, res) => {
     cart.items = await Promise.all(
       cart.items.map(async item => {
 
-const currentVariant = await Varient.findOne({
+const currentVariant = await Variant.findOne({
   productId: item.productId._id,
   size: item.size,
   color: item.color,
@@ -154,7 +154,7 @@ const productUnavailable =
   !item.productId.isListed;
 
   
-const variants = await Varient.find({
+const variants = await Variant.find({
   productId: item.productId._id,
   isListed: true
 }).select('_id size stock price discountPrice color').lean();
@@ -197,7 +197,7 @@ const changeCartSize = async (req, res) => {
     const item = cart.items.id(itemId);
     if (!item) return res.json({ success: false });
 
-    const variant = await Varient.findOne({
+    const variant = await Variant.findOne({
       _id: variantId,
       isListed: true,
       stock: { $gt: 0 }
@@ -248,7 +248,7 @@ const updateCartQty = async (req, res) => {
     const item = cart.items.id(itemId);
     if (!item) return res.json({ success: false });
 
-    const variant = await Varient.findOne({
+    const variant = await Variant.findOne({
       productId: item.productId,
       size: item.size,
       color: item.color,

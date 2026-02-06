@@ -357,6 +357,7 @@ if(pin.value){
   saveBtn.disabled = !valid;
 }
 </script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 function handleSubmit(e) {
   validateForm();
@@ -367,6 +368,12 @@ function handleSubmit(e) {
   return true;
 }
 </script>
+<script>
+const params = new URLSearchParams(window.location.search);
 
+if (params.get('error') === 'sameNumber') {
+  Swal.fire('Error', 'Alternate number cannot be same as mobile', 'error');
+}
+</script>
 
 </html>

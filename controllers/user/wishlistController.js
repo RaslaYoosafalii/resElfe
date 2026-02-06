@@ -1,5 +1,5 @@
 import Wishlist from '../../models/wishlistSchema.js';
-import { Varient } from '../../models/productSchema.js';
+import { Variant } from '../../models/productSchema.js';
 import mongoose from 'mongoose';
 
 
@@ -99,7 +99,7 @@ const loadWishlist = async (req, res) => {
 
     const productIds = wishlist.products.map(w => w.productId._id);
 
-    const variants = await Varient.aggregate([
+    const variants = await Variant.aggregate([
       { $match: { productId: { $in: productIds }, isListed: true } },
       {
         $group: {

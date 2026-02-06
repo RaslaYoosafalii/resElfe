@@ -1,5 +1,5 @@
 // controllers/user/productController.js
-import { Product, Varient } from '../../models/productSchema.js';
+import { Product, Variant } from '../../models/productSchema.js';
 import { Category, SubCategory } from '../../models/categorySchema.js';
 import Wishlist from '../../models/wishlistSchema.js';
 import Cart from '../../models/cartSchema.js';
@@ -7,7 +7,7 @@ import Cart from '../../models/cartSchema.js';
 import mongoose from 'mongoose';
 
 function parseQuery(req) {
-  const q = (req.query && req.query.q) ? String(req.query.q).trim() : '';
+  const search = (req.query && req.query.q) ? String(req.query.q).trim() : '';
   const sort = (req.query && req.query.sort) ? String(req.query.sort) : 'newest';
   const category = (req.query && req.query.category) ? String(req.query.category) : null;
   const subcategory = (req.query && req.query.subcategory) ? String(req.query.subcategory) : null;
@@ -18,7 +18,7 @@ function parseQuery(req) {
     1
   );
   const limit = 9; // Always 9 (3x3 grid)
-  return { q, sort, category, subcategory, minPrice, maxPrice, page, limit };
+  return { search, sort, category, subcategory, minPrice, maxPrice, page, limit };
 }
 
 function buildSort(key) {
@@ -33,13 +33,13 @@ function buildSort(key) {
 
 const listProducts = async (req, res) => {
   try {
-    const { q, sort, category, subcategory, minPrice, maxPrice, page, limit } =
+    const { search, sort, category, subcategory, minPrice, maxPrice, page, limit } =
       parseQuery(req);
+    
+    const matchStage = { isListed: true, isDeleted: { $ne: true }};
 
-    const matchStage = { isListed: true, isDeleted: { $ne: true } };
-
-    if (q) {
-      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (search) {
+      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const re = new RegExp(safe, 'i');
       matchStage.$or = [{ productName: re }, { description: re }];
     }
@@ -77,7 +77,7 @@ if (subcategory) {
       { $match: matchStage },
       {
         $lookup: {
-          from: 'varients',
+          from: 'variants',
           let: { pid: '$_id' },
           pipeline: [
             {
@@ -205,7 +205,7 @@ if (minPrice != null || maxPrice != null) {
       { $match: matchStage },
       {
         $lookup: {
-          from: 'varients',
+          from: 'variants',
           let: { pid: '$_id' },
           pipeline: [
             {
@@ -307,7 +307,7 @@ const isLoggedIn = !!req.session.user;
       subcategories: finalSubcategories,
        isLoggedIn,
       pagination: {
-        q,
+        search,
         sort,
         category,
         subcategory,
@@ -355,7 +355,7 @@ const productDetails = async (req, res) => {
 
    const variants = isUnavailable
   ? []
-  : await Varient.find({
+  : await Variant.find({
       productId: product._id,
       isListed: true
     }).lean();
@@ -389,7 +389,7 @@ const recommendations = await Product.aggregate([
   },
   {
     $lookup: {
-      from: 'varients',
+      from: 'variants',
       let: { pid: '$_id' },
       pipeline: [
         {

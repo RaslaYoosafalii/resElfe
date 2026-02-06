@@ -8,7 +8,6 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import fs from 'fs';
-
 dotenv.config();
 
 const OTP_COOLDOWN = 60 * 1000;
@@ -363,9 +362,15 @@ async function sendVerificationEmail(email, otp) {
 
 // signup
 const signup = async (req, res) => {
-  const { email, password, confirmPassword, refferalCode } = req.body;
-
+  let { email, password, confirmPassword, refferalCode } = req.body;
+   email = email.trim();
+   password = password.trim()
+   confirmPassword = confirmPassword.trim()
+  const alpha = /[a-zA-Z]/;
+  const digit = /\d/;
   try {
+ 
+
     if (!email || !password || !confirmPassword) {
       return res.render('signup', {
         message: 'Fill all required fields',
@@ -379,11 +384,27 @@ const signup = async (req, res) => {
         user: null
       });
     }
+    
+  if(password.length < 8){
+    return res.render('signup', {
+      message: 'password must be at least 8 characters.',
+      user: null
+    })
+  }
+
+  if(!alpha.test(password) || !digit.test(password)){
+     return res.render('signup', {
+      message: "Password must contain at least one alphabet and one digit",
+      user: null
+     })
+  }
+
+
 
     const findUser = await User.findOne({ email: email.toLowerCase() });
     if (findUser) {
       return res.render('signup', {
-        message: 'User with this email already exists',
+        message: null,
         user: null
       });
     }
@@ -402,7 +423,7 @@ if (
 
     const otp = generateOTP();
     const emailResult = await sendVerificationEmail(email, otp);
-
+    console.log(`signup otp`, otp)
     if (!emailResult || !emailResult.ok) {
       return res.render('signup', {
         message:
@@ -475,8 +496,8 @@ const verifyOtp = async (req, res) => {
 
       return res.json({ success: true, redirectUrl: '/login' });
     } else {
-      return res.render('verify-otp', {
-        email,
+      return res.json({
+        success: false,
         message: 'Invalid OTP, please try again'
       });
     }
@@ -1060,48 +1081,34 @@ const loadAddAddress = async (req, res) => {
 const addAddress = async (req, res) => {
   try {
     const userId = req.session.user;
-    const {
-      name,
-      mobileNumber,
-      pincode,
-      locality,
-      city,
-      state,
-      landmark,
-      alternativeNumber,
-      addressType,
-      address
-    } = req.body;
+    const { name, mobileNumber, pincode, locality, city, state, landmark, alternativeNumber, addressType, address} = req.body;
 
-    // 🔐 Validation
-    if (
-      !name ||
-      !mobileNumber ||
-      !pincode ||
-      !locality ||
-      !city ||
-      !state ||
-      !landmark ||
-      !addressType
-    ) {
+    // Validation
+    if (!name ||!mobileNumber ||!pincode ||!locality ||!city ||!state ||!landmark ||!addressType) {
       return res.render('add-address', {
         user: await User.findById(userId).lean(),
         error: 'All required fields must be filled'
       });
     }
+    if(!typeof name === 'string' && !name.length>3){
+        return res.render('add-address', {
+          message: 'please enter a valid name'
+        })
+    }
+    if(!String(mobileNumber).length===10){
+        return res.render('add-address', {
+          message: 'please enter a valid 10 digit mobile number'
+        })
+    }
+    if(!String(pincode).length===6){
+       return res.render('add-address', {
+          message: 'please enter a valid pincode'
+        })
+    }
 
-    const newAddress = {
-      name,
-      mobileNumber,
-      pincode,
-      locality,
-      city,
-      state,
-      landmark,
-      alternativeNumber: alternativeNumber || null,
-      addressType,
-      address
-    };
+    const newAddress = { name, mobileNumber, pincode, locality, city, state, landmark,
+                          alternativeNumber: alternativeNumber || null, addressType, address
+                 };
 
     let addressDoc = await Address.findOne({ userId });
 
@@ -1113,11 +1120,12 @@ const addAddress = async (req, res) => {
     } else {
       addressDoc.address.push(newAddress);
     }
+
     if (
   alternativeNumber &&
   String(alternativeNumber) === String(mobileNumber)
 ) {
-  return res.redirect('/address?error=sameNumber');
+  return res.redirect('/address/add?error=sameNumber');
 }
 
 

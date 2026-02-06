@@ -165,11 +165,7 @@ textarea {
   background:#f2f2f2;
 }
 
-.page-btn.active {
-  background:#222;
-  color:#fff;
-  border-color:#222;
-}
+
 /* ===== MATCH PROFILE LAYOUT ===== */
 .profile-wrapper {
   display: flex;
@@ -224,7 +220,16 @@ textarea {
   }
 }
 
-
+.page-btn.active {
+  background-color: #000 !important;
+  color: #fff !important;
+  border-color: #000 !important;
+  cursor: default;
+}
+.page-btn.active:hover {
+  background-color: #000;
+  color: #fff;
+}
 
 </style>
 </head>
@@ -291,12 +296,11 @@ No orders found matching your search.
         <button class="btn btn-outline" onclick="viewDetails('<%= order.orderId %>')">Details</button>
         <button class="btn btn-outline" onclick="downloadInvoice('<%= order.orderId %>')">Dowload Invoice</button>
 
-        <%
+ <%
 const hasNonCancelableItem = order.orderedItem.some(i =>
   ['delivered', 'returnRequested', 'returned'].includes(i.orderStatus)
 );
 %>
-
         <% if (!hasNonCancelableItem && order.orderStatus !== 'cancelled') { %>
           <button class="btn btn-dark" onclick="cancelOrder('<%= order.orderId %>')">Cancel Order</button>
         <% } %>
@@ -314,12 +318,31 @@ const hasNonCancelableItem = order.orderedItem.some(i =>
 </div>
 <!-- pagination -->
 <div class="pagination">
-  <% for(let i=1;i<=totalPages;i++){ %>
-    <a href="/orders?page=<%= i %>"
-       class="page-btn <%= i===currentPage ? 'active' : '' %>">
-      <%= i %>
+
+<% if(currentPage>1){%>
+ <a href="/orders?page=<%= currentPage-1 %>" class="page-btn">
+  &lt;</a>
+<% } %>
+<%
+let startPage = Math.max(currentPage - 1, 1);
+let endPage = Math.min(startPage + 1, totalPages);
+
+if(endPage-startPage < 1 && startPage > 1){
+startPage--
+}
+ %>
+ <% for(let i = startPage; i<=endPage; i++){ %>
+    <a href="/orders?page=<%= i%>" class="page-btn <%= i === currentPage ? 'active' : '' %>">
+     <%= i %>
     </a>
-  <% } %>
+<%}%>
+
+  <%if (currentPage<totalPages){ %>
+    <a href="/orders?page=<%=currentPage+1 %>" class="page-btn">
+      &gt;
+    </a>
+ <% }%>
+
 </div>
 
   </section>

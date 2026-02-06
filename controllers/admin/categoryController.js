@@ -9,6 +9,8 @@ function parsePaging(req) {
   const q = (req.query.q || '').toString().trim();
   return { page, limit, q };
 }
+const isValidString = v => typeof v === 'string' && v.trim().length > 0;
+const alpha = /[a-zA-Z]/;
 
 
 const listCategories = async (req, res) => {
@@ -107,7 +109,7 @@ const editCategory = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid id' });
     }
-    if (!name || !description) {
+    if (!isValidString(name) || !isValidString(description)) {
       return res.status(400).json({ success: false, message: 'Name and description required' });
     }
 
@@ -126,17 +128,26 @@ const editCategory = async (req, res) => {
         });
       }
     }
+  const newStatus =
+  isListed === 'true' ||
+  isListed === true ||
+  isListed === '1' ||
+  isListed === 1;
+
+const statusChanged = cat.isListed !== newStatus;
 
     cat.name = name.trim();
     cat.description = description.trim();
-    cat.isListed =
-      isListed === 'true' ||
-      isListed === true ||
-      isListed === '1' ||
-      isListed === 1;
+    cat.isListed = newStatus
 
     await cat.save();
 
+  if (statusChanged) {
+  await Product.updateMany(
+    { categoryId: cat._id },
+    { $set: { isListed: newStatus } }
+  );
+}
     console.log('editCategory:', id);
     return res.json({ success: true, message: 'Category updated', category: cat });
   } catch (err) {
@@ -153,7 +164,7 @@ const editSubCategory = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid id' });
     }
-    if (!fitName) {
+   if (!isValidString(fitName) ) {
       return res.status(400).json({ success: false, message: 'Name required' });
     }
 
@@ -191,22 +202,20 @@ const editSubCategory = async (req, res) => {
 const createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
-    if (!name || !description) {
-      return res.render('admin/categories', {
-         allowRender: true, 
-        categories: [],
-        message: 'Name and description are required'
-      });
+    if (!isValidString(name) || !isValidString(description)) {
+    req.session.message = 'Name and description are required';
+    return res.redirect('/admin/category');
+    }
+    if (!alpha.test(name)) {
+    req.session.message = 'enter a valid category name';
+    return res.redirect('/admin/category');
     }
 
     const exists = await Category.findOne({ name: name.trim() });
     if (exists) {
       console.log('createCategory failed: category exists named', name);
-      return res.render('admin/categories', {
-         allowRender: true,
-        categories: [],
-        message: 'Category already exists'
-      });
+      req.session.message = 'category already exists with same name';
+      return res.redirect('/admin/category');
     }
 
     await Category.create({
@@ -228,7 +237,9 @@ const createCategory = async (req, res) => {
 const createSubCategory = async (req, res) => {
   try {
     const { categoryId, fitName } = req.body;
-    if (!categoryId || !fitName) {
+
+    if (!categoryId || !alpha.test(fitName)) {
+      req.session.message = 'please enter a valid subcategory name';
       return res.redirect('/admin/category');
     }
     if (!mongoose.Types.ObjectId.isValid(categoryId)) {
@@ -238,6 +249,7 @@ const createSubCategory = async (req, res) => {
     const exists = await SubCategory.findOne({ Category: categoryId, fitName: fitName.trim() });
     if (exists) {
       console.log('createSubCategory failed: subcategory exists', fitName);
+      req.session.message = 'subcategory already exists with same name';
       return res.redirect('/admin/category');
     }
 
@@ -267,10 +279,18 @@ const toggleCategoryList = async (req, res) => {
     if (!cat) {
       return res.redirect('/admin/category');
     }
-
-    cat.isListed = !cat.isListed;
+    
+    
+    const newStatus = !cat.isListed;
+    cat.isListed = newStatus;
     await cat.save();
 
+   
+    await Product.updateMany(
+      { categoryId: cat._id},
+      { $set: { isListed: newStatus } }
+    );
+  
     console.log('toggleCategoryList:', id, '->', cat.isListed);
     return res.redirect('/admin/category');
   } catch (err) {
@@ -288,6 +308,12 @@ const setCategoryOffer = async (req, res) => {
     }
 
     const { offerType, offerValue, offerValidDate } = req.body;
+
+if (offerType && !['fixed', 'percent'].includes(offerType)) {
+req.session.message = 'Invalid offer type';
+return res.redirect('/admin/category');
+}
+
     const cat = await Category.findById(id);
     if (!cat) {
       return res.redirect('/admin/category');
@@ -306,20 +332,14 @@ const setCategoryOffer = async (req, res) => {
 
     const numericValue = Number(valueTrim);
     if (Number.isNaN(numericValue) || numericValue < 0) {
-      return res.render('categories', {
-         allowRender: true,
-        categories: [],
-        message: 'Invalid offer value'
-      });
+req.session.message = 'Invalid offer value';
+return res.redirect('/admin/category');
     }
 
     if (offerType === 'percent') {
       if (numericValue <= 0 || numericValue > 100) {
-        return res.render('categories', {
-           allowRender: true,
-          categories: [],
-          message: 'Percentage must be between 1 and 100'
-        });
+ req.session.message = 'Percentage must be between 1 and 100';
+return res.redirect('/admin/category');
       }
       cat.offerIsPercent = true;
       cat.offerPrice = numericValue;
@@ -328,9 +348,17 @@ const setCategoryOffer = async (req, res) => {
       cat.offerPrice = numericValue;
     }
 
-    cat.offerValidDate = offerValidDate
-      ? new Date(offerValidDate)
-      : undefined;
+ if (offerValidDate) {
+  const d = new Date(offerValidDate);
+  if (isNaN(d.getTime())) {
+ req.session.message = 'Invalid offer date';
+ return res.redirect('/admin/category');
+  }
+  cat.offerValidDate = d;
+} else {
+  cat.offerValidDate = undefined;
+}
+
 
     await cat.save();
 
@@ -479,6 +507,13 @@ const restoreCategory = async (req, res) => {
     category.isDeleted = false;
     category.isListed = true;
     await category.save();
+
+   await Product.updateMany(
+  { categoryId: category._id },
+  { $set: { isListed: true } }
+   );
+
+
 
     console.log('restoreCategory:', id);
 

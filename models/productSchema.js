@@ -62,7 +62,7 @@ const Product = mongoose.model('Product', productSchema);
 
 
 
-const varientSchema = new Schema({
+const variantSchema = new Schema({
     productId: {
         type: Schema.Types.ObjectId,
         ref: "Product",
@@ -124,11 +124,11 @@ const varientSchema = new Schema({
   }]
 }) 
 
-const Varient = mongoose.model('Varient', varientSchema);
+const Variant = mongoose.model('Variant', variantSchema);
 
 
 
 export { 
     Product,
-    Varient
+    Variant
 };
