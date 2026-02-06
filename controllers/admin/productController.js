@@ -66,7 +66,6 @@ let findFilter = { isDeleted: { $ne: true } };
     products.forEach(p => {
       p.totalStock = stockMap[p._id.toString()] || 0;
     });
-
     return res.render("products-list", {
       allowRender: true,
       products: filteredProducts,
