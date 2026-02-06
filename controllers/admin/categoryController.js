@@ -285,7 +285,7 @@ const toggleCategoryList = async (req, res) => {
     cat.isListed = newStatus;
     await cat.save();
 
-   
+
     await Product.updateMany(
       { categoryId: cat._id},
       { $set: { isListed: newStatus } }
