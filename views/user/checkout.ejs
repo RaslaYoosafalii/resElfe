@@ -730,7 +730,7 @@ document.getElementById('addAddressForm')?.addEventListener('submit', async e =>
 });
 </script>
 <script>
-const addresses = JSON.stringify(addresses?.address || []);
+const addresses = <%- JSON.stringify(addresses?.address || []) %>;
 
 function editSelectedAddress() {
   const selected = document.querySelector('input[name="addressId"]:checked');

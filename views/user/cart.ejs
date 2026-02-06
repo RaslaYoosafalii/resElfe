@@ -353,7 +353,7 @@
         </td>
 
         <td>
-       <button onclick="removeCartItem('<%= item._id %>', '<%= item.productId._id %>',  item.isUnavailable ? 'true' : 'false' )">
+       <button onclick="removeCartItem('<%= item._id %>', '<%= item.productId._id %>', <%= item.isUnavailable ? 'true' : 'false' %>)">
             Remove
           </button>
         </td>
@@ -500,6 +500,19 @@ function changeSize(itemId, variantId) {
   .then(data => {
     if (!data.success) {
       alert(data.message);
+      return;
+    }
+    if (data.qtyAdjusted && data.message) {
+      const msgEl = document.getElementById('stock-msg-' + itemId);
+
+      msgEl.textContent = data.message;
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#c00';
+
+      setTimeout(() => {
+        location.reload();
+      }, 1500);
+
     } else {
       location.reload();
     }

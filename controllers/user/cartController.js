@@ -210,12 +210,13 @@ const changeCartSize = async (req, res) => {
       });
     }
 
-    if (item.quantity > variant.stock) {
-      return res.json({
-        success: false,
-        message: 'Not enough stock for selected size'
-      });
-    }
+let qtyAdjusted = false;
+
+if (item.quantity > variant.stock) {
+  item.quantity = 1;       //reset quantity
+  qtyAdjusted = true;
+}
+
 
     const unitPrice =
       variant.discountPrice && variant.discountPrice > 0
@@ -229,7 +230,13 @@ const changeCartSize = async (req, res) => {
 
     await cart.save();
 
-    res.json({ success: true });
+  return res.json({
+  success: true,
+  qtyAdjusted,
+  message: qtyAdjusted
+    ? 'Qty reset to 1 due to limited stock'
+    : null
+});
 
   } catch (err) {
     console.error('changeCartSize error', err);
