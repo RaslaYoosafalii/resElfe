@@ -5,8 +5,10 @@ import customerController from '../controllers/admin/customerController.js'
 import categoryController from '../controllers/admin/categoryController.js';
 import productController from '../controllers/admin/productController.js';
 import orderController from '../controllers/admin/orderController.js';
+import couponController from '../controllers/admin/couponController.js';
 import {adminAuth, noCache} from '../middlewares/auth.js'
-import {loadAdminForgotPassword,adminForgotPasswordRequest,loadAdminOtpPage,adminVerifyOtp,adminResendOtp,adminChangePassword} from '../controllers/admin/adminController.js';
+import salesController from '../controllers/admin/salesController.js';
+
 const router = express.Router()
 
 router.use((req, res, next) => {
@@ -32,15 +34,15 @@ router.post('/login', adminController.login);
 router.get('/', noCache, adminAuth, adminController.loadDashboard);
 router.get('/logout', adminController.logout)
 
-router.get('/forgot-password', loadAdminForgotPassword);
-router.post('/forgot-password', adminForgotPasswordRequest);
+router.get('/forgot-password', adminController.loadAdminForgotPassword);
+router.post('/forgot-password', adminController.adminForgotPasswordRequest);
 
-router.get('/verify-otp', loadAdminOtpPage);
-router.post('/verify-otp', adminVerifyOtp);
-router.post('/resend-otp', adminResendOtp);
+router.get('/verify-otp', adminController.loadAdminOtpPage);
+router.post('/verify-otp', adminController.adminVerifyOtp);
+router.post('/resend-otp', adminController.adminResendOtp);
 
 
-router.post('/change-password', adminChangePassword);
+router.post('/change-password', adminController.adminChangePassword);
 
 router.get('/change-password', (req, res) => {
   if (!req.session.adminResetEmail) {
@@ -52,8 +54,9 @@ router.get('/change-password', (req, res) => {
 
 //customer management
 router.get('/customer', noCache, adminAuth, customerController.customerInfo);
-router.post('/customer/toggle/:id', adminAuth, customerController.toggleBlockUser);
-router.post('/customer/delete/:id', adminAuth, customerController.deleteCustomer)
+router.patch('/customer/:id/block', adminAuth, customerController.toggleBlockUser);
+router.delete('/customer/:id', adminAuth, customerController.deleteCustomer);
+
 
 //category management
 router.get('/category',noCache, adminAuth, categoryController.listCategories)
@@ -62,11 +65,11 @@ router.post('/category/subcreate', adminAuth, categoryController.createSubCatego
 router.post('/category/toggle/:id', adminAuth, categoryController.toggleCategoryList)
 router.post('/category/offer/:id', adminAuth, categoryController.setCategoryOffer)
 router.get('/category/data/:id',noCache, adminAuth, categoryController.getCategoryData);        
-router.post('/category/edit/:id', adminAuth, categoryController.editCategory);         
-router.post('/category/subedit/:id', adminAuth, categoryController.editSubCategory); 
-router.post('/category/delete/:id', adminAuth, categoryController.deleteCategory);
+router.patch('/category/edit/:id', adminAuth, categoryController.editCategory);
+router.patch('/category/subedit/:id', adminAuth, categoryController.editSubCategory);
+router.delete('/category/delete/:id', adminAuth, categoryController.deleteCategory);
 router.post('/category/restore/:id',adminAuth,categoryController.restoreCategory);
-router.post('/category/subdelete/:id', adminAuth, categoryController.deleteSubCategory);
+router.delete('/category/subdelete/:id', adminAuth, categoryController.deleteSubCategory);
 router.get('/category/subdata/:id',noCache, adminAuth, categoryController.getSubCategoryData);
 router.get('/category/deleted',noCache, adminAuth,categoryController.listDeletedCategories);
 
@@ -77,8 +80,8 @@ router.get('/product',noCache, adminAuth, productController.listProducts);
 router.get('/product/add',noCache, adminAuth, productController.loadAddProduct);    
 router.post('/product/add', adminAuth, productController.addProduct);    
 router.get('/product/edit/:id',noCache, adminAuth, productController.loadEditProduct);
-router.post('/product/edit/:id', adminAuth, productController.updateProduct);
-router.post('/product/delete/:id', adminAuth, productController.deleteProduct); 
+router.put('/product/edit/:id', adminAuth, productController.updateProduct);
+router.delete('/product/delete/:id', adminAuth, productController.deleteProduct);
 router.post('/product/restore/:id',adminAuth,productController.restoreProduct);
 router.get('/product/deleted',noCache,adminAuth,productController.listDeletedProducts);
 
@@ -92,6 +95,15 @@ router.get("/order/:id",noCache, adminAuth, orderController.viewOrderDetails);
 router.get("/refund", noCache, adminAuth, orderController.loadReturnRefunds);
 router.post("/refund/action", adminAuth, orderController.handleReturnAction);
 
+//coupon management
+router.get('/coupon', noCache, adminAuth, couponController.listCoupons);
+router.delete('/coupon/delete/:id', adminAuth, couponController.deleteCoupon);
+router.post('/coupon/add', adminAuth, couponController.addCoupon);
+router.put('/coupon/edit/:id', adminAuth, couponController.editCoupon);
+router.post("/coupon/toggle/:id", couponController.toggleStatus);
 
+//sales management
+router.get('/sales-report', salesController.loadSalesReport);
+router.get('/sales-report/download', salesController.downloadSalesReport);
 
 export default router;

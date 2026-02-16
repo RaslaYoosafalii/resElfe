@@ -264,7 +264,8 @@
 
     <h2 class="profile-title">PROFILE</h2>
 
-    <form method="POST" action="/profile/edit" class="profile-content" enctype="multipart/form-data">
+   <form method="POST" action="/profile/edit?_method=PATCH" class="profile-content" enctype="multipart/form-data">
+
 
  <% if (user?.profileImage) { %>
 <div style="position: relative;">

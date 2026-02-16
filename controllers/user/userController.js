@@ -2,13 +2,25 @@
 import User from '../../models/userSchema.js';
 import Address from '../../models/addressSchema.js';
 import Order from '../../models/orderSchema.js';
-
+import { Coupon } from '../../models/couponSchema.js';
+import Wallet from '../../models/walletSchema.js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import fs from 'fs';
 dotenv.config();
+
+
+//reffaral code creation
+function generateReferralCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 const OTP_COOLDOWN = 60 * 1000;
 // not found page
@@ -362,7 +374,7 @@ async function sendVerificationEmail(email, otp) {
 
 // signup
 const signup = async (req, res) => {
-  let { email, password, confirmPassword, refferalCode } = req.body;
+  let { email, password, confirmPassword, referralCode } = req.body;
    email = email.trim();
    password = password.trim()
    confirmPassword = confirmPassword.trim()
@@ -404,7 +416,7 @@ const signup = async (req, res) => {
     const findUser = await User.findOne({ email: email.toLowerCase() });
     if (findUser) {
       return res.render('signup', {
-        message: null,
+        message: 'user already exists',
         user: null
       });
     }
@@ -436,7 +448,7 @@ if (
     req.session.userData = {
       email: email.toLowerCase(),
       password,
-      refferalCode
+      referralCode
     };
     req.session.otpCreatedAt = Date.now();
     req.session.otpLastSentAt = Date.now();
@@ -481,14 +493,121 @@ const verifyOtp = async (req, res) => {
       const userData = req.session.userData;
       const passwordHash = await securePassword(userData.password);
 
-      const saveUserData = new User({
-        email: userData.email,
-        password: passwordHash,
-        refferalcode: userData.refferalCode || undefined
-      });
+    // Generate unique referral code for new user
+let newReferralCode;
+let existingCode;
 
-      await saveUserData.save();
-      req.session.user = saveUserData._id;
+do {
+  newReferralCode = generateReferralCode();
+  existingCode = await User.findOne({ refferalcode: newReferralCode });
+} while (existingCode);
+
+// ==========================
+// REFERRAL VALIDATION + WALLET CREDIT
+// ==========================
+
+let referredByUser = null;
+
+if (userData.referralCode && userData.referralCode.trim() !== ''){
+  const referralInput = userData.referralCode.trim();
+
+  // Strict format validation (8 char alphanumeric)
+  if (!/^[A-Za-z0-9]{8}$/.test(referralInput)) {
+    return res.json({
+      success: false,
+      message: "Invalid referral code format"
+    });
+  }
+
+  referredByUser = await User.findOne({
+    refferalcode: referralInput,
+    isBlocked: false,
+    isDeleted: false
+  });
+
+  if (!referredByUser) {
+    return res.json({
+      success: false,
+      message: "Referral code does not exist"
+    });
+  }
+
+  // Prevent self-referral
+if (referredByUser.email.toLowerCase() === userData.email.toLowerCase()){
+    return res.json({
+      success: false,
+      message: "You cannot use your own referral code"
+    });
+  }
+
+  // Prevent duplicate referral (same email reused)
+  const existingUser = await User.findOne({ email: userData.email });
+  if (existingUser) {
+    return res.json({
+      success: false,
+      message: "User already registered"
+    });
+  }
+}
+
+// Save new user
+const saveUserData = new User({
+  email: userData.email,
+  password: passwordHash,
+  refferalcode: newReferralCode,
+  refferedBy: referredByUser ? referredByUser._id : null
+});
+
+await saveUserData.save();
+
+// ==========================
+// CREDIT WALLET TO REFERRER
+// ==========================
+
+if (referredByUser) {
+
+  const REFERRAL_REWARD = 200; // amount to credit
+
+  // Track redeemed user
+await User.updateOne(
+  { _id: referredByUser._id },
+  { $addToSet: { redeemedUsers: saveUserData._id } }
+);
+
+
+  // Find or create wallet
+// Ensure wallet exists
+let wallet = await Wallet.findOne({ userId: referredByUser._id });
+
+if (!wallet) {
+  wallet = await Wallet.create({
+    userId: referredByUser._id,
+    balance: 0,
+    transactions: []
+  });
+}
+
+// Atomic update
+await Wallet.updateOne(
+  { userId: referredByUser._id },
+  {
+    $inc: { balance: REFERRAL_REWARD },
+    $push: {
+      transactions: {
+        type: "credit",
+        amount: REFERRAL_REWARD,
+        description: `Referral reward for ${saveUserData.email}`
+      }
+    }
+  }
+);
+
+
+  await wallet.save();
+}
+
+
+  req.session.user = saveUserData._id;
 
       req.session.userOtp = null;
       req.session.userData = null;
@@ -581,9 +700,9 @@ const updateProfile = async (req, res) => {
     const deleteImage = req.body?.deleteImage;
 
 
-    const user = await User.findById(userId);
+  const user = await User.findById(userId);
    const file = req.file;
-    // email change detect-> otp flow
+    // email change detect -> otp flow
     if (email && email !== user.email) {
       const existing = await User.findOne({ email: email.toLowerCase() });
       if (existing) {
@@ -601,6 +720,7 @@ const updateProfile = async (req, res) => {
       req.session.otpLastSentAt = Date.now();
 
       console.log('EMAIL CHANGE OTP:', otp);
+      console.log('Send to ', email);
 
       await sendVerificationEmail(email, otp);
       const pendingUpdatedFields = new Set();
@@ -1081,34 +1201,113 @@ const loadAddAddress = async (req, res) => {
 const addAddress = async (req, res) => {
   try {
     const userId = req.session.user;
-    const { name, mobileNumber, pincode, locality, city, state, landmark, alternativeNumber, addressType, address} = req.body;
+    const user = await User.findById(userId).lean();
 
-    // Validation
-    if (!name ||!mobileNumber ||!pincode ||!locality ||!city ||!state ||!landmark ||!addressType) {
+    const {
+      name,
+      mobileNumber,
+      pincode,
+      locality,
+      city,
+      state,
+      landmark,
+      alternativeNumber,
+      addressType,
+      address
+    } = req.body;
+
+    // =========================
+    // STRICT SERVER VALIDATION
+    // =========================
+
+    const indianStates = [
+      "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+      "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand",
+      "Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
+      "Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
+      "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
+      "Uttar Pradesh","Uttarakhand","West Bengal",
+      "Andaman and Nicobar Islands","Chandigarh",
+      "Dadra and Nagar Haveli and Daman and Diu",
+      "Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"
+    ];
+
+    if (
+      !name || !mobileNumber || !pincode ||
+      !locality || !city || !state ||
+      !landmark || !addressType || !address
+    ) {
       return res.render('add-address', {
-        user: await User.findById(userId).lean(),
+        user,
         error: 'All required fields must be filled'
       });
     }
-    if(!typeof name === 'string' && !name.length>3){
-        return res.render('add-address', {
-          message: 'please enter a valid name'
-        })
-    }
-    if(!String(mobileNumber).length===10){
-        return res.render('add-address', {
-          message: 'please enter a valid 10 digit mobile number'
-        })
-    }
-    if(!String(pincode).length===6){
-       return res.render('add-address', {
-          message: 'please enter a valid pincode'
-        })
+
+    if (typeof name !== 'string' || name.trim().length < 3) {
+      return res.render('add-address', {
+        user,
+        error: 'Name must be at least 3 characters'
+      });
     }
 
-    const newAddress = { name, mobileNumber, pincode, locality, city, state, landmark,
-                          alternativeNumber: alternativeNumber || null, addressType, address
-                 };
+    if (!/^\d{10}$/.test(mobileNumber)) {
+      return res.render('add-address', {
+        user,
+        error: 'Mobile number must be exactly 10 digits'
+      });
+    }
+
+    if (!/^\d{6}$/.test(String(pincode))) {
+      return res.render('add-address', {
+        user,
+        error: 'Pincode must be exactly 6 digits'
+      });
+    }
+
+    if (alternativeNumber) {
+      if (!/^\d{10}$/.test(alternativeNumber)) {
+        return res.render('add-address', {
+          user,
+          error: 'Alternate number must be exactly 10 digits'
+        });
+      }
+
+      if (alternativeNumber === mobileNumber) {
+        return res.render('add-address', {
+          user,
+          error: 'Alternate number cannot be same as mobile number'
+        });
+      }
+    }
+
+    if (!indianStates.includes(state)) {
+      return res.render('add-address', {
+        user,
+        error: 'Invalid state selected'
+      });
+    }
+
+    if (!['Home', 'Work'].includes(addressType)) {
+      return res.render('add-address', {
+        user,
+        error: 'Invalid address type'
+      });
+    }
+
+
+//save
+    const newAddress = {
+      name: name.trim(),
+      mobileNumber,
+      pincode,
+      locality: locality.trim(),
+      city: city.trim(),
+      state,
+      landmark: landmark.trim(),
+      alternativeNumber: alternativeNumber || null,
+      addressType,
+      address: address.trim()
+    };
 
     let addressDoc = await Address.findOne({ userId });
 
@@ -1121,22 +1320,17 @@ const addAddress = async (req, res) => {
       addressDoc.address.push(newAddress);
     }
 
-    if (
-  alternativeNumber &&
-  String(alternativeNumber) === String(mobileNumber)
-) {
-  return res.redirect('/address/add?error=sameNumber');
-}
-
-
     await addressDoc.save();
 
     res.redirect('/address?success=added');
+
   } catch (error) {
     console.error('addAddress error', error);
-    return res.redirect('/address?error=saveFailed');
+    res.redirect('/address?error=saveFailed');
   }
 };
+
+
 const setDefaultAddress = async (req, res) => {
   try {
     const userId = req.session.user;
@@ -1202,18 +1396,56 @@ const editAddress = async (req, res) => {
       address
     } = req.body;
 
-    if (
-      !name ||
-      !mobileNumber ||
-      !pincode ||
-      !locality ||
-      !city ||
-      !state ||
-      !landmark ||
-      !addressType
-    ) {
-      return res.redirect(`/address/edit/${index}?error=invalid`);
-    }
+const indianStates = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand",
+  "Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
+  "Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
+  "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
+  "Uttar Pradesh","Uttarakhand","West Bengal",
+  "Andaman and Nicobar Islands","Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"
+];
+
+if (
+  !name || !mobileNumber || !pincode ||
+  !locality || !city || !state ||
+  !landmark || !addressType || !address
+) {
+  return res.redirect(`/address/edit/${index}?error=invalid`);
+}
+
+if (typeof name !== 'string' || name.trim().length < 3) {
+  return res.redirect(`/address/edit/${index}?error=invalid`);
+}
+
+if (!/^\d{10}$/.test(mobileNumber)) {
+  return res.redirect(`/address/edit/${index}?error=invalid`);
+}
+
+if (!/^\d{6}$/.test(String(pincode))) {
+  return res.redirect(`/address/edit/${index}?error=invalid`);
+}
+
+if (alternativeNumber) {
+  if (!/^\d{10}$/.test(alternativeNumber)) {
+    return res.redirect(`/address/edit/${index}?error=invalid`);
+  }
+
+  if (alternativeNumber === mobileNumber) {
+    return res.redirect(`/address/edit/${index}?error=sameNumber`);
+  }
+}
+
+if (!indianStates.includes(state)) {
+  return res.redirect(`/address/edit/${index}?error=invalid`);
+}
+
+if (!['Home', 'Work'].includes(addressType)) {
+  return res.redirect(`/address/edit/${index}?error=invalid`);
+}
+
 
     const addressDoc = await Address.findOne({ userId });
 
@@ -1273,6 +1505,15 @@ const deleteAddress = async (req, res) => {
   }
 };
 
+const loadReferralPage = async (req, res) => {
+  try {
+    const user = await User.findById(req.session.user).lean();
+    res.render('referral', { user });
+  } catch (error) {
+    console.error('loadReferralPage error', error);
+    res.redirect('/pageNotFound');
+  }
+};
 
 
 const logout = async (req, res) => {
@@ -1292,6 +1533,7 @@ const logout = async (req, res) => {
     res.redirect('/pageNotFound');
   }
 };
+
 
 
 export {
@@ -1327,7 +1569,8 @@ export {
   loadEditAddress,
   editAddress,
   deleteAddress,
-  logout
+  logout,
+  loadReferralPage
 };
 
 export default{
@@ -1363,5 +1606,6 @@ export default{
   loadEditAddress,
   editAddress,
   deleteAddress,
-  logout
+  logout,
+  loadReferralPage
 };

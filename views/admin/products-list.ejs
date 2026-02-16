@@ -310,7 +310,7 @@
       }).then(async result => {
         if (!result.isConfirmed) return;
 
-        const res = await fetch(`/admin/product/delete/${id}`, { method:"POST" });
+     const res = await fetch(`/admin/product/delete/${id}`, { method:"DELETE" });
         const json = await res.json();
 
         if (json.success) location.reload();

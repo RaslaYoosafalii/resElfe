@@ -248,6 +248,26 @@
       <div class="notice" id="flashMessage"><%= message %></div>
     <% } %>
 
+<% if (message) { %>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const flash = document.getElementById('flashMessage');
+
+    Swal.fire({
+      icon: '<%= message.toLowerCase().includes("success") ? "success" : "error" %>',
+      title: '<%= message %>',
+      showConfirmButton: false,
+      timer: <%= message.toLowerCase().includes("success") ? 1500 : 2500 %>
+    });
+
+    // Hide the notice div when SweetAlert shows
+    if (flash) {
+      flash.style.display = 'none';
+    }
+  });
+</script>
+<% } %>
+
     <!-- ADD CATEGORY -->
     <div class="add-category-box">
       <h5>Add new category</h5>
@@ -338,20 +358,23 @@
 
             <td>
               <% if (cat.offerPrice > 0) { %>
-                <strong><%= cat.offerIsPercent ? cat.offerPrice + '%' : '₹' + cat.offerPrice %></strong>
-                <div class="muted"><%= cat.offerValidDate ? new Date(cat.offerValidDate).toLocaleDateString() : '' %></div>
-                <form method="POST" action="/admin/category/offer/<%= cat._id %>">
-                  <button class="btn-sm">Clear</button>
-                </form>
+                <strong>Offer value: <%= cat.offerIsPercent ? cat.offerPrice + '%' : '₹' + cat.offerPrice %></strong>
+                <div class="muted">valid till: <%= cat.offerValidDate ? new Date(cat.offerValidDate).toLocaleDateString() : '' %></div>
+            <form method="POST" action="/admin/category/offer/<%= cat._id %>">
+  <input type="hidden" name="offerValue" value="">
+  <input type="hidden" name="offerValidDate" value="">
+  <button class="btn-sm">Clear</button>
+</form>
+
               <% } else { %>
-                <form method="POST" action="/admin/category/offer/<%= cat._id %>">
+                <form method="POST" action="/admin/category/offer/<%= cat._id %>"  class="offer-form">
                   <select name="offerType">
                     <option value="fixed">Fixed</option>
                     <option value="percent">Percent</option>
                   </select>
                   <input name="offerValue" placeholder="Value">
-                  <input type="date" name="offerValidDate">
-                  <button class="btn-sm btn-edit">Set</button>
+                  <input type="date" name="offerValidDate" min="<%= new Date().toISOString().split('T')[0] %>">
+                  <button type="submit" class="btn-sm btn-edit">Set</button>
                 </form>
               <% } %>
             </td>
@@ -393,14 +416,15 @@
 
   <script>
     // helper POST JSON
-    async function postJson(url, data) {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data || {})
-      });
-      return res.json();
-    }
+async function sendJson(url, method, data) {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: data ? JSON.stringify(data) : undefined
+  });
+  return res.json();
+}
+
 
     // Clear search button behaviour
     document.getElementById('clearSearch').addEventListener('click', function () {
@@ -430,7 +454,7 @@
         }).then(async (result) => {
           if (!result.isConfirmed) return;
           try {
-            const json = await postJson('/admin/category/delete/' + id);
+       const json = await sendJson('/admin/category/delete/' + id, 'DELETE');
             if (json.success) {
               Swal.fire('Deleted', json.message, 'success').then(() => location.reload());
             } else {
@@ -455,7 +479,7 @@
         }).then(async (result) => {
           if (!result.isConfirmed) return;
           try {
-            const json = await postJson('/admin/category/subdelete/' + id);
+     const json = await sendJson('/admin/category/subdelete/' + id, 'DELETE');
             if (json.success) {
               Swal.fire('Deleted', json.message, 'success').then(() => location.reload());
             } else {
@@ -500,7 +524,7 @@
               const body = result.value;
               // call edit endpoint
               try {
-                const json = await postJson('/admin/category/edit/' + id, body);
+      const json = await sendJson('/admin/category/edit/' + id, 'PATCH', body);
                 if (json.success) {
                   Swal.fire('Saved', json.message || 'Category updated', 'success').then(() => location.reload());
                 } else {
@@ -536,7 +560,7 @@
             }).then(async (result) => {
               if (!result.isConfirmed) return;
               try {
-                const json = await postJson('/admin/category/subedit/' + id, { fitName: result.value.fitName });
+          const json = await sendJson('/admin/category/subedit/' + id, 'PATCH', { fitName: result.value.fitName });
                 if (json.success) {
                   Swal.fire('Saved', json.message || 'Subcategory updated', 'success').then(() => location.reload());
                 } else {
@@ -567,6 +591,36 @@
       setTimeout(() => flash.remove(), 500);
     }, 1000); // 3 seconds
   }
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  document.querySelectorAll('.offer-form').forEach(function (form) {
+
+    form.addEventListener('submit', function (e) {
+
+      const valueInput = form.querySelector('input[name="offerValue"]');
+      const dateInput  = form.querySelector('input[name="offerValidDate"]');
+
+      const value = valueInput.value.trim();
+      const date  = dateInput.value.trim();
+
+      if (!value && !date) {
+        e.preventDefault();
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Offer value and date are required',
+          showConfirmButton: false,
+          timer: 2000
+        });
+      }
+
+    });
+
+  });
+
+});
 </script>
 
 </body>

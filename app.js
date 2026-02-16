@@ -20,8 +20,8 @@ import passport from './config/passport.js';
 import db from './config/db.js';
 db();
 
-// const userRouter = require('./routes/userRoutes');
-// const adminRouter = require('./routes/adminRoutes');
+import methodOverride from 'method-override';
+
 import userRouter from './routes/userRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
 
@@ -30,6 +30,8 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(methodOverride('_method'));
 
 app.use(
   session({

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Wallet</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: "Arial", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #333;
+}
+
+/* ===== LAYOUT (same as profile page) ===== */
+.profile-wrapper {
+  display: flex;
+  padding: 40px 60px;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+/* ===== MAIN CARD ===== */
+.profile-card {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  position: relative;  
+}
+
+/* Title */
+.profile-title {
+  text-align: center;
+  font-size: 28px;
+  letter-spacing: 2px;
+  margin-bottom: 40px;
+}
+
+/* ===== BALANCE BOX ===== */
+.balance-box {
+  background: #f5f3f1;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.balance-box div {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.balance-box strong {
+  font-size: 32px;
+  color: #5a5553;
+}
+
+.history-btn {
+  position: absolute;   
+  top: 40px;          
+  right: 40px;       
+  background: rgb(90, 85, 83);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+
+/* ===== ADD MONEY SECTION ===== */
+.add-money-box {
+  background: #eeeded;
+  padding: 25px;
+  border-radius: 12px;
+  max-width: 450px;    
+}
+
+
+.add-money-box h3 {
+  margin-bottom: 20px;
+}
+
+.add-money-box input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+.quick-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.quick-buttons button {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #5a5553;
+  background: #fff;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.quick-buttons button:hover {
+  background: #5a5553;
+  color: #fff;
+}
+
+.add-btn {
+  width: 100%;
+  padding: 12px;
+  background: #5a5553;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.add-btn:hover {
+  background: #3f3b39;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .profile-wrapper {
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .profile-card {
+    padding: 25px;
+  }
+}
+</style>
+
+</head>
+<body>
+
+<%- include('../partials/user/loggedinHeader') %>
+
+<div class="profile-wrapper">
+
+  <%- include('../partials/user/profileSidebar') %>
+
+  <section class="profile-card">
+    <h2 class="profile-title">MY WALLET</h2>
+
+        <button onclick="location.href='/wallet/history'" class="history-btn">
+        See transaction history
+      </button>
+
+    <div class="balance-box">
+      <div>Total Wallet Balance</div>
+      <strong>Rs. <%= wallet?.balance?.toFixed(2) || "0.00" %></strong>
+    </div>
+
+    <div class="add-money-box">
+      <h3>Add money to wallet</h3>
+
+      <input type="number" id="walletAmount" value="100" min="1">
+
+      <div class="quick-buttons">
+        <button onclick="setAmount(100)">+100</button>
+        <button onclick="setAmount(200)">+200</button>
+        <button onclick="setAmount(500)">+500</button>
+      </div>
+
+      <button onclick="addMoney()" class="add-btn">
+        Add money to wallet
+      </button>
+    </div>
+
+  </section>
+</div>
+
+<%- include('../partials/user/footer') %>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function setAmount(val){
+  document.getElementById('walletAmount').value = val;
+}
+
+function addMoney(){
+  const amount = document.getElementById('walletAmount').value;
+
+  fetch('/wallet/create-order',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ amount })
+  })
+  .then(res=>res.json())
+  .then(data=>{
+    const options = {
+      key: data.key,
+      amount: data.amount,
+      order_id: data.razorpayOrderId,
+
+modal: {
+  ondismiss: function () {
+
+    document.querySelector('.razorpay-container')?.remove();
+
+    Swal.fire({
+      icon: 'error',
+      title: 'Payment Cancelled',
+      showConfirmButton: false,
+      timer: 1800
+    });
+
+  }
+},
+
+
+      handler: function(response){
+
+fetch('/wallet/verify',{
+  method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            amount
+          })
+        })
+        .then(res=>res.json())
+        .then(result=>{
+       if(result.success){
+  Swal.fire({
+    icon: 'success',
+    title: 'Wallet Top-up Successful',
+    showConfirmButton: false,
+    timer: 1800
+  }).then(() => {
+    location.reload();
+  });
+} else {
+  Swal.fire({
+    icon: 'error',
+    title: 'Wallet Top-up Failed, payment unsuccessful',
+    showConfirmButton: false,
+    timer: 1800
+  });
+}
+
+        });
+      }
+    };
+
+const rzp = new Razorpay(options);
+
+rzp.on('payment.failed', function (response) {
+
+  setTimeout(() => {
+    document.querySelector('.razorpay-container')?.remove();
+  }, 100);
+
+  Swal.fire({
+    icon: 'error',
+    title: 'Wallet Top-up Failed',
+    text: 'Payment unsuccessful, please try again later.',
+    showConfirmButton: false,
+    timer: 2000
+  });
+
+});
+
+
+rzp.open();
+
+  });
+}
+</script>
+
+
+</body>
+</html>

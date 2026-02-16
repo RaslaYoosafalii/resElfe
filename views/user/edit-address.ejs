@@ -207,7 +207,7 @@
     <section class="profile-card">
       <h2 class="profile-title">EDIT ADDRESS</h2>
 
-      <form method="POST" action="/address/edit/<%= index %>" onsubmit="return handleSubmit(event)">
+      <form method="POST" action="/address/edit/<%= index %>?_method=PATCH" onsubmit="return handleSubmit(event)">
         <div class="form-grid">
 
           <div class="form-group">
@@ -248,12 +248,28 @@
 
           <div class="form-group">
             <label>State</label>
-            <select name="state" required onchange="validateForm()">
-              <option value="">--- select state ---</option>
-              <option value="Kerala" <%= address.state === 'Kerala' ? 'selected' : '' %>>Kerala</option>
-              <option value="Tamil Nadu" <%= address.state === 'Tamil Nadu' ? 'selected' : '' %>>Tamil Nadu</option>
-              <option value="Karnataka" <%= address.state === 'Karnataka' ? 'selected' : '' %>>Karnataka</option>
-            </select>
+<select name="state" required onchange="validateForm()">
+  <option value="">--- Select State ---</option>
+
+  <% const states = [
+    "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+    "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand",
+    "Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
+    "Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
+    "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
+    "Uttar Pradesh","Uttarakhand","West Bengal",
+    "Andaman and Nicobar Islands","Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"
+  ]; %>
+
+  <% states.forEach(function(st){ %>
+    <option value="<%= st %>" <%= address.state === st ? 'selected' : '' %>>
+      <%= st %>
+    </option>
+  <% }) %>
+</select>
+
             <span class="error-text">Required field</span>
           </div>
 

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wallet Transactions</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  font-family: "Arial", sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: #ffffff;
+  color: #333;
+}
+
+/* ===== LAYOUT ===== */
+.profile-wrapper {
+  display: flex;
+  padding: 40px 60px;
+  gap: 40px;
+  align-items: flex-start;
+}
+
+/* ===== MAIN CARD ===== */
+.profile-card {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  position: relative;
+  min-height: 615.5px;
+}
+
+/* ===== TITLE ===== */
+.profile-title {
+  text-align: center;
+  font-size: 28px;
+  letter-spacing: 2px;
+  margin-bottom: 40px;
+}
+
+/* ===== BACK BUTTON ===== */
+.back-btn {
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  background: rgb(90, 85, 83);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.transaction-header {
+  display: flex;
+  background: #f3f3f3;
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.transaction-row {
+  display: flex;
+  padding: 14px 28px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+.transaction-header span:nth-child(2),
+.transaction-row span:nth-child(2) {
+  flex: 0.4;   /* middle column wider */
+}
+
+.transaction-row:last-child {
+  border-bottom: none;
+}
+
+.transaction-header span,
+.transaction-row span {
+  flex: 1;
+  text-align: left;
+  
+}
+
+.transaction-header span:last-child,
+.transaction-row span:last-child {
+  text-align: right;
+  flex: 1; 
+}
+
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .profile-wrapper {
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .profile-card {
+    padding: 25px;
+  }
+
+  .back-btn {
+    top: 25px;
+    right: 25px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<%- include('../partials/user/loggedinHeader') %>
+
+<div class="profile-wrapper">
+
+  <%- include('../partials/user/profileSidebar') %>
+
+  <section class="profile-card">
+    <h2 class="profile-title">TRANSACTION HISTORY</h2>
+
+    <button onclick="location.href='/wallet'" class="back-btn">
+      ← Back
+    </button>
+
+    <% if (wallet && wallet.transactions && wallet.transactions.length > 0) { %>
+
+      <div class="transaction-header">
+        <span>Date</span>
+        <span>Transaction</span>
+        <span>Amount</span>
+      </div>
+
+      <% wallet.transactions.slice().reverse().forEach(t => { %>
+        <div class="transaction-row">
+          <span><%= new Date(t.createdAt).toLocaleString() %></span>
+          <span><%= t.description %></span>
+          <span style="color:<%= t.type==='credit'?'green':'red' %>">
+            <%= t.type==='credit'?'+':'-' %>Rs. <%= t.amount %>
+          </span>
+        </div>
+      <% }) %>
+
+    <% } else { %>
+      <p style="text-align:center;color:#777;">No transactions found</p>
+    <% } %>
+
+  </section>
+
+</div>
+
+<%- include('../partials/user/footer') %>
+
+</body>
+</html>

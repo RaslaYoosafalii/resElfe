@@ -424,8 +424,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 function updateQty(itemId, delta) {
-  fetch('/cart/update', {
-    method: 'POST',
+fetch('/cart/update', {
+  method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ itemId, delta })
   })
@@ -451,8 +451,8 @@ function removeCartItem(itemId, productId, isUnavailable) {
       confirmButtonText: 'Remove',
       showCancelButton: false
     }).then(() => {
-      fetch('/cart/remove', {
-        method: 'POST',
+fetch('/cart/remove', {
+    method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId })
       }).then(() => location.reload());
@@ -477,8 +477,8 @@ function removeCartItem(itemId, productId, isUnavailable) {
       });
     }
 
-    fetch('/cart/remove', {
-      method: 'POST',
+fetch('/cart/remove', {
+  method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemId })
     })
@@ -491,8 +491,8 @@ function proceedCheckout() {
 }
 
 function changeSize(itemId, variantId) {
-  fetch('/cart/change-size', {
-    method: 'POST',
+fetch('/cart/change-size', {
+  method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ itemId, variantId })
   })

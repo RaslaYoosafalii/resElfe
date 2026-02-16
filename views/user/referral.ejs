@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Referral Code</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Arial", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    .profile-wrapper {
+      display: flex;
+      padding: 40px 60px;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    /* ===== MAIN CARD ===== */
+    .referral-card {
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 60px;
+      min-height: 480px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      text-align: center;
+    }
+
+    .referral-title {
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+
+    .referral-description {
+      font-size: 14px;
+      color: #666;
+      max-width: 680px;
+      margin: 0 auto 50px;
+      line-height: 1.6;
+    }
+
+    .code-container {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background: #777;
+      padding: 25px 40px;
+      border-radius: 12px;
+      min-width: 420px;
+      position: relative;
+    }
+
+    .referral-code {
+      font-size: 22px;
+      letter-spacing: 4px;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      font-size: 20px;
+    }
+
+    .copy-btn:hover {
+      opacity: 0.7;
+    }
+
+    @media (max-width: 900px) {
+      .profile-wrapper {
+        flex-direction: column;
+        padding: 20px;
+      }
+
+      .code-container {
+        min-width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<%- include('../partials/user/loggedinHeader') %>
+
+<div class="profile-wrapper">
+
+  <%- include('../partials/user/profileSidebar') %>
+
+  <section class="referral-card">
+    <h2 class="referral-title">MY REFERRAL CODE</h2>
+
+    <p class="referral-description">
+      "Invite your friends and earn rewards! Share your unique referral code to get ₹200 credited to your wallet when they join, and your friend receives ₹100 too. Spread the word and start earning together!"
+    </p>
+
+    <div class="code-container">
+      <div class="referral-code" id="refCode">
+        <%= user?.refferalcode %>
+      </div>
+
+      <button class="copy-btn" onclick="copyReferralCode()">
+        ⏍
+      </button>
+    </div>
+  </section>
+
+</div>
+
+<%- include('../partials/user/footer') %>
+
+<script>
+  function copyReferralCode() {
+    const code = document.getElementById("refCode").innerText;
+    navigator.clipboard.writeText(code);
+
+    alert("Referral code copied!");
+  }
+</script>
+
+</body>
+</html>

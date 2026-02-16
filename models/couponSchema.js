@@ -20,14 +20,13 @@ const couponSchema = new Schema({
         type: Number,
         required: true
      },
-     name:{
+     description:{
         type:String,
         required:true,
      },
      code:{
         type: String,
         required: true,
-        unique: true,
     },
     discountType: {
         type: String,
@@ -46,6 +45,18 @@ const couponSchema = new Schema({
           userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
           count: { type: Number, default: 0 } 
     }],
+    isDeleted: {
+          type: Boolean,
+          default: false
+    },
+    discountValue: {
+          type: Number,
+          required: true
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
     createdAt: {
         type: Date,
         default: Date.now,
@@ -55,3 +66,16 @@ const couponSchema = new Schema({
         type: Date
     }
 })
+couponSchema.index(
+  { code: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isDeleted: false }
+  }
+);
+
+const Coupon = mongoose.model('Coupon', couponSchema);
+
+export { 
+   Coupon
+};

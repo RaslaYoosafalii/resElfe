@@ -7,6 +7,37 @@ import mongoose from 'mongoose';
 
 const MAX_QTY_PER_PRODUCT = 5;
 
+async function resolveFinalPrice(variant) {
+  if (!variant) return 0;
+
+  const product = await Product.findById(variant.productId).lean();
+  if (!product) return variant.price;
+
+  const category = await Category.findById(product.categoryId).lean();
+
+  let categoryPrice = variant.price;
+
+  if (
+    category &&
+    category.offerPrice > 0 &&
+    (!category.offerValidDate || category.offerValidDate > new Date())
+  ) {
+    if (category.offerIsPercent) {
+      categoryPrice =
+        variant.price - (variant.price * category.offerPrice / 100);
+    } else {
+      categoryPrice =
+        variant.price - category.offerPrice;
+    }
+  }
+
+  const variantDiscount =
+    variant.discountPrice && variant.discountPrice > 0
+      ? variant.discountPrice
+      : variant.price;
+
+  return Math.min(variantDiscount, categoryPrice);
+}
 
 const addToCart = async (req, res) => {
   try {
@@ -59,10 +90,7 @@ const addToCart = async (req, res) => {
     }
 
     //price resolution
-    const unitPrice =
-      variant.discountPrice && variant.discountPrice > 0
-        ? variant.discountPrice
-        : variant.price;
+const unitPrice = await resolveFinalPrice(variant);
 
     let cart = await Cart.findOne({ userId });
 
@@ -159,18 +187,23 @@ const variants = await Variant.find({
   isListed: true
 }).select('_id size stock price discountPrice color').lean();
 
-const basePrice = currentVariant ? currentVariant.price : item.price;
+let finalPrice = item.price;
 
+if (currentVariant) {
+  finalPrice = await resolveFinalPrice(currentVariant);
+}
 
+const totalPrice = finalPrice * item.quantity;
 
-
-     return {
+return {
   ...item,
+  price: finalPrice,
+  totalPrice,
   productName: item.productId.productName,
   productImage: item.productId.images?.[0],
   stock: currentVariant ? currentVariant.stock : 0,
   maxQty: MAX_QTY_PER_PRODUCT,
-  basePrice,
+  basePrice: currentVariant ? currentVariant.price : item.price,
   variants,
   isUnavailable: productUnavailable
 };
@@ -218,10 +251,8 @@ if (item.quantity > variant.stock) {
 }
 
 
-    const unitPrice =
-      variant.discountPrice && variant.discountPrice > 0
-        ? variant.discountPrice
-        : variant.price;
+const unitPrice = await resolveFinalPrice(variant);
+
 
     item.size = variant.size;
     item.color = variant.color;

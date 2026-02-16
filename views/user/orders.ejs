@@ -274,7 +274,7 @@ No orders found matching your search.
 
       <div class="order-meta">
         Ordered on: <%= new Date(order.orderDate).toLocaleDateString() %><br>
-        Total: ₹<%= order.finalPrice %>
+        Order total: ₹<%= order.finalPrice %>
       </div>
 
       <% order.orderedItem.forEach(item => { %>
@@ -282,7 +282,17 @@ No orders found matching your search.
           <img src="/uploads/products/<%= item.productImages[0] %>">
           <div>
             <strong><%= item.productName %></strong><br>
-            Qty: <%= item.quantity %> | ₹<%= item.offerPrice %><br>
+          Size: <%= item.size %> | Qty: <%= item.quantity %> |
+                 <% if (item.couponShare > 0) { %>
+                   <span style="text-decoration:line-through;color:#888">
+                     ₹<%= item.offerPrice %>
+                   </span>
+                   ₹<%= item.offerPrice - item.couponShare %>
+                 <% } else { %>
+                   ₹<%= item.offerPrice %>
+                 <% } %>
+                 <br>
+                 
             Status:   <% if (item.orderStatus === 'rejected') { %>
     Return request rejected (Delivered)
   <% } else { %>
@@ -295,13 +305,33 @@ No orders found matching your search.
       <div class="actions">
         <button class="btn btn-outline" onclick="viewDetails('<%= order.orderId %>')">Details</button>
         <button class="btn btn-outline" onclick="downloadInvoice('<%= order.orderId %>')">Dowload Invoice</button>
+        <%
+const tenMinutes = 10 * 60 * 1000;
+const isExpired =
+  Date.now() - new Date(order.createdAt).getTime() > tenMinutes;
+
+const retryAllowed =
+  order.paymentMethod === 'razorpay' &&
+  order.paymentStatus === 'failed' &&
+  order.orderStatus === 'failed' &&
+  !order.retryLocked &&
+  order.retryCount < 3 &&
+  !isExpired;
+%>
+
+<% if (retryAllowed) { %>
+  <button class="btn btn-dark"
+    onclick="window.location.href='/orders/retry/<%= order.orderId %>'">
+    Retry Payment
+  </button>
+<% } %>
 
  <%
 const hasNonCancelableItem = order.orderedItem.some(i =>
-  ['delivered', 'returnRequested', 'returned'].includes(i.orderStatus)
+  ['delivered', 'returnRequested', 'returned','rejected'].includes(i.orderStatus)
 );
 %>
-        <% if (!hasNonCancelableItem && order.orderStatus !== 'cancelled') { %>
+       <% if (!hasNonCancelableItem && !['cancelled', 'failed'].includes(order.orderStatus)) { %>
           <button class="btn btn-dark" onclick="cancelOrder('<%= order.orderId %>')">Cancel Order</button>
         <% } %>
       </div>
@@ -347,10 +377,6 @@ startPage--
 
   </section>
 </div>
-
-
-
-
 
 <%- include('../partials/user/footer') %>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -403,8 +429,8 @@ function cancelOrder(orderId) {
     confirmButtonText: 'Cancel Order'
   }).then(res => {
     if (!res.isConfirmed) return;
-    fetch('/orders/cancel', {
-      method:'POST',
+fetch('/orders/cancel', {
+  method: 'PATCH',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ orderId, reason: res.value || "" })
     })
@@ -489,8 +515,8 @@ window.cancelItem = function(orderId, productId) {
   }).then(res => {
     if (!res.isConfirmed) return;
 
-    fetch('/orders/cancel', {
-      method: 'POST',
+fetch('/orders/cancel', {
+  method:'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId,
@@ -528,8 +554,8 @@ window.returnItem = function(orderId, productId){
   }).then(res=>{
     if(!res.isConfirmed) return;
 
-    fetch('/orders/return-item',{
-      method:'POST',
+fetch('/orders/return-item',{
+  method:'PATCH',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ orderId, productId, reason: res.value })
     })
@@ -546,8 +572,8 @@ window.returnItem = function(orderId, productId){
 };
 
 window.cancelReturn = function(orderId, productId){
-  fetch('/orders/cancel-return', {
-    method:'POST',
+fetch('/orders/cancel-return', {
+  method:'PATCH',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({ orderId, productId })
   })

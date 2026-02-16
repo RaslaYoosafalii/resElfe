@@ -26,9 +26,21 @@ const orderSchema = new Schema({
         productImages: [{ 
             type: String
         }],
+        size: {                    
+          type: String,
+          required: true
+        },
+        color: {                    
+         type: String,
+         required: true
+        },      
         price: {
             type: Number,
             default: 0
+        },
+        basePrice: {
+        type: Number,
+        required: true
         },
         quantity: {
             type: Number,
@@ -38,6 +50,11 @@ const orderSchema = new Schema({
             type: Number,
             required: true,
         },
+        couponShare: {
+            type: Number,
+            default: 0
+        },
+
         orderStatus: {
             type: String,
             enum: ['pending','shipped','out for delivery', 'delivered', 'cancelled', 'returnRequested','rejected', 'returned','failed'],
@@ -94,6 +111,14 @@ const orderSchema = new Schema({
         required: true,
         enum: ['pending','shipped','out for delivery', 'delivered', 'cancelled', 'returnRequested', 'returned','failed'],
         default: 'pending'
+    },
+    retryCount: {
+        type: Number,
+        default: 0
+    },
+    retryLocked: {
+        type: Boolean,
+        default: false
     },
     deliveredOn: {
         type: Date

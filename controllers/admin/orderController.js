@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import Order from "../../models/orderSchema.js";
 import User from "../../models/userSchema.js";
 import { Variant } from "../../models/productSchema.js";
-
+import Wallet from "../../models/walletSchema.js";
 
 const listOrders = async (req, res) => {
   try {
@@ -14,7 +14,18 @@ const listOrders = async (req, res) => {
     const search = req.query.search ? req.query.search.trim() : "";
     const status = req.query.status || "";
 
-    const filter = {};
+const filter = {
+  $and: [
+    { orderStatus: { $ne: "failed" } },//not show failed orders
+    {
+      $or: [
+        { paymentMethod: { $ne: "razorpay" } },
+        { paymentStatus: { $ne: "pending" } }
+      ]
+    }
+  ]
+};
+
 
     if (status) {
       filter.orderStatus = status;
@@ -93,10 +104,26 @@ const statusFlow = [
     if (!order) {
       return res.json({ success: false, message: "Order not found" });
     }
+//prevent manual change TO returned
+if (status === "returned") {
+  return res.json({
+    success: false,
+    message: "Returned status is system controlled"
+  });
+}
+
+//if already returned, completely immutable
+if (order.orderStatus === "returned") {
+  return res.json({
+    success: false,
+    message: "Returned orders cannot be modified"
+  });
+}
+
     const currentStatus = order.orderStatus;
 
-// Delivered or cancelled → immutable
-if (["delivered", "cancelled"].includes(currentStatus)) {
+//delivered, returned or cancelled → immutable
+if (["delivered", "cancelled","returned"].includes(currentStatus)) {
   return res.json({
     success: false,
     message: "This order status can no longer be changed"
@@ -150,23 +177,53 @@ if (currentStatusIndex !== -1 && nextStatusIndex !== -1) {
       if (status === "delivered") {
         item.orderStatus = "delivered";
         item.deliveredOn = new Date();
+
+          //if COD, mark payment as completed when delivered
+          if (order.paymentMethod === "cod") {
+            order.paymentStatus = "completed";
+          }
       }
     }
 
 
-    const activeItems = order.orderedItem.filter(
-      i => i.orderStatus !== "cancelled"
-    );
+const items = order.orderedItem;
 
-    if (activeItems.length === 0) {
-      order.orderStatus = "cancelled";
-    } else if (activeItems.some(i => i.orderStatus === "out for delivery")) {
-      order.orderStatus = "out for delivery";
-    } else if (activeItems.some(i => i.orderStatus === "shipped")) {
-      order.orderStatus = "shipped";
-    } else if (activeItems.some(i => i.orderStatus === "pending")) {
-      order.orderStatus = "pending";
-    }
+// 1️⃣ All cancelled
+if (items.every(i => i.orderStatus === "cancelled")) {
+  order.orderStatus = "cancelled";
+}
+
+// 2️⃣ All returned
+else if (items.every(i => i.orderStatus === "returned")) {
+  order.orderStatus = "returned";
+}
+
+// 3️⃣ If ANY delivered exists → delivered
+else if (items.some(i => i.orderStatus === "delivered")) {
+  order.orderStatus = "delivered";
+}
+
+// 4️⃣ Mixed returned + cancelled (no delivered)
+else if (
+  items.every(i =>
+    ["returned", "cancelled"].includes(i.orderStatus)
+  )
+) {
+  order.orderStatus = "returned";
+}
+
+// 5️⃣ Flow statuses
+else if (items.some(i => i.orderStatus === "out for delivery")) {
+  order.orderStatus = "out for delivery";
+}
+else if (items.some(i => i.orderStatus === "shipped")) {
+  order.orderStatus = "shipped";
+}
+else {
+  order.orderStatus = "pending";
+}
+
+
 
     if (status === "delivered") {
       order.orderStatus = "delivered";
@@ -248,15 +305,48 @@ const handleReturnAction = async (req, res) => {
       return res.json({ success: false, message: "Invalid return item" });
     }
 
-    //returned approve
-    if (action === "approve") {
-      item.orderStatus = "returned";
+  //returned approve
+  if (action === "approve") {
 
-      await Variant.updateOne(
-        { productId: item.product },
-        { $inc: { stock: item.quantity } }
-      );
+    if (item.orderStatus === "returned") {
+      return res.json({ success: false, message: "Already processed" });
     }
+
+  item.orderStatus = "returned";
+
+  // restore stock
+  await Variant.updateOne(
+    { productId: item.product },
+    { $inc: { stock: item.quantity } }
+  );
+
+  // Auto wallet refund 
+    const wallet = await Wallet.findOne({ userId: order.userId });
+
+    if (wallet) {
+
+      const refundAmount = item.offerPrice - (item.couponShare || 0);
+      wallet.balance += refundAmount;
+
+
+      wallet.transactions.push({
+        type: "credit",
+        amount: refundAmount,
+        description: "Refund for returned product",
+        orderId: order.orderId
+      });
+
+      await wallet.save();
+
+      if (order.orderedItem.every(i => i.orderStatus === "returned")) {
+      order.paymentStatus = "refunded";
+      }
+    }
+
+    order.paymentStatus = "refunded";
+
+}
+
 
     //return reject
     if (action === "reject") {
@@ -264,25 +354,39 @@ const handleReturnAction = async (req, res) => {
       item.deliveredOn = item.deliveredOn || new Date();
     }
 
-    //refund
-    if (action === "refund") {
-      if (order.paymentMethod !== "cod") {
-        order.paymentStatus = "refunded";
-      }
-    }
+ 
 
     //orderstatus calculate
-    const activeReturns = order.orderedItem.filter(
-      i => i.orderStatus === "returnRequested"
-    );
+const items = order.orderedItem;
 
-    if (activeReturns.length === 0) {
-      order.orderStatus = order.orderedItem.every(
-        i => i.orderStatus === "returned"
-      )
-        ? "returned"
-        : "delivered";
-    }
+// 1️⃣ All cancelled
+if (items.every(i => i.orderStatus === "cancelled")) {
+  order.orderStatus = "cancelled";
+}
+
+// 2️⃣ All returned
+else if (items.every(i => i.orderStatus === "returned")) {
+  order.orderStatus = "returned";
+}
+
+// 3️⃣ If ANY delivered exists → delivered
+else if (items.some(i => i.orderStatus === "delivered")) {
+  order.orderStatus = "delivered";
+}
+
+// 4️⃣ Mixed returned + cancelled (no delivered)
+else if (
+  items.every(i =>
+    ["returned", "cancelled"].includes(i.orderStatus)
+  )
+) {
+  order.orderStatus = "returned";
+}
+
+// 5️⃣ Otherwise default to delivered (after return processing)
+else {
+  order.orderStatus = "delivered";
+}
 
     order.updatedAt = new Date();
     await order.save();

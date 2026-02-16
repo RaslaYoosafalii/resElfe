@@ -231,6 +231,16 @@ body {
   font-size: 13px;
   font-weight: 600;
 }
+.coupon-disabled {
+  opacity: 0.45;
+}
+
+.coupon-error-message {
+  color: #c40000;
+  font-size: 12px;
+  margin-top: 5px;
+  display: none;
+}
 
 
 </style>
@@ -311,7 +321,7 @@ const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
 
       </div>
       <!-- PRODUCTS -->
-      <div class="address-box">
+      <div class="address-box" id="order-items-section">
         <h3>Order Items</h3>
 
         <% cart.items.forEach(item => { %>
@@ -326,7 +336,27 @@ const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
   </div>
 <% } %>
 
-<strong>Rs. <%= item.totalPrice %></strong>
+<%
+const itemTotal = item.totalPrice;
+let couponShare = 0;
+
+if (summary && summary.couponDiscount > 0 && summary.finalTotal) {
+  const proportion = itemTotal / summary.cartTotalBeforeCoupon;
+  couponShare = (proportion * summary.couponDiscount).toFixed(2);
+}
+%>
+
+<% if (couponShare > 0) { %>
+  <div style="font-size:12px;color:#888;text-decoration:line-through">
+    Rs. <%= itemTotal %>
+  </div>
+  <strong>
+    Rs. <%= (itemTotal - couponShare).toFixed(2) %>
+  </strong>
+<% } else { %>
+  <strong>Rs. <%= itemTotal %></strong>
+<% } %>
+
               <% if (item.isUnavailable) { %>
   <div class="unavailable-text" style="font-weight: lighter;">Product unavailable<br>remove product from cart to continue</div>
 <% } %>
@@ -337,17 +367,87 @@ const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
       </div>
 
       <!-- PAYMENT -->
-      <div class="address-box">
-        <h3>Payment Method</h3>
-        <label>
-          <input type="radio" checked>
-          Cash on Delivery
-        </label>
-      </div>
+   <div class="address-box">
+  <h3>Payment Method</h3>
+
+  <label>
+    <input type="radio" name="paymentMethod" value="cod" checked>
+    Cash on Delivery
+  </label>
+
+  <br><br>
+
+  <label>
+    <input type="radio" name="paymentMethod" value="razorpay">
+    Online Payment (Razorpay)
+  </label>
+
+  <br><br>
+
+  <label>
+    <input type="radio" name="paymentMethod" value="wallet">
+    Wallet Payment
+  </label>
+
+</div>
     </div>
 
     <!-- RIGHT -->
     <div>
+
+<% if (summary) { %>
+
+<div id="coupon-section" style="margin-bottom:15px; width: 754px; border:1px solid #ddd;padding:20px;border-radius:6px;margin-bottom:8px;">
+<h3 style="margin-bottom:10px;font-weight:bold;">Available Coupons</h3>
+  <% if (summary.appliedCoupon) { %>
+
+    <div style="color:green;font-weight: light; margin-bottom:10px; ">
+      Coupon Applied: <%= summary.appliedCoupon %>
+      <button onclick="removeCoupon()" 
+      class="btn btn-dark" 
+      style="margin: 5px; padding: 5px; font-size: 12px; border: 1px solid rgb(104, 103, 103); margin-left:10px; background-color:#ffffff; color: #424141; border-radius: 5px;">
+      Remove
+    </button>
+    </div>
+
+  <% } else { %>
+    
+    <% if (availableCoupons && availableCoupons.length > 0) { %>
+     
+       
+      <% availableCoupons.forEach(coupon => { %>
+<%
+const disabled =
+  cartTotalBeforeCoupon < coupon.minimumPurchase;
+%>
+      <div class="<%= disabled ? 'coupon-disabled' : '' %>" 
+            style="width: 350px; border-bottom: 1px solid rgb(116, 112, 112);padding:10px;border-radius:6px;">
+          <strong><%= coupon.code %></strong>
+
+<button 
+  class="btn btn-dark"
+  style="margin-top: 4px; margin-bottom: 10px; font-size: 10px; margin-left: 200px;padding:6px 12px; border-radius: 5px;"
+  onclick="<%= disabled 
+      ? `showMinPurchaseMessage(this, ${coupon.minimumPurchase})` 
+      : `applyCoupon('${coupon.code}')` %>">
+  Apply
+</button>
+<br>
+<small><%= coupon.description %></small><br>
+<div class="coupon-error-message"></div>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <div style="color:#777;">No available coupons</div>
+    <% } %>
+
+  <% } %>
+
+</div>
+
+<% } %>
+</div>
+
 <div class="summary-box">
   <h3>Price Summary</h3>
 
@@ -360,8 +460,14 @@ const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
 
 <% if (summary.discount > 0) { %>
   <div class="summary-row">
-    <span>Discount</span>
+    <span>Discount on MRP</span>
     <span>- Rs. <%= summary.discount %></span>
+  </div>
+<% } %>
+<% if (summary.couponDiscount > 0) { %>
+  <div class="summary-row">
+    <span>Coupon Discount</span>
+    <span>- Rs. <%= summary.couponDiscount %></span>
   </div>
 <% } %>
 
@@ -374,7 +480,7 @@ const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
     <div class="summary-row">
       
       <strong>Payable</strong>
-      <strong>Rs. <%= summary.finalTotal %></strong>
+      <strong>Rs. <%= summary.finalTotal%></strong>
       
     </div>
 
@@ -628,19 +734,19 @@ const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
 </div>
 
 
-<script>
-function placeOrder() {
-  window.location.href = '/order/success';
-}
-</script>
 
 <%- include('../partials/user/footer') %>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 function placeOrder() {
+
   const addressIndex = document.querySelector(
     'input[name="addressId"]:checked'
+  )?.value;
+
+  const paymentMethod = document.querySelector(
+    'input[name="paymentMethod"]:checked'
   )?.value;
 
   if (addressIndex === undefined) {
@@ -648,39 +754,67 @@ function placeOrder() {
     return;
   }
 
+  // ✅ If COD or wallet→ Ask confirmation first
+if (paymentMethod === 'cod' || paymentMethod === 'wallet') {
+
+  const methodText = paymentMethod === 'cod'
+    ? 'Cash on Delivery'
+    : 'Wallet Payment';
+
   Swal.fire({
     title: 'Confirm Order',
-    text: 'Place order with Cash on Delivery?',
+    text: `Place this order using ${methodText}?`,
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'Place Order'
-  }).then(result => {
-    if (!result.isConfirmed) return;
+    confirmButtonText: 'Yes, Place Order',
+    cancelButtonText: 'Cancel'
+  }).then((result) => {
 
-    fetch('/order/place', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ addressIndex })
-    })
-    .then(res => res.json())
-    .then(data => {
-  if (!data.success) {
-    Swal.fire({
-      title: 'Error placing order',
-      html: data.message.replace(/\n/g, '<br>'),
-      icon: 'error',
-      confirmButtonText: 'Go to Cart'
-    }).then(() => {
-      window.location.href = '/cart';
-    });
-  } else {
-    window.location.href = `/order/success/${data.orderId}`;
-  }
-});
+    if (result.isConfirmed) {
+      sendOrderRequest(addressIndex, paymentMethod);
+    }
 
   });
+
+} else {
+    // Razorpay or other methods
+    sendOrderRequest(addressIndex, paymentMethod);
+  }
+}
+
+
+// ✅ Separated request function (clean structure)
+function sendOrderRequest(addressIndex, paymentMethod) {
+
+  fetch('/order/place', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ addressIndex, paymentMethod })
+  })
+  .then(res => res.json())
+  .then(data => {
+
+    if (!data.success) {
+      Swal.fire('Error', data.message, 'error');
+      return;
+    }
+
+
+   // COD or Wallet → Direct Success
+if (data.paymentMethod === 'cod' || data.paymentMethod === 'wallet') {
+  window.location.href = `/order/success/${data.orderId}`;
+}
+
+    // Razorpay
+    if (data.paymentMethod === 'razorpay') {
+      startRazorpayPayment(data);
+    }
+
+  });
+
 }
 </script>
+
 <script>
 function openAddAddressModal() {
   document.getElementById('addAddressModal').style.display = 'block';
@@ -885,5 +1019,163 @@ function attachLiveValidation(form) {
   });
 }
 </script>
+<script>
+  function startRazorpayPayment(data) {
+
+  const options = {
+    key: data.key,
+    amount: data.amount,
+    currency: "INR",
+    name: "ELFE LOREINVEIL",
+    description: "Order Payment",
+    order_id: data.razorpayOrderId,
+
+    handler: function (response) {
+
+fetch('/order/verify-payment', {
+  method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+          orderId: data.orderId
+        })
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          window.location.href = `/order/success/${data.orderId}`;
+        }else {
+fetch('/order/mark-failed', {
+  method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId: data.orderId })
+  })
+  .then(() => {
+    window.location.href = `/order/failure/${data.orderId}`;
+  });
+}
+      });
+
+    },
+modal: {
+  ondismiss: function () {
+fetch('/order/mark-failed', {
+  method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: data.orderId })
+    })
+.then(res => res.json())
+.then(result => {
+  window.location.href =
+    `/order/failure/${data.orderId}?msg=` +
+    encodeURIComponent(result.message || "Payment failed");
+});
+  }
+},
+
+    theme: {
+      color: "#000"
+    }
+  };
+
+  const rzp = new Razorpay(options);
+  rzp.open();
+}
+</script>
+<script>
+function applyCoupon(code) {
+
+  if (!code) {
+    Swal.fire('Error', 'Invalid coupon', 'error');
+    return;
+  }
+  
+    fetch('/coupon/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  })
+  .then(res => res.json())
+  .then(data => {
+
+    if (!data.success) {
+      Swal.fire('Coupon Failed', data.message, 'error');
+      return;
+    }
+
+    Swal.fire('Success', `You saved Rs.${data.discount}`, 'success')
+      .then(() => updateCheckoutSection());
+
+  })
+  .catch(() => {
+    Swal.fire('Error', 'Something went wrong', 'error');
+  });
+}
+
+
+function removeCoupon() {
+  fetch('/coupon/remove', { method: 'DELETE' })
+  .then(res => res.json())
+  .then(data => {
+
+    if (data.success) {
+      Swal.fire('Removed', 'Coupon removed successfully', 'success')
+        .then(() => updateCheckoutSection());
+    }
+
+  });
+}
+
+function updateCheckoutSection() {
+  fetch('/checkout')
+    .then(res => res.text())
+    .then(html => {
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // Update price summary
+      document.querySelector('.summary-box').innerHTML =
+        doc.querySelector('.summary-box').innerHTML;
+
+      // Update coupon section
+      document.querySelector('#coupon-section').innerHTML =
+        doc.querySelector('#coupon-section').innerHTML;
+
+      // ✅ Update product prices instantly
+      document.querySelector('#order-items-section').innerHTML =
+        doc.querySelector('#order-items-section').innerHTML;
+
+    });
+}
+
+function showMinPurchaseMessage(button, minAmount) {
+
+  const messageDiv = button.parentElement.querySelector('.coupon-error-message');
+
+  messageDiv.innerText = `Purchase of Rs.${minAmount} required to avail this coupon`;
+  messageDiv.style.display = 'block';
+
+  setTimeout(() => {
+    messageDiv.style.display = 'none';
+  }, 3000);
+}
+
+
+</script>
+
+<% if (couponInvalidMessage) { %>
+<script>
+Swal.fire({
+  icon: 'warning',
+  title: 'Coupon Removed',
+  text: '<%= couponInvalidMessage %>'
+});
+</script>
+<% } %>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
 </html>

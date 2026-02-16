@@ -136,6 +136,8 @@
     <% } %>
 
     <form id="editForm" action="/admin/product/edit/<%= product._id %>" method="POST">
+         <input type="hidden" name="_method" value="PUT">
+
 
       <!-- NAME -->
       <div class="mb-3">
@@ -301,7 +303,7 @@
 
     imagesBlobs.forEach(o => fd.append('productImages', o.blob, o.name));
 
-    const res = await fetch(e.target.action, { method: 'POST', body: fd });
+   const res = await fetch(e.target.action, { method: 'PUT', body: fd });
     if (res.redirected) location.href = res.url;
     else document.write(await res.text());
   });

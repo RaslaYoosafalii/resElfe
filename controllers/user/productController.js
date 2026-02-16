@@ -4,6 +4,7 @@ import { Category, SubCategory } from '../../models/categorySchema.js';
 import Wishlist from '../../models/wishlistSchema.js';
 import Cart from '../../models/cartSchema.js';
 
+
 import mongoose from 'mongoose';
 
 function parseQuery(req) {
@@ -75,6 +76,42 @@ if (subcategory) {
 
     const pipeline = [
       { $match: matchStage },
+//join category
+{
+  $lookup: {
+    from: 'categories',
+    localField: 'categoryId',
+    foreignField: '_id',
+    as: 'category'
+  }
+},
+{
+  $addFields: {
+    categoryData: { $arrayElemAt: ['$category', 0] }
+  }
+},
+  {
+    $addFields: {
+      categoryOfferActive: {
+        $cond: [
+          {
+            $and: [
+              { $gt: ['$categoryData.offerPrice', 0] },
+              {
+                $or: [
+                  { $eq: ['$categoryData.offerValidDate', null] },
+                  { $gt: ['$categoryData.offerValidDate', new Date()] }
+                ]
+              }
+            ]
+          },
+          true,
+          false
+        ]
+      }
+    }
+  },
+//join variants
       {
         $lookup: {
           from: 'variants',
@@ -147,32 +184,67 @@ if (subcategory) {
               null
             ]
           },
-          _finalPrice: {
-            $cond: [
-              { $gt: [{ $size: '$variants' }, 0] },
-              {
-                $min: {
-                  $map: {
-                    input: '$variants',
-                    as: 'v',
-                    in: {
+_finalPrice: {
+  $cond: [
+    { $gt: [{ $size: '$variants' }, 0] },
+    {
+      $min: {
+        $map: {
+          input: '$variants',
+          as: 'v',
+          in: {
+            $let: {
+              vars: {
+                basePrice: '$$v.price',
+                variantDiscount: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ne: ['$$v.discountPrice', null] },
+                        { $gt: ['$$v.discountPrice', 0] }
+                      ]
+                    },
+                    '$$v.discountPrice',
+                    '$$v.price'
+                  ]
+                },
+                categoryDiscounted: {
+                  $cond: [
+                    '$categoryOfferActive',
+                    {
                       $cond: [
+                        '$categoryData.offerIsPercent',
                         {
-                          $and: [
-                            { $ne: ['$$v.discountPrice', null] },
-                            { $gt: ['$$v.discountPrice', 0] }
+                          $multiply: [
+                            '$$v.price',
+                            {
+                              $subtract: [
+                                1,
+                                { $divide: ['$categoryData.offerPrice', 100] }
+                              ]
+                            }
                           ]
                         },
-                        '$$v.discountPrice',
-                        '$$v.price'
+                        { $subtract: ['$$v.price', '$categoryData.offerPrice'] }
                       ]
-                    }
-                  }
+                    },
+                    '$$v.price'
+                  ]
                 }
               },
-              0
-            ]
-          },
+              in: {
+                // Apply largest discount
+                $min: ['$$variantDiscount', '$$categoryDiscounted']
+              }
+            }
+          }
+        }
+      }
+    },
+    0
+  ]
+},
+
           _price: {
             $cond: [
               { $gt: [{ $size: '$variants' }, 0] },
@@ -201,8 +273,45 @@ if (minPrice != null || maxPrice != null) {
       .collation({ locale: 'en', strength: 2 })
       .allowDiskUse(true);
 
-    const countPipeline = [
+const countPipeline = [
       { $match: matchStage },
+//join category
+{
+    $lookup: {
+      from: 'categories',
+      localField: 'categoryId',
+      foreignField: '_id',
+      as: 'category'
+    }
+  },
+  {
+    $addFields: {
+      categoryData: { $arrayElemAt: ['$category', 0] }
+    }
+  },
+  {
+    $addFields: {
+      categoryOfferActive: {
+        $cond: [
+          {
+            $and: [
+              { $gt: ['$categoryData.offerPrice', 0] },
+              {
+                $or: [
+                  { $eq: ['$categoryData.offerValidDate', null] },
+                  { $gt: ['$categoryData.offerValidDate', new Date()] }
+                ]
+              }
+            ]
+          },
+          true,
+          false
+        ]
+      }
+    }
+  },
+
+//join variants
       {
         $lookup: {
           from: 'variants',
@@ -218,7 +327,7 @@ if (minPrice != null || maxPrice != null) {
                 }
               }
             },
-            { $project: { price: 1 } }
+            { $project: { price: 1, discountPrice: 1 } }
           ],
           as: 'variants'
         }
@@ -234,16 +343,46 @@ if (minPrice != null || maxPrice != null) {
               input: '$variants',
               as: 'v',
               in: {
-                $cond: [
-                  {
-                    $and: [
-                      { $ne: ['$$v.discountPrice', null] },
-                      { $gt: ['$$v.discountPrice', 0] }
-                    ]
+                $let: {
+                  vars: {
+                    variantDiscount: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $ne: ['$$v.discountPrice', null] },
+                            { $gt: ['$$v.discountPrice', 0] }
+                          ]
+                        },
+                        '$$v.discountPrice',
+                        '$$v.price'
+                      ]
+                    },
+                    categoryDiscounted: {
+                      $cond: [
+                        '$categoryOfferActive',
+                        {
+                          $cond: [
+                            '$categoryData.offerIsPercent',
+                            {
+                              $multiply: [
+                                '$$v.price',
+                                {
+                                  $subtract: [
+                                    1,
+                                    { $divide: ['$categoryData.offerPrice', 100] }
+                                  ]
+                                }
+                              ]
+                            },
+                            { $subtract: ['$$v.price', '$categoryData.offerPrice'] }
+                          ]
+                        },
+                        '$$v.price'
+                      ]
+                    }
                   },
-                  '$$v.discountPrice',
-                  '$$v.price'
-                ]
+                  in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
+                }
               }
             }
           }
@@ -252,7 +391,8 @@ if (minPrice != null || maxPrice != null) {
       ]
     }
   }
-} ];
+}
+];
 
     if (minPrice != null || maxPrice != null) {
       const priceCond = {};
@@ -365,14 +505,45 @@ const productDetails = async (req, res) => {
     const subcategory = product.subcategoryId
       ? await SubCategory.findById(product.subcategoryId).lean()
       : null;
+      
+const now = new Date();
 
-    const sizeVariants = variants.map(v => ({
+let categoryOffer = null;
+
+if (category && category.offerPrice > 0) {
+  if (!category.offerValidDate || category.offerValidDate > now) {
+    categoryOffer = category;
+  }
+}
+
+const updatedVariants = variants.map(v => {
+  let finalPrice = v.discountPrice && v.discountPrice > 0
+    ? v.discountPrice
+    : v.price;
+
+  if (categoryOffer) {
+    let categoryPrice;
+
+    if (categoryOffer.offerIsPercent) {
+      categoryPrice = v.price - (v.price * categoryOffer.offerPrice / 100);
+    } else {
+      categoryPrice = v.price - categoryOffer.offerPrice;
+    }
+
+    finalPrice = Math.min(finalPrice, categoryPrice);
+  }
+
+  return {
+    ...v,
+    finalPrice
+  };
+});
+
+
+    const sizeVariants = updatedVariants.map(v => ({
       size: v.size,
       price: v.price,
-      discountPrice:
-        typeof v.discountPrice !== 'undefined' && v.discountPrice !== null
-          ? v.discountPrice
-          : null,
+      discountPrice: v.finalPrice < v.price ? v.finalPrice : null,
       color: v.color,
       stock: v.stock,
       _id: v._id
@@ -407,36 +578,101 @@ const recommendations = await Product.aggregate([
       as: 'variants'
     }
   },
-  {
-    $addFields: {
-      finalPrice: {
-        $cond: [
-          { $gt: [{ $size: '$variants' }, 0] },
-          {
-            $min: {
-              $map: {
-                input: '$variants',
-                as: 'v',
-                in: {
-                  $cond: [
-                    {
-                      $and: [
-                        { $ne: ['$$v.discountPrice', null] },
-                        { $gt: ['$$v.discountPrice', 0] }
+ {
+  $lookup: {
+    from: 'categories',
+    localField: 'categoryId',
+    foreignField: '_id',
+    as: 'category'
+  }
+},
+{
+  $addFields: {
+    categoryData: { $arrayElemAt: ['$category', 0] }
+  }
+},
+{
+  $addFields: {
+    categoryOfferActive: {
+      $cond: [
+        {
+          $and: [
+            { $gt: ['$categoryData.offerPrice', 0] },
+            {
+              $or: [
+                { $eq: ['$categoryData.offerValidDate', null] },
+                { $gt: ['$categoryData.offerValidDate', new Date()] }
+              ]
+            }
+          ]
+        },
+        true,
+        false
+      ]
+    }
+  }
+},
+{
+  $addFields: {
+    finalPrice: {
+      $cond: [
+        { $gt: [{ $size: '$variants' }, 0] },
+        {
+          $min: {
+            $map: {
+              input: '$variants',
+              as: 'v',
+              in: {
+                $let: {
+                  vars: {
+                    variantDiscount: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $ne: ['$$v.discountPrice', null] },
+                            { $gt: ['$$v.discountPrice', 0] }
+                          ]
+                        },
+                        '$$v.discountPrice',
+                        '$$v.price'
                       ]
                     },
-                    '$$v.discountPrice',
-                    '$$v.price'
-                  ]
+                    categoryDiscounted: {
+                      $cond: [
+                        '$categoryOfferActive',
+                        {
+                          $cond: [
+                            '$categoryData.offerIsPercent',
+                            {
+                              $multiply: [
+                                '$$v.price',
+                                {
+                                  $subtract: [
+                                    1,
+                                    { $divide: ['$categoryData.offerPrice', 100] }
+                                  ]
+                                }
+                              ]
+                            },
+                            { $subtract: ['$$v.price', '$categoryData.offerPrice'] }
+                          ]
+                        },
+                        '$$v.price'
+                      ]
+                    }
+                  },
+                  in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
                 }
               }
             }
-          },
-          0
-        ]
-      }
+          }
+        },
+        0
+      ]
     }
-  },
+  }
+},
+
   { $limit: 4 }
 ]);
 
@@ -475,7 +711,7 @@ if (userId) {
       isInWishlist,
       isInCart,
       isUnavailable,
-      
+      updatedVariants
     });
 
   } catch (err) {

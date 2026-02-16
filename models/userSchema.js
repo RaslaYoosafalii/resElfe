@@ -47,11 +47,13 @@ const userSchema = new Schema({
         type:String,
     },
     refferedBy:{
-        type:Boolean
-    },
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+},
     redeemedUsers:[{
-        // type:Schema.Types.ObjectId,
-        // ref:'User'
+        type:Schema.Types.ObjectId,
+        ref:'User'
     }],
     googleId:{
         type: String,

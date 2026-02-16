@@ -143,6 +143,7 @@
       <thead>
         <tr>
           <th>Product</th>
+          <th>Size</th>
           <th>Qty</th>
           <th>Price</th>
           <th>Total</th>
@@ -160,9 +161,24 @@
                 <div><%= item.productName %></div>
               </div>
             </td>
-            <td><%= item.quantity %></td>
-            <td>₹ <%= item.price %></td>
-            <td>₹ <%= item.offerPrice %></td>
+            <td>  <%= item.size %></td>
+            <td>  <%= item.quantity %></td>
+<td>
+  <% if (item.couponShare > 0) { %>
+    <div style="text-decoration:line-through;color:#888;">
+      ₹ <%= item.price %>
+    </div>
+    ₹ <%= item.price - item.couponShare %>
+  <% } else { %>
+    ₹ <%= item.price %>
+  <% } %>
+</td>
+
+<td>
+  <% const itemTotalAfterCoupon = item.offerPrice - (item.couponShare || 0); %>
+  ₹ <%= itemTotalAfterCoupon %>
+</td>
+
             <td>
               <span class="status <%= item.orderStatus %>">
                 <%= item.orderStatus %>
@@ -202,7 +218,7 @@
   data-current="<%= order.orderStatus %>"
 >
 
-<% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => {
+<% ['pending','shipped','out for delivery','delivered','cancelled','returned'].forEach(s => {
      let disabled = false;
 
      // forward-only, one-step rule
@@ -216,11 +232,13 @@
      if (s === 'cancelled' && currentStatus !== 'pending') {
        disabled = true;
      }
-
+      
      // once delivered or cancelled nothing else selectable
-     if (['delivered','cancelled'].includes(currentStatus) && s !== currentStatus) {
+     if (['delivered','cancelled','returned'].includes(currentStatus) && s !== currentStatus) {
        disabled = true;
      }
+     if (s === 'returned') disabled = true;
+
 %>
 
   <option
@@ -285,27 +303,114 @@
 
 
   <!-- PRICE SUMMARY -->
-  <div class="card grid">
-    <div>
-      <div class="label">Items Total</div>
-      <div class="value">₹ <%= order.itemsTotal %></div>
-    </div>
+<%
+const activeOrderItems = order.orderedItem.filter(
+    i => !["cancelled", "returned"].includes(i.orderStatus)
+  );
 
-    <div>
-      <div class="label">Discount</div>
-      <div class="value">₹ <%= order.discount %></div>
-    </div>
+  const returnedItems = order.orderedItem.filter(
+    i => i.orderStatus === "returned"
+  );
 
-    <div>
-      <div class="label">Shipping</div>
-      <div class="value">₹ <%= order.shippingCharge %></div>
-    </div>
+  const cancelledItems = order.orderedItem.filter(
+    i => i.orderStatus === "cancelled"
+  );
 
-    <div>
-      <div class="label">Final Amount</div>
-      <div class="value"><strong>₹ <%= order.finalPrice %></strong></div>
-    </div>
+  // ===== ACTIVE SUMMARY =====
+ const totalMRP = activeOrderItems.reduce(
+    (sum, i) => sum + (i.basePrice * i.quantity),
+    0
+  );
+
+  const totalOfferPrice = activeOrderItems.reduce(
+    (sum, i) => sum + i.offerPrice,
+    0
+  );
+
+const totalCouponDiscount = activeOrderItems.reduce(
+    (sum, i) => sum + (i.couponShare || 0),
+    0
+  );
+
+  const discountOnMRP = totalMRP - totalOfferPrice;
+
+  const finalAmount =
+    activeOrderItems.length > 0
+      ? (totalOfferPrice - totalCouponDiscount + order.shippingCharge)
+      : 0;
+
+  // ===== REFUND SUMMARY =====
+  const returnedAmount = returnedItems.reduce(
+    (sum, i) => sum + (i.offerPrice - (i.couponShare || 0)),
+    0
+  );
+
+  const cancelledAmount = cancelledItems.reduce(
+    (sum, i) => sum + (i.offerPrice - (i.couponShare || 0)),
+    0
+  );
+%>
+
+
+<div class="card grid">
+
+  <div>
+    <div class="label">Total MRP</div>
+    <div class="value">₹ <%= totalMRP %></div>
   </div>
+
+  <div>
+    <div class="label">Discount on MRP</div>
+    <div class="value">₹ <%= discountOnMRP > 0 ? discountOnMRP : 0 %></div>
+  </div>
+
+  <div>
+    <div class="label">Coupon Discount</div>
+    <div class="value">₹ <%= totalCouponDiscount %></div>
+  </div>
+
+  <div>
+    <div class="label">Shipping</div>
+    <div class="value">₹ <%= activeOrderItems.length > 0 ? order.shippingCharge : 0 %></div>
+  </div>
+
+  <div>
+    <div class="label">Final Amount</div>
+    <div class="value"><strong>₹ <%= finalAmount %></strong></div>
+  </div>
+
+</div>
+<% if (order.paymentMethod !== "cod" && (returnedAmount > 0 || cancelledAmount > 0)) { %>
+
+<div class="card grid">
+
+  <div style="grid-column: 1 / -1;">
+    <div class="label" style="font-weight:600;">Refund Summary</div>
+  </div>
+
+  <% if (returnedAmount > 0) { %>
+    <div>
+      <div class="label">Returned Amount</div>
+      <div class="value" style="color:#155724;">
+        ₹ <%= returnedAmount %>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (cancelledAmount > 0) { %>
+    <div>
+      <div class="label">Cancelled Amount</div>
+      <div class="value" style="color:#721c24;">
+        ₹ <%= cancelledAmount %>
+      </div>
+    </div>
+  <% } %>
+
+</div>
+
+<% } %>
+
+
 
 </div>
 
@@ -340,11 +445,18 @@ if (select) {
 
     const json = await res.json();
 
-    if (json.success) location.reload();
-    else {
-      Swal.fire("Error", json.message, "error");
-      select.value = prev;
-    }
+if (json.success) {
+  Swal.fire({
+    icon: "success",
+    title: "Status Updated",
+    showConfirmButton: false,
+    timer: 1200
+  }).then(() => location.reload());
+}
+else {
+  Swal.fire("Error", json.message, "error");
+  select.value = prev;
+}
   });
 }
 </script>

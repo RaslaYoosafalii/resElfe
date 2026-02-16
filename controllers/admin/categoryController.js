@@ -35,6 +35,24 @@ const listCategories = async (req, res) => {
       .limit(limit)
       .lean();
 
+//clear expired offers
+const now = new Date();
+await Category.updateMany(
+  {
+    offerValidDate: { $lt: now },
+    offerPrice: { $gt: 0 }
+  },
+  {
+    $set: {
+      offerPrice: 0,
+      offerIsPercent: false
+    },
+    $unset: {
+      offerValidDate: ""
+    }
+  }
+);
+
     // fetch all subcategories for categories on this page
     const categoryIds = categories.map(c => c._id);
     const subs = await SubCategory.find({ Category: { $in: categoryIds } }).lean();
@@ -319,16 +337,27 @@ return res.redirect('/admin/category');
       return res.redirect('/admin/category');
     }
 
-    const valueTrim = (offerValue || '').toString().trim();
-    if (!valueTrim) {
-      cat.offerPrice = 0;
-      cat.offerIsPercent = false;
-      cat.offerValidDate = undefined;
-      await cat.save();
+const valueTrim = (offerValue || '').toString().trim();
+const dateTrim = (offerValidDate || '').toString().trim();
 
-      console.log('setCategoryOffer: cleared offer for', id);
-      return res.redirect('/admin/category');
-    }
+// clear offer
+if (!valueTrim && !dateTrim) {
+  cat.offerPrice = 0;
+  cat.offerIsPercent = false;
+  cat.offerValidDate = undefined;
+
+  await cat.save();
+
+  req.session.message = 'Offer cleared successfully';
+  return res.redirect('/admin/category');
+}
+
+
+if (!valueTrim || !dateTrim) {
+  req.session.message = 'Offer value and valid date are required';
+  return res.redirect('/admin/category');
+}
+
 
     const numericValue = Number(valueTrim);
     if (Number.isNaN(numericValue) || numericValue < 0) {
@@ -338,7 +367,7 @@ return res.redirect('/admin/category');
 
     if (offerType === 'percent') {
       if (numericValue <= 0 || numericValue > 100) {
- req.session.message = 'Percentage must be between 1 and 100';
+ req.session.message = 'Percentage value must be between 1 and 100';
 return res.redirect('/admin/category');
       }
       cat.offerIsPercent = true;
@@ -348,19 +377,33 @@ return res.redirect('/admin/category');
       cat.offerPrice = numericValue;
     }
 
- if (offerValidDate) {
+if (offerValidDate) {
   const d = new Date(offerValidDate);
+
   if (isNaN(d.getTime())) {
- req.session.message = 'Invalid offer date';
- return res.redirect('/admin/category');
+    req.session.message = 'Invalid offer date';
+    return res.redirect('/admin/category');
   }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+
+  if (d <= today) {
+    req.session.message = 'Offer valid date must be a future date';
+    return res.redirect('/admin/category');
+  }
+
   cat.offerValidDate = d;
 } else {
   cat.offerValidDate = undefined;
 }
 
 
-    await cat.save();
+
+   await cat.save();
+
+ req.session.message = 'Offer created successfully';
 
     console.log(
       'setCategoryOffer:',
@@ -374,10 +417,12 @@ return res.redirect('/admin/category');
     );
 
     return res.redirect('/admin/category');
-  } catch (err) {
-    console.error('setCategoryOffer error:', err);
-    return res.status(500).render('error-page', { message: 'Failed to set offer' });
-  }
+ } catch (err) {
+  console.error('setCategoryOffer error:', err);
+  req.session.message = 'Error creating offer';
+  return res.redirect('/admin/category');
+}
+
 };
 
 const getSubCategoryData = async (req, res) => {

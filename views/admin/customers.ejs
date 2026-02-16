@@ -290,14 +290,15 @@
 
 <script>
   
-async function postJson(url) {
+async function sendRequest(url, method) {
   const res = await fetch(url, {
-    method: 'POST',
+    method,
     headers: { Accept: 'application/json' },
-    credentials: 'same-origin'   // ✅ REQUIRED
+    credentials: 'same-origin'
   });
   return res.json();
 }
+
 
 
   /* CLEAR SEARCH */
@@ -321,7 +322,7 @@ async function postJson(url) {
 
       if (!result.isConfirmed) return;
 
-      const json = await postJson('/admin/customer/toggle/' + id);
+     const json = await sendRequest('/admin/customer/' + id + '/block', 'PATCH');
       if (json.success) location.reload();
       else Swal.fire('Error', json.message || 'Action failed', 'error');
     });
@@ -343,7 +344,7 @@ async function postJson(url) {
 
       if (!result.isConfirmed) return;
 
-      const json = await postJson('/admin/customer/delete/' + id);
+      const json = await sendRequest('/admin/customer/' + id, 'DELETE');
       if (json.success) {
         Swal.fire('Deleted', 'Customer removed', 'success').then(() => location.reload());
       } else {

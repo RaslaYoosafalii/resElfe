@@ -99,24 +99,111 @@ const loadWishlist = async (req, res) => {
 
     const productIds = wishlist.products.map(w => w.productId._id);
 
-    const variants = await Variant.aggregate([
-      { $match: { productId: { $in: productIds }, isListed: true } },
-      {
-        $group: {
-          _id: '$productId',
-          minPrice: { $min: '$price' },
-          minDiscountPrice: {
-            $min: {
+const variants = await Variant.aggregate([
+  { $match: { productId: { $in: productIds }, isListed: true } },
+
+  {
+    $lookup: {
+      from: 'products',
+      localField: 'productId',
+      foreignField: '_id',
+      as: 'product'
+    }
+  },
+  {
+    $addFields: {
+      productData: { $arrayElemAt: ['$product', 0] }
+    }
+  },
+  {
+    $lookup: {
+      from: 'categories',
+      localField: 'productData.categoryId',
+      foreignField: '_id',
+      as: 'category'
+    }
+  },
+  {
+    $addFields: {
+      categoryData: { $arrayElemAt: ['$category', 0] }
+    }
+  },
+  {
+    $addFields: {
+      categoryOfferActive: {
+        $cond: [
+          {
+            $and: [
+              { $gt: ['$categoryData.offerPrice', 0] },
+              {
+                $or: [
+                  { $eq: ['$categoryData.offerValidDate', null] },
+                  { $gt: ['$categoryData.offerValidDate', new Date()] }
+                ]
+              }
+            ]
+          },
+          true,
+          false
+        ]
+      }
+    }
+  },
+  {
+    $addFields: {
+      finalVariantPrice: {
+        $let: {
+          vars: {
+            variantDiscount: {
               $cond: [
-                { $and: [{ $ne: ['$discountPrice', null] }, { $gt: ['$discountPrice', 0] }] },
+                {
+                  $and: [
+                    { $ne: ['$discountPrice', null] },
+                    { $gt: ['$discountPrice', 0] }
+                  ]
+                },
                 '$discountPrice',
                 '$price'
               ]
+            },
+            categoryDiscounted: {
+              $cond: [
+                '$categoryOfferActive',
+                {
+                  $cond: [
+                    '$categoryData.offerIsPercent',
+                    {
+                      $multiply: [
+                        '$price',
+                        {
+                          $subtract: [
+                            1,
+                            { $divide: ['$categoryData.offerPrice', 100] }
+                          ]
+                        }
+                      ]
+                    },
+                    { $subtract: ['$price', '$categoryData.offerPrice'] }
+                  ]
+                },
+                '$price'
+              ]
             }
-          }
+          },
+          in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
         }
       }
-    ]);
+    }
+  },
+  {
+    $group: {
+      _id: '$productId',
+      minPrice: { $min: '$price' },
+      minFinalPrice: { $min: '$finalVariantPrice' }
+    }
+  }
+]);
+
 
     const priceMap = {};
     variants.forEach(v => {
@@ -135,10 +222,11 @@ const loadWishlist = async (req, res) => {
         images: p.images,
         subcategoryName: p.subcategoryId?.fitName || '',
         _price: priceInfo.minPrice || 0,
-        minVariantDiscountPrice:
-          priceInfo.minDiscountPrice < priceInfo.minPrice
-            ? priceInfo.minDiscountPrice
-            : null,
+     minVariantDiscountPrice:
+  priceInfo.minFinalPrice < priceInfo.minPrice
+    ? priceInfo.minFinalPrice
+    : null,
+
             isUnavailable
       };
     });

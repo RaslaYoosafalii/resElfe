@@ -180,7 +180,7 @@
 
       <select id="statusFilter">
         <option value="">All status</option>
-     <% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => { %>
+     <% ['pending','shipped','out for delivery','delivered','cancelled', 'returned'].forEach(s => { %>
           <option value="<%= s %>" <%= status === s ? 'selected' : '' %>><%= s %></option>
         <% }) %>
       </select>
@@ -219,7 +219,7 @@
             <span class="muted"><%= o.userId?.email %></span>
           </td>
 
-          <td>₹ <%= o.finalPrice %></td>
+          <td>₹ <%= o.finalPrice.toFixed(0) %></td>
           <td><%= o.paymentMethod %></td>
 
           <td>
@@ -232,14 +232,15 @@
   const currentIndex = flow.indexOf(o.orderStatus);
 %>
 
-<% ['pending','shipped','out for delivery','delivered','cancelled'].forEach(s => {
+<% ['pending','shipped','out for delivery','delivered','cancelled', 'returned'].forEach(s => {
      let disabled = false;
 
      if (flow.includes(o.orderStatus) && flow.includes(s)) {
        disabled = flow.indexOf(s) !== currentIndex + 1 && s !== o.orderStatus;
      }
 
-     if (o.orderStatus === 'delivered') disabled = true;
+     if (['delivered','cancelled', 'returned'].includes(o.orderStatus)) disabled = true;
+     if (s === 'returned') disabled = true;
      if (s === 'cancelled' && o.orderStatus !== 'pending') disabled = true;
 %>
 <option
@@ -327,11 +328,19 @@ document.querySelectorAll(".orderStatus").forEach(select => {
 
     const json = await res.json();
 
-    if (json.success) location.reload();
-    else {
-      Swal.fire("Error", json.message, "error");
-      select.value = prev;
-    }
+if (json.success) {
+  Swal.fire({
+    icon: "success",
+    title: "Status Updated",
+    showConfirmButton: false,
+    timer: 1200
+  }).then(() => location.reload());
+}
+else {
+  Swal.fire("Error", json.message, "error");
+  select.value = prev;
+}
+
   });
 });
 

@@ -37,7 +37,8 @@
 <p>
 Order Date: <%= new Date(order.orderDate).toDateString() %><br>
 Payment: <%= order.paymentMethod %> | <%= order.paymentStatus %><br>
-Status: <%= order.orderStatus %>
+Status: <%= order.orderStatus %><br>
+Order total: ₹<%= order.finalPrice %>
 <% if(order.deliveredOn){ %>
 <br>Delivered On: <%= new Date(order.deliveredOn).toDateString() %>
 <% } %>
@@ -57,8 +58,18 @@ Status: <%= order.orderStatus %>
 
   <div>
     <strong><%= i.productName %></strong><br>
+    Size: <%= i.size %><br>
     Qty: <%= i.quantity %><br>
-    Price: ₹<%= i.offerPrice %><br>
+    <% if (i.couponShare > 0) { %>
+  Price:
+  <span style="text-decoration:line-through;color:#888">
+    ₹<%= i.offerPrice %>
+  </span>
+  ₹<%= i.offerPrice - i.couponShare %><br>
+<% } else { %>
+  Price: ₹<%= i.offerPrice %><br>
+<% } %>
+
    <span class="badge">
   <% if (i.orderStatus === 'rejected') { %>
     Return request rejected (Delivered)
@@ -69,8 +80,10 @@ Status: <%= order.orderStatus %>
 
  
 <% if (
-  !['delivered', 'cancelled', 'returnRequested', 'returned'].includes(i.orderStatus)
+  order.orderStatus !== 'failed' &&
+  !['delivered', 'cancelled', 'returnRequested', 'returned', 'failed','rejected'].includes(i.orderStatus)
 ) { %>
+
   <button class="btn btn-dark"
     onclick="cancelItem('<%= order.orderId %>', '<%= i.product %>')">
     Cancel Item

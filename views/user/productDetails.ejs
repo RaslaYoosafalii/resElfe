@@ -426,14 +426,14 @@ button[disabled] {
 
 
 
-<% 
-  // safe defaults — use first variant if present
-  var defaultVariant = (variants && variants.length) ? variants[0] : null;
+<%
+  var defaultVariant = (sizeVariants && sizeVariants.length) ? sizeVariants[0] : null;
   var vPrice = defaultVariant ? Number(defaultVariant.price) : 0;
-  var vDisc = (defaultVariant && typeof defaultVariant.discountPrice !== 'undefined' && defaultVariant.discountPrice !== null)
+  var vDisc = (defaultVariant && defaultVariant.discountPrice !== null)
     ? Number(defaultVariant.discountPrice)
     : null;
 %>
+
              <div class="product-price">
                <% if (vDisc !== null && vDisc > 0 && vDisc < vPrice) { %>
                  <span style="font-weight:700; font-size:20px;">Rs. <%= vDisc.toLocaleString('en-IN') %></span>
