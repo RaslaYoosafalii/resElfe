@@ -196,7 +196,7 @@
       <div class="existing-images">
         <% product.images.forEach(img => { %>
           <div class="existing-image-box">
-            <img src="/uploads/products/<%= img %>">
+            <img src="<%= imageUrl(img) %>">
             <div>
               <input type="checkbox" class="keep-img" value="<%= img %>" checked>
               <small>Keep</small>

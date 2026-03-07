@@ -279,7 +279,7 @@ No orders found matching your search.
 
       <% order.orderedItem.forEach(item => { %>
         <div class="item">
-          <img src="/uploads/products/<%= item.productImages[0] %>">
+          <img src="<%= imageUrl(item.productImages[0]) %>">
           <div>
             <strong><%= item.productName %></strong><br>
           Size: <%= item.size %> | Qty: <%= item.quantity %> |

@@ -31,16 +31,16 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB per file
   fileFilter: function (req, file, cb) {
-const allowedExt = ['.jpg', '.jpeg', '.png'];
-const allowedMime = ['image/jpeg', 'image/png'];
+    const allowedExt = ['.jpg', '.jpeg', '.png'];
+    const allowedMime = ['image/jpeg', 'image/png'];
 
-const ext = path.extname(file.originalname).toLowerCase();
+    const ext = path.extname(file.originalname).toLowerCase();
 
-if (!allowedExt.includes(ext) || !allowedMime.includes(file.mimetype)) {
-  return cb(new Error('Only JPG and PNG image files are allowed'));
-}
+    if (!allowedExt.includes(ext) || !allowedMime.includes(file.mimetype)) {
+      return cb(new Error('Only JPG and PNG image files are allowed'));
+    }
 
-cb(null, true);
+    cb(null, true);
   }
 });
 

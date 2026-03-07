@@ -2,7 +2,6 @@
 import User from '../../models/userSchema.js';
 import Address from '../../models/addressSchema.js';
 import Order from '../../models/orderSchema.js';
-import { Coupon } from '../../models/couponSchema.js';
 import Wallet from '../../models/walletSchema.js';
 import { Category } from '../../models/categorySchema.js';
 import { Product } from '../../models/productSchema.js';
@@ -11,6 +10,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import fs from 'fs';
+import logger from '../../config/logger.js';
 dotenv.config();
 
 
@@ -34,6 +34,8 @@ const pageNotFound = async (req, res) => {
   try {
     return res.render('page-404');
   } catch (error) {
+    console.log(error);
+    logger.error(`load pageNoteFound error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -44,98 +46,98 @@ const loadHome = async (req, res) => {
   try {
     const user = req.session.user;
 
-const categories = await Category.find({
-  isDeleted: { $ne: true },
-  isListed: true
-})
-  .sort({ createdAt: 1 })
-  .limit(4) 
-  .lean();
+    const categories = await Category.find({
+      isDeleted: { $ne: true },
+      isListed: true
+    })
+      .sort({ createdAt: 1 })
+      .limit(4) 
+      .lean();
 
-// Attach newest product image for each category
-for (const cat of categories) {
-  const latestProduct = await Product.findOne({
-    categoryId: cat._id,
-    isListed: true,
-    isDeleted: { $ne: true },
-    images: { $exists: true, $ne: [] }
-  })
-    .sort({ createdAt: -1 })
-    .select('images')
-    .lean();
+    // Attach newest product image for each category
+    for (const cat of categories) {
+      const latestProduct = await Product.findOne({
+        categoryId: cat._id,
+        isListed: true,
+        isDeleted: { $ne: true },
+        images: { $exists: true, $ne: [] }
+      })
+        .sort({ createdAt: -1 })
+        .select('images')
+        .lean();
 
-  cat.image = latestProduct?.images?.[0] || null;
-}
-
-//latest 6 products(new arrivals)
-const latestProducts = await Product.aggregate([
-  {
-    $match: {
-      isListed: true,
-      isDeleted: { $ne: true }
+      cat.image = latestProduct?.images?.[0] || null;
     }
-  },
-  {
-    $lookup: {
-      from: 'variants',
-      let: { pid: '$_id' },
-      pipeline: [
-        {
-          $match: {
-            $expr: {
-              $and: [
-                { $eq: ['$productId', '$$pid'] },
-                { $eq: ['$isListed', true] }
-              ]
-            }
-          }
-        },
-        {
-          $project: {
-            price: 1,
-            discountPrice: 1,
-          }
+
+    //latest 6 products(new arrivals)
+    const latestProducts = await Product.aggregate([
+      {
+        $match: {
+          isListed: true,
+          isDeleted: { $ne: true }
         }
-      ],
-      as: 'variants'
-    }
-  },
-  {
-    $match: {
-      variants: { $ne: [] }
-    }
-  },
-  {
-    $addFields: {
-      finalPrice: {
-        $min: {
-          $map: {
-            input: '$variants',
-            as: 'v',
-            in: {
-              $cond: [
-                {
+      },
+      {
+        $lookup: {
+          from: 'variants',
+          let: { pid: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
                   $and: [
-                    { $ne: ['$$v.discountPrice', null] },
-                    { $gt: ['$$v.discountPrice', 0] }
+                    { $eq: ['$productId', '$$pid'] },
+                    { $eq: ['$isListed', true] }
                   ]
-                },
-                '$$v.discountPrice',
-                '$$v.price'
-              ]
+                }
+              }
+            },
+            {
+              $project: {
+                price: 1,
+                discountPrice: 1,
+              }
+            }
+          ],
+          as: 'variants'
+        }
+      },
+      {
+        $match: {
+          variants: { $ne: [] }
+        }
+      },
+      {
+        $addFields: {
+          finalPrice: {
+            $min: {
+              $map: {
+                input: '$variants',
+                as: 'v',
+                in: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ne: ['$$v.discountPrice', null] },
+                        { $gt: ['$$v.discountPrice', 0] }
+                      ]
+                    },
+                    '$$v.discountPrice',
+                    '$$v.price'
+                  ]
+                }
+              }
             }
           }
         }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $limit: 6
       }
-    }
-  },
-  {
-    $sort: { createdAt: -1 }
-  },
-  {
-    $limit: 6
-  }
-]);
+    ]);
 
 
     if (user) {
@@ -154,6 +156,7 @@ const latestProducts = await Product.aggregate([
     }
   } catch (error) {
     console.log('home page error:', error);
+    logger.error(`home page error: ${error.message}`);
     return res.status(500).render('error-page', {
       message: 'Unable to load homepage'
     });
@@ -169,7 +172,8 @@ const loadLoginPage = async (req, res) => {
       res.redirect('/');
     }
   } catch (error) {
-    console.log('page not found');
+    console.log('page not found',error);
+    logger.error(`page not found: ${error.message}`);
     res.redirect('/pagenotfound');
   }
 };
@@ -210,6 +214,7 @@ const login = async (req, res) => {
     
   } catch (error) {
     console.error('Login Error', error);
+    logger.error(`Login error: ${error.message}`);
     res.render('login', {
       message: 'Login Failed Try again',
       user: null
@@ -264,6 +269,7 @@ const forgotPasswordRequest = async (req, res) => {
     });
   } catch (error) {
     console.error('forgotPasswordRequest error', error);
+    logger.error(`forgotPasswordRequest error: ${error.message}`);
     return res.render('forgot-password', {
       message: 'Server error. Please try again.'
     });
@@ -305,6 +311,7 @@ const forgotVerifyOtp = async (req, res) => {
     }
   } catch (error) {
     console.error('forgotVerifyOtp error', error);
+    logger.error(`forgotVerifyOtp error: ${error.message}`);
     return res.render('forgot-password-otp', {
       email: req.session.resetEmail || '',
       message: 'Server Error, please try again.'
@@ -325,7 +332,7 @@ const forgotResendOtp = async (req, res) => {
         message: 'Invalid request'
       });
     }
-        if (
+    if (
       req.session.otpLastSentAt &&
       Date.now() - req.session.otpLastSentAt < OTP_COOLDOWN
     ) {
@@ -353,6 +360,7 @@ const forgotResendOtp = async (req, res) => {
     });
   } catch (error) {
     console.error('forgotResendOtp error', error);
+    logger.error(`forgotResendOtp error: ${error.message}`);
     return res.status(500).json({
       success: false,
       message: 'Server error'
@@ -383,20 +391,20 @@ const forgotChangePassword = async (req, res) => {
       });
     }
 
-if (newPassword.length < 8) {
-  return res.render('change-password', {
-    message: 'Password must be at least 8 characters long'
-  });
-}
+    if (newPassword.length < 8) {
+      return res.render('change-password', {
+        message: 'Password must be at least 8 characters long'
+      });
+    }
 
-const alpha = /[A-Za-z]/;
-const digit = /\d/;
+    const alpha = /[A-Za-z]/;
+    const digit = /\d/;
 
-if (!alpha.test(newPassword) || !digit.test(newPassword)) {
-  return res.render('change-password', {
-    message: 'Password must contain at least one alphabet and one digit'
-  });
-}
+    if (!alpha.test(newPassword) || !digit.test(newPassword)) {
+      return res.render('change-password', {
+        message: 'Password must contain at least one alphabet and one digit'
+      });
+    }
 
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
@@ -414,29 +422,30 @@ if (!alpha.test(newPassword) || !digit.test(newPassword)) {
     req.session.otpCreatedAt = null;
 
 
-// detect fetch / ajax request
-if (req.headers['content-type']?.includes('application/json')) {
-  return res.json({
-    success: true,
-    message: 'Password changed successfully',
-    redirectUrl: '/login'
-  });
-}
+    // detect fetch / ajax request
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.json({
+        success: true,
+        message: 'Password changed successfully',
+        redirectUrl: '/login'
+      });
+    }
 
-  return res.render('profile-reset-password', {
-  success: true
-});
+    return res.render('profile-reset-password', {
+      success: true
+    });
 
   } catch (error) {
 
     console.error('forgotChangePassword error', error);
+    logger.error(`ForgotChangePassword error: ${error.message}`);
 
-  if (req.headers['content-type']?.includes('application/json')) {
-  return res.status(500).json({
-    success: false,
-    message: 'Unable to change password. Please try again later.'
-  });
-}
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({
+        success: false,
+        message: 'Unable to change password. Please try again later.'
+      });
+    }
 
     return res.render('change-password', {
       message: 'Server error. Please try again.'
@@ -449,6 +458,8 @@ const loadSignupPage = async (req, res) => {
   try {
     res.render('signup', { user: null });
   } catch (error) {
+    console.log(error);
+    logger.error(`load signup page error: ${error.message}`);
     res.redirect('/pagenotfound');
   }
 };
@@ -490,6 +501,7 @@ async function sendVerificationEmail(email, otp) {
     };
   } catch (error) {
     console.error('Error for sending email', error);
+    logger.error(`sending email error: ${error.message}`);
     return false;
   }
 }
@@ -497,9 +509,9 @@ async function sendVerificationEmail(email, otp) {
 // signup
 const signup = async (req, res) => {
   let { email, password, confirmPassword, referralCode } = req.body;
-   email = email.trim();
-   password = password.trim()
-   confirmPassword = confirmPassword.trim()
+  email = email.trim();
+  password = password.trim();
+  confirmPassword = confirmPassword.trim();
 
   const alpha = /[a-zA-Z]/;
   const digit = /\d/;
@@ -519,22 +531,20 @@ const signup = async (req, res) => {
       });
     }
     
-  if(password.length < 8){
-    return res.render('signup', {
-      message: 'password must be at least 8 characters.',
-      user: null
-    })
-  }
+    if(password.length < 8){
+      return res.render('signup', {
+        message: 'password must be at least 8 characters.',
+        user: null
+      });
+    }
 
-  if(!alpha.test(password) || !digit.test(password)){
-     return res.render('signup', {
-      message: "Password must contain at least one alphabet and one digit",
-      user: null
-     })
-  }
-
-
-
+    if(!alpha.test(password) || !digit.test(password)){
+      return res.render('signup', {
+        message: 'Password must contain at least one alphabet and one digit',
+        user: null
+      });
+    }
+  
     const findUser = await User.findOne({ email: email.toLowerCase() });
     if (findUser) {
       return res.render('signup', {
@@ -543,21 +553,21 @@ const signup = async (req, res) => {
       });
     }
     
-if (
-  req.session.otpLastSentAt &&
+    if (
+      req.session.otpLastSentAt &&
   Date.now() - req.session.otpLastSentAt < 30 * 1000
-) {
-  return res.render('signup', {
-    message: 'Please wait before requesting another OTP',
-    user: null
-  });
-}
+    ) {
+      return res.render('signup', {
+        message: 'Please wait before requesting another OTP',
+        user: null
+      });
+    }
 
 
 
     const otp = generateOTP();
     const emailResult = await sendVerificationEmail(email, otp);
-    console.log(`signup otp`, otp)
+    console.log('signup otp', otp);
 
     if (!emailResult || !emailResult.ok) {
       return res.render('signup', {
@@ -580,6 +590,7 @@ if (
     return res.render('verify-otp', { email });
   } catch (error) {
     console.error('signup error:', error);
+    logger.error(`signup error: ${error.message}`);
     return res.render('signup', {
       message: 'Signup failed, please try again.',
       user: null
@@ -618,118 +629,118 @@ const verifyOtp = async (req, res) => {
     }
      
 
-   //if session otp and entered otp is correct  
-  if (otp === req.session.userOtp) {
+    //if session otp and entered otp is correct  
+    if (otp === req.session.userOtp) {
       const userData = req.session.userData; //get temporary session user data stored during signup
       const passwordHash = await securePassword(userData.password); //hashing password 
 
-    //generate unique referral code for new user
-    let newReferralCode;
-    let existingCode;
-    do {
+      //generate unique referral code for new user
+      let newReferralCode;
+      let existingCode;
+      do {
         newReferralCode = generateReferralCode();
         existingCode = await User.findOne({ refferalcode: newReferralCode }); //keep generating until code is unique
-     } while (existingCode);
+      } while (existingCode);
 
-// ------validate refferal ---------------
-let referredByUser = null;//default
+      // ------validate refferal ---------------
+      let referredByUser = null;//default
 
-if (userData.referralCode && userData.referralCode.trim() !== ''){
-  const referralInput = userData.referralCode.trim();
+      if (userData.referralCode && userData.referralCode.trim() !== ''){
+        const referralInput = userData.referralCode.trim();
 
-  //must be 8 alphanumeric characters
-  if (!/^[A-Za-z0-9]{8}$/.test(referralInput)) {
-    return res.json({
-      success: false,
-      message: "Invalid referral code format"
-    });
-  }
+        //must be 8 alphanumeric characters
+        if (!/^[A-Za-z0-9]{8}$/.test(referralInput)) {
+          return res.json({
+            success: false,
+            message: 'Invalid referral code format'
+          });
+        }
 
-  //check if referral code exists and belongs to active user
-  referredByUser = await User.findOne({
-    refferalcode: referralInput,
-    isBlocked: false,
-    isDeleted: false
-  });
+        //check if referral code exists and belongs to active user
+        referredByUser = await User.findOne({
+          refferalcode: referralInput,
+          isBlocked: false,
+          isDeleted: false
+        });
 
- //if that refferal code doesn't blong to any user
-  if (!referredByUser) {
-    return res.json({
-      success: false,
-      message: "Referral code does not exist"
-    });
-  }
+        //if that refferal code doesn't blong to any user
+        if (!referredByUser) {
+          return res.json({
+            success: false,
+            message: 'Referral code does not exist'
+          });
+        }
 
-  //no self-referral
-if (referredByUser.email.toLowerCase() === userData.email.toLowerCase()){
-    return res.json({
-      success: false,
-      message: "You cannot use your own referral code"
-    });
-  }
+        //no self-referral
+        if (referredByUser.email.toLowerCase() === userData.email.toLowerCase()){
+          return res.json({
+            success: false,
+            message: 'You cannot use your own referral code'
+          });
+        }
 
-  //no duplicate referral(same email existing user)
-  const existingUser = await User.findOne({ email: userData.email });
-  if (existingUser) {
-    return res.json({
-      success: false,
-      message: "User already registered"
-    });
-  }
-}
-
-//save new user to database
-const saveUserData = new User({
-  email: userData.email,
-  password: passwordHash,
-  refferalcode: newReferralCode,
-  refferedBy: referredByUser ? referredByUser._id : null
-});
-
-await saveUserData.save();
-
-
-//credit reward to reffered user
-if (referredByUser) {
-  const REFERRAL_REWARD = 200;
-
-//add redeemed user to refarrer's array
-await User.updateOne(
-  { _id: referredByUser._id },
-  { $addToSet: { redeemedUsers: saveUserData._id } }
-);
-
-
-
-//ensure wallet exists
-let wallet = await Wallet.findOne({ userId: referredByUser._id });
-
-//if not create
-if (!wallet) {
-  wallet = await Wallet.create({
-    userId: referredByUser._id,
-    balance: 0,
-    transactions: []
-  });
-}
-
-//update wallet 
-await Wallet.updateOne(
-  { userId: referredByUser._id },
-  {
-    $inc: { balance: REFERRAL_REWARD },//add reward
-    $push: { // add transaction info
-      transactions: {
-        type: "credit",
-        amount: REFERRAL_REWARD,
-        description: `Referral reward for ${saveUserData.email}`
+        //no duplicate referral(same email existing user)
+        const existingUser = await User.findOne({ email: userData.email });
+        if (existingUser) {
+          return res.json({
+            success: false,
+            message: 'User already registered'
+          });
+        }
       }
-    }
-  }
-);
 
-  await wallet.save();
-}
+      //save new user to database
+      const saveUserData = new User({
+        email: userData.email,
+        password: passwordHash,
+        refferalcode: newReferralCode,
+        refferedBy: referredByUser ? referredByUser._id : null
+      });
+
+      await saveUserData.save();
+
+
+      //credit reward to reffered user
+      if (referredByUser) {
+        const REFERRAL_REWARD = 200;
+
+        //add redeemed user to refarrer's array
+        await User.updateOne(
+          { _id: referredByUser._id },
+          { $addToSet: { redeemedUsers: saveUserData._id } }
+        );
+
+
+
+        //ensure wallet exists
+        let wallet = await Wallet.findOne({ userId: referredByUser._id });
+
+        //if not create
+        if (!wallet) {
+          wallet = await Wallet.create({
+            userId: referredByUser._id,
+            balance: 0,
+            transactions: []
+          });
+        }
+
+        //update wallet 
+        await Wallet.updateOne(
+          { userId: referredByUser._id },
+          {
+            $inc: { balance: REFERRAL_REWARD },//add reward
+            $push: { // add transaction info
+              transactions: {
+                type: 'credit',
+                amount: REFERRAL_REWARD,
+                description: `Referral reward for ${saveUserData.email}`
+              }
+            }
+          }
+        );
+
+        await wallet.save();
+      }
 
       //stores user id in session
       req.session.user = saveUserData._id;
@@ -746,10 +757,11 @@ await Wallet.updateOne(
         success: false,
         message: 'Invalid OTP, please try again'
       });
-  }
+    }
 
   } catch (error) {
     console.error('verifyOtp error', error);
+    logger.error(`VerifyOtp error: ${error.message}`);
     return res.render('verify-otp', {
       email: req.session?.userData?.email || '',
       message: 'Server Error, please try again.'
@@ -790,6 +802,7 @@ const resendOtp = async (req, res) => {
 
   } catch (error) {
     console.error('resendOtp error', error);
+    logger.error(`resendOtp error: ${error.message}`);
     return res.render('verify-otp', {
       email: req.session?.userData?.email || '',
       message: 'Server error'
@@ -809,15 +822,16 @@ const loadUserprofile = async (req, res) => {
     const orders = await Order.find({ userId }).sort({ createdAt: -1 }).lean();
 
     res.render('profile', {
-       user,
-       addresses: addressData?.address || [],
-       orders,
-       passwordChanged: req.query.passwordChanged === '1'
-       //if url is /profile?passwordChanged=1, then this becomes true used to show success
-     });
+      user,
+      addresses: addressData?.address || [],
+      orders,
+      passwordChanged: req.query.passwordChanged === '1'
+      //if url is /profile?passwordChanged=1, then this becomes true used to show success
+    });
 
   } catch (error) {
     console.error('loadUserprofile error', error);
+    logger.error(`LoadUserprofile error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -829,6 +843,7 @@ const loadEditProfile = async (req, res) => {
     res.render('edit-profile', { user, message: null });
   } catch (error) {
     console.error(error);
+    logger.error(`Load edit-profile error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -841,65 +856,65 @@ const updateProfile = async (req, res) => {
     const deleteImage = req.body?.deleteImage; //checkif frontend requested profile image deletion
      
 
-   const user = await User.findById(userId);
-   const file = req.file;//if user uploaded image, multer stores it in req.file
+    const user = await User.findById(userId);
+    const file = req.file;//if user uploaded image, multer stores it in req.file
 
 
-const trimmedName = typeof name === 'string' ? name.trim() : '';
-const trimmedMobile = typeof mobileNumber === 'string' ? mobileNumber.trim() : '';
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    const trimmedMobile = typeof mobileNumber === 'string' ? mobileNumber.trim() : '';
 
-//if name there validate 
-if (name !== undefined) {
+    //if name there validate 
+    if (name !== undefined) {
 
-  if (trimmedName.length === 0) {
-    return res.render('edit-profile', {
-      user,
-      message: 'Name cannot be empty'
-    });
-  }
+      if (trimmedName.length === 0) {
+        return res.render('edit-profile', {
+          user,
+          message: 'Name cannot be empty'
+        });
+      }
 
-  if (trimmedName.length < 3) {
-    return res.render('edit-profile', {
-      user,
-      message: 'Name must be at least 3 characters'
-    });
-  }
+      if (trimmedName.length < 3) {
+        return res.render('edit-profile', {
+          user,
+          message: 'Name must be at least 3 characters'
+        });
+      }
 
-  if (!/^[A-Za-z\s]+$/.test(trimmedName)) {
-    return res.render('edit-profile', {
-      user,
-      message: 'Name can only contain alphabets and spaces'
-    });
-  }
-}
+      if (!/^[A-Za-z\s]+$/.test(trimmedName)) {
+        return res.render('edit-profile', {
+          user,
+          message: 'Name can only contain alphabets and spaces'
+        });
+      }
+    }
 
-//if nnumber there validate Mobile Number
-if (mobileNumber !== undefined && trimmedMobile !== '') {
+    //if nnumber there validate Mobile Number
+    if (mobileNumber !== undefined && trimmedMobile !== '') {
 
-  if (!/^\d+$/.test(trimmedMobile)) {
-    return res.render('edit-profile', {
-      user,
-      message: 'Mobile number must contain digits only'
-    });
-  }
+      if (!/^\d+$/.test(trimmedMobile)) {
+        return res.render('edit-profile', {
+          user,
+          message: 'Mobile number must contain digits only'
+        });
+      }
 
-  if (trimmedMobile.length !== 10) {
-    return res.render('edit-profile', {
-      user,
-      message: 'Mobile number must be exactly 10 digits'
-    });
-  }
+      if (trimmedMobile.length !== 10) {
+        return res.render('edit-profile', {
+          user,
+          message: 'Mobile number must be exactly 10 digits'
+        });
+      }
 
-  if (/^0+$/.test(trimmedMobile)) {
-    return res.render('edit-profile', {
-      user,
-      message: 'Mobile number cannot be all zeros'
-    });
-  }
+      if (/^0+$/.test(trimmedMobile)) {
+        return res.render('edit-profile', {
+          user,
+          message: 'Mobile number cannot be all zeros'
+        });
+      }
 
-}
+    }
     //email change detect -> otp flow
-      if (email && email !== user.email) {
+    if (email && email !== user.email) {
       const existing = await User.findOne({ email: email.toLowerCase() });
       if (existing) {
         return res.render('edit-profile', {
@@ -920,31 +935,31 @@ if (mobileNumber !== undefined && trimmedMobile !== '') {
 
       await sendVerificationEmail(email, otp);
 
-  const pendingUpdatedFields = new Set();
+      const pendingUpdatedFields = new Set();
 
-if (trimmedName && trimmedName !== user.name) {
-  user.name = trimmedName;
-}
-if (
-  trimmedMobile &&
+      if (trimmedName && trimmedName !== user.name) {
+        user.name = trimmedName;
+      }
+      if (
+        trimmedMobile &&
   String(trimmedMobile) !== String(user.mobileNumber || '')
-) {
-  user.mobileNumber = Number(trimmedMobile);
-}
+      ) {
+        user.mobileNumber = Number(trimmedMobile);
+      }
 
-req.session.pendingUpdatedFields = Array.from(pendingUpdatedFields);
-req.session.pendingProfileUpdates = {};
+      req.session.pendingUpdatedFields = Array.from(pendingUpdatedFields);
+      req.session.pendingProfileUpdates = {};
 
-if (name && name !== user.name) {
-  req.session.pendingProfileUpdates.name = name;
-}
+      if (name && name !== user.name) {
+        req.session.pendingProfileUpdates.name = name;
+      }
 
-if (
-  mobileNumber &&
+      if (
+        mobileNumber &&
   String(mobileNumber) !== String(user.mobileNumber || '')
-) {
-  req.session.pendingProfileUpdates.mobileNumber = mobileNumber;
-}
+      ) {
+        req.session.pendingProfileUpdates.mobileNumber = mobileNumber;
+      }
 
 
       return res.render('verify-email-otp', {
@@ -952,98 +967,99 @@ if (
         otpSent: true,
         message: 'OTP sent to your new email'
       });
-}
+    }
 
-// profile image handling
-let imageUpdated = false;
+    // profile image handling
+    let imageUpdated = false;
 
-if (file) {
-  // delete old image if exists
-  if (user.profileImage) {
-    const oldPath = path.join(
-      process.cwd(),
-      'public',
-      user.profileImage
-    );
-    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-  }
+    if (file) {
+      // delete old image if exists
+      if (user.profileImage) {
+        const oldPath = path.join(
+          process.cwd(),
+          'public',
+          user.profileImage
+        );
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
 
-  user.profileImage = `/uploads/products/${file.filename}`;
-  imageUpdated = true;
-}
+      user.profileImage = `/uploads/products/${file.filename}`;
+      imageUpdated = true;
+    }
 
-//delete image request
-if (deleteImage === 'true' && user.profileImage) {
+    //delete image request
+    if (deleteImage === 'true' && user.profileImage) {
 
-  const oldPath = path.join(
-    process.cwd(),
-    'public',
-    user.profileImage
-  );
-  if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      const oldPath = path.join(
+        process.cwd(),
+        'public',
+        user.profileImage
+      );
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
 
-  user.profileImage = null;
-  imageUpdated = true;
-}    
+      user.profileImage = null;
+      imageUpdated = true;
+    }    
 
-//updated fields tracking
-const updatedFields = new Set();
-if (imageUpdated) updatedFields.add('profile photo');
+    //updated fields tracking
+    const updatedFields = new Set();
+    if (imageUpdated) updatedFields.add('profile photo');
 
 
-if (name && name !== user.name) updatedFields.add('name');
-if (
-  trimmedMobile &&
+    if (name && name !== user.name) updatedFields.add('name');
+    if (
+      trimmedMobile &&
   String(trimmedMobile) !== String(user.mobileNumber || '')
-) {
-  updatedFields.add('number');
-}
+    ) {
+      updatedFields.add('number');
+    }
 
-// apply changes
-if (name && name !== user.name) {
-  user.name = name;
-}
+    // apply changes
+    if (name && name !== user.name) {
+      user.name = name;
+    }
 
-if (
-  trimmedMobile &&
+    if (
+      trimmedMobile &&
   String(trimmedMobile) !== String(user.mobileNumber || '')
-) {
-  user.mobileNumber = Number(trimmedMobile);
-}
+    ) {
+      user.mobileNumber = Number(trimmedMobile);
+    }
 
 
 
 
-//email change already handled by OTP flow 
-await user.save();
+    //email change already handled by OTP flow 
+    await user.save();
 
-if (updatedFields.size === 0) {
-  updatedFields.add('profile');
-}
+    if (updatedFields.size === 0) {
+      updatedFields.add('profile');
+    }
 
 
-return res.render('edit-profile', {
-  user: await User.findById(userId).lean(),
-  updatedFields: Array.from(updatedFields)
-});
+    return res.render('edit-profile', {
+      user: await User.findById(userId).lean(),
+      updatedFields: Array.from(updatedFields)
+    });
 
 
 
   } catch (error) {
     console.error('updateProfile error', error);
+    logger.error(`updateProfile error: ${error.message}`);
 
-      if (
-    error instanceof Error &&
+    if (
+      error instanceof Error &&
     (error.message.includes('JPG') ||
      error.message.includes('PNG') ||
      error.message.includes('file size'))
-  ) {
-    const user = await User.findById(req.session.user).lean();
-    return res.render('edit-profile', {
-      user,
-      message: error.message
-    });
-  }
+    ) {
+      const user = await User.findById(req.session.user).lean();
+      return res.render('edit-profile', {
+        user,
+        message: error.message
+      });
+    }
     res.redirect('/pageNotFound');
   }
 };
@@ -1075,6 +1091,7 @@ const deleteProfileImage = async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     console.error('deleteProfileImage error', error);
+    logger.error(`deleteProfileImage error: ${error.message}`);
     return res.status(500).json({ success: false });
   }
 };
@@ -1090,6 +1107,7 @@ const loadChangePassword = async (req, res) => {
     });
   } catch (error) {
     console.error('loadChangePassword error', error);
+    logger.error(`LoadChangePassword error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -1123,36 +1141,36 @@ const changeProfilePassword = async (req, res) => {
       });
     }
 
-if (!newPassword || !confirmPassword) {
-  return res.render('profile-change-password', {
-    user,
-    message: 'Fill all required fields'
-  });
-}
+    if (!newPassword || !confirmPassword) {
+      return res.render('profile-change-password', {
+        user,
+        message: 'Fill all required fields'
+      });
+    }
 
-if (newPassword !== confirmPassword) {
-  return res.render('profile-change-password', {
-    user,
-    message: 'Passwords do not match'
-  });
-}
+    if (newPassword !== confirmPassword) {
+      return res.render('profile-change-password', {
+        user,
+        message: 'Passwords do not match'
+      });
+    }
 
-if (newPassword.length < 8) {
-  return res.render('profile-change-password', {
-    user,
-    message: 'Password must be at least 8 characters long'
-  });
-}
+    if (newPassword.length < 8) {
+      return res.render('profile-change-password', {
+        user,
+        message: 'Password must be at least 8 characters long'
+      });
+    }
 
-const alpha = /[A-Za-z]/;
-const digit = /\d/;
+    const alpha = /[A-Za-z]/;
+    const digit = /\d/;
 
-if (!alpha.test(newPassword) || !digit.test(newPassword)) {
-  return res.render('profile-change-password', {
-    user,
-    message: 'Password must contain at least one alphabet and one digit'
-  });
-}
+    if (!alpha.test(newPassword) || !digit.test(newPassword)) {
+      return res.render('profile-change-password', {
+        user,
+        message: 'Password must contain at least one alphabet and one digit'
+      });
+    }
 
     userWithPassword.password = await bcrypt.hash(newPassword, 10);
     await userWithPassword.save();
@@ -1165,7 +1183,7 @@ if (!alpha.test(newPassword) || !digit.test(newPassword)) {
 
   } catch (error) {
     console.error('changeProfilePassword error', error);
-
+    logger.error(`changeProfilePassword error: ${error.message}`);
 
     res.render('profile-change-password', {
       user: null,
@@ -1215,6 +1233,7 @@ const requestEmailChange = async (req, res) => {
 
   } catch (error) {
     console.error('requestEmailChange error', error);
+    logger.error(`requestEmailChange error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -1243,41 +1262,42 @@ const verifyEmailChangeOtp = async (req, res) => {
       });
     }
 
-  const updateData = {
-  email: req.session.newEmail,
-  updatedAt: Date.now()
-};
+    const updateData = {
+      email: req.session.newEmail,
+      updatedAt: Date.now()
+    };
 
-if (req.session.pendingProfileUpdates) {
-  Object.assign(updateData, req.session.pendingProfileUpdates);
-}
+    if (req.session.pendingProfileUpdates) {
+      Object.assign(updateData, req.session.pendingProfileUpdates);
+    }
 
-await User.findByIdAndUpdate(req.session.user, updateData);
-req.session.pendingProfileUpdates = null;
+    await User.findByIdAndUpdate(req.session.user, updateData);
+    req.session.pendingProfileUpdates = null;
 
 
     req.session.emailChangeOtp = null;
     req.session.newEmail = null;
 
-const user = await User.findById(req.session.user).lean();
+    // const user = await User.findById(req.session.user).lean();
 
-const updatedFields = new Set(['email']);
+    const updatedFields = new Set(['email']);
 
-if (Array.isArray(req.session.pendingUpdatedFields)) {
-  req.session.pendingUpdatedFields.forEach(f => updatedFields.add(f));
-}
+    if (Array.isArray(req.session.pendingUpdatedFields)) {
+      req.session.pendingUpdatedFields.forEach(f => updatedFields.add(f));
+    }
 
-req.session.pendingUpdatedFields = null;
+    req.session.pendingUpdatedFields = null;
 
 
-return res.render('verify-email-otp', {
-  emailVerified: true,
-  updatedFields: Array.from(updatedFields)
-});
+    return res.render('verify-email-otp', {
+      emailVerified: true,
+      updatedFields: Array.from(updatedFields)
+    });
 
 
   } catch (error) {
     console.error('verifyEmailChangeOtp error', error);
+    logger.error(`verifyEmailChangeOtp error: ${error.message}`);
     res.redirect('/profile');
   }
 };
@@ -1286,7 +1306,7 @@ return res.render('verify-email-otp', {
 
 
 const loadProfileForgotPassword = (req,res)=>{
-  res.render('profile-forgot-password',{message:null})
+  res.render('profile-forgot-password',{message:null});
 };
 
 
@@ -1320,13 +1340,13 @@ const profileForgotPasswordRequest = async (req, res) => {
 
     const otp = generateOTP();
 
-req.session.profileReset = {
-  email: user.email,
-  otp,
-  otpCreatedAt: Date.now(),
-  otpLastSentAt: Date.now(),
-  allowed: true
-};
+    req.session.profileReset = {
+      email: user.email,
+      otp,
+      otpCreatedAt: Date.now(),
+      otpLastSentAt: Date.now(),
+      allowed: true
+    };
 
 
     await sendVerificationEmail(user.email, otp);
@@ -1339,6 +1359,7 @@ req.session.profileReset = {
 
   } catch (err) {
     console.error('profileForgotPasswordRequest error', err);
+    logger.error(`profileForgotPasswordRequest error: ${err.message}`);
     return res.render('profile-forgot-password', {
       message: 'Failed to send OTP'
     });
@@ -1353,8 +1374,8 @@ const profileForgotVerifyOtp = async (req, res) => {
 
 
   if (!reset || !reset.allowed) {
-  return res.redirect('/profile/change-password');
-}
+    return res.redirect('/profile/change-password');
+  }
 
   if (!reset) {
     return res.render('profile-forgot-password', {
@@ -1378,9 +1399,9 @@ const profileForgotResetPassword = async (req, res) => {
   const { newPassword, confirmPassword } = req.body;
   const reset = req.session.profileReset;
 
- if (!req.session.profileReset || !req.session.profileReset.allowed) {
-  return res.redirect('/profile/change-password');
-}
+  if (!req.session.profileReset || !req.session.profileReset.allowed) {
+    return res.redirect('/profile/change-password');
+  }
 
   if (!reset) {
     return res.render('profile-forgot-password', {
@@ -1389,32 +1410,32 @@ const profileForgotResetPassword = async (req, res) => {
   }
 
 
-if (!newPassword || !confirmPassword) {
-  return res.render('profile-reset-password', {
-    message: 'Fill all required fields'
-  });
-}
+  if (!newPassword || !confirmPassword) {
+    return res.render('profile-reset-password', {
+      message: 'Fill all required fields'
+    });
+  }
 
-if (newPassword !== confirmPassword) {
-  return res.render('profile-reset-password', {
-    message: 'Passwords do not match'
-  });
-}
+  if (newPassword !== confirmPassword) {
+    return res.render('profile-reset-password', {
+      message: 'Passwords do not match'
+    });
+  }
 
-if (newPassword.length < 8) {
-  return res.render('profile-reset-password', {
-    message: 'Password must be at least 8 characters long'
-  });
-}
+  if (newPassword.length < 8) {
+    return res.render('profile-reset-password', {
+      message: 'Password must be at least 8 characters long'
+    });
+  }
 
-const alpha = /[A-Za-z]/;
-const digit = /\d/;
+  const alpha = /[A-Za-z]/;
+  const digit = /\d/;
 
-if (!alpha.test(newPassword) || !digit.test(newPassword)) {
-  return res.render('profile-reset-password', {
-    message: 'Password must contain at least one alphabet and one digit'
-  });
-}
+  if (!alpha.test(newPassword) || !digit.test(newPassword)) {
+    return res.render('profile-reset-password', {
+      message: 'Password must contain at least one alphabet and one digit'
+    });
+  }
 
   await User.findOneAndUpdate(
     { email: reset.email },
@@ -1422,9 +1443,9 @@ if (!alpha.test(newPassword) || !digit.test(newPassword)) {
   );
 
 
-req.session.profileReset = null;
+  req.session.profileReset = null;
 
-return res.redirect('/profile?passwordChanged=1');
+  return res.redirect('/profile?passwordChanged=1');
 
 };
 
@@ -1442,6 +1463,7 @@ const loadManageAddress = async (req, res) => {
     });
   } catch (error) {
     console.error('loadManageAddress error', error);
+    logger.error(`LoadManageAddress error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -1452,6 +1474,7 @@ const loadAddAddress = async (req, res) => {
     res.render('add-address', { user });
   } catch (error) {
     console.error('loadAddAddress error', error);
+    logger.error(`LoadAddAddress error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -1476,15 +1499,15 @@ const addAddress = async (req, res) => {
 
   
     const indianStates = [
-      "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
-      "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand",
-      "Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
-      "Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
-      "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
-      "Uttar Pradesh","Uttarakhand","West Bengal",
-      "Andaman and Nicobar Islands","Chandigarh",
-      "Dadra and Nagar Haveli and Daman and Diu",
-      "Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"
+      'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh',
+      'Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand',
+      'Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur',
+      'Meghalaya','Mizoram','Nagaland','Odisha','Punjab',
+      'Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura',
+      'Uttar Pradesh','Uttarakhand','West Bengal',
+      'Andaman and Nicobar Islands','Chandigarh',
+      'Dadra and Nagar Haveli and Daman and Diu',
+      'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'
     ];
 
     if (
@@ -1550,7 +1573,7 @@ const addAddress = async (req, res) => {
     }
 
 
-//save
+    //save
     const newAddress = {
       name: name.trim(),
       mobileNumber,
@@ -1581,6 +1604,7 @@ const addAddress = async (req, res) => {
 
   } catch (error) {
     console.error('addAddress error', error);
+    logger.error(`addAddress error: ${error.message}`);
     res.redirect('/address?error=saveFailed');
   }
 };
@@ -1606,6 +1630,7 @@ const setDefaultAddress = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('setDefaultAddress error', err);
+    logger.error(`setDefaultAddress error: ${err.message}`);
     res.json({ success: false });
   }
 };
@@ -1631,6 +1656,7 @@ const loadEditAddress = async (req, res) => {
     });
   } catch (error) {
     console.error('loadEditAddress error', error);
+    logger.error(`LoadEditAddress error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -1654,15 +1680,15 @@ const editAddress = async (req, res) => {
     } = req.body;
 
     const indianStates = [
-      "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
-      "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand",
-      "Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
-      "Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
-      "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
-      "Uttar Pradesh","Uttarakhand","West Bengal",
-      "Andaman and Nicobar Islands","Chandigarh",
-      "Dadra and Nagar Haveli and Daman and Diu",
-      "Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"
+      'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh',
+      'Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand',
+      'Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur',
+      'Meghalaya','Mizoram','Nagaland','Odisha','Punjab',
+      'Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura',
+      'Uttar Pradesh','Uttarakhand','West Bengal',
+      'Andaman and Nicobar Islands','Chandigarh',
+      'Dadra and Nagar Haveli and Daman and Diu',
+      'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'
     ];
 
 
@@ -1753,10 +1779,11 @@ const editAddress = async (req, res) => {
 
     await addressDoc.save();
 
-    return res.json({ success: true });
-
+    return res.redirect('/address?success=updated');
+    
   } catch (error) {
     console.error('editAddress error', error);
+    logger.error(`editAddress error: ${error.message}`);
     return res.status(500).json({
       success: false,
       message: 'Server error while updating address'
@@ -1781,6 +1808,7 @@ const deleteAddress = async (req, res) => {
     res.json({ success: true, type: 'deleted'  });
   } catch (error) {
     console.error('deleteAddress error', error);
+    logger.error(`deleteAddress error: ${error.message}`);
     res.status(500).json({ success: false });
   }
 };
@@ -1791,6 +1819,7 @@ const loadReferralPage = async (req, res) => {
     res.render('referral', { user });
   } catch (error) {
     console.error('loadReferralPage error', error);
+    logger.error(`LoadReferralPage error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -1810,6 +1839,7 @@ const logout = async (req, res) => {
     return res.redirect('/');
   } catch (error) {
     console.log('Logout Error', error);
+    logger.error(`Logout error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };

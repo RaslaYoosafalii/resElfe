@@ -3,7 +3,7 @@ import { Product, Variant } from '../../models/productSchema.js';
 import { Category, SubCategory } from '../../models/categorySchema.js';
 import Wishlist from '../../models/wishlistSchema.js';
 import Cart from '../../models/cartSchema.js';
-
+import logger from '../../config/logger.js';
 
 import mongoose from 'mongoose';
 
@@ -24,11 +24,11 @@ function parseQuery(req) {
 
 function buildSort(key) {
   switch (key) {
-    case 'price_asc': return { _finalPrice: 1 };
-    case 'price_desc': return { _finalPrice: -1 };
-    case 'a_z': return { productName: 1 };
-    case 'z_a': return { productName: -1 };
-    default: return { createdAt: -1 };
+  case 'price_asc': return { _finalPrice: 1 };
+  case 'price_desc': return { _finalPrice: -1 };
+  case 'a_z': return { productName: 1 };
+  case 'z_a': return { productName: -1 };
+  default: return { createdAt: -1 };
   }
 }
 
@@ -45,92 +45,92 @@ const listProducts = async (req, res) => {
       matchStage.$or = [{ productName: re }, { description: re }];
     }
 
- if (category) {
+    if (category) {
 
-  if (!mongoose.Types.ObjectId.isValid(category)) {
-    return res.status(400).render('error-page', {
-      message: 'Invalid category selected'
-    });
-  }
+      if (!mongoose.Types.ObjectId.isValid(category)) {
+        return res.status(400).render('error-page', {
+          message: 'Invalid category selected'
+        });
+      }
 
-  const categoryExists = await Category.findOne({
-    _id: category,
-    isListed: true,
-    isDeleted: { $ne: true }
-  }).lean();
+      const categoryExists = await Category.findOne({
+        _id: category,
+        isListed: true,
+        isDeleted: { $ne: true }
+      }).lean();
 
-  if (!categoryExists) {
-    return res.status(404).render('error-page', {
-      message: 'Category not found'
-    });
-  }
+      if (!categoryExists) {
+        return res.status(404).render('error-page', {
+          message: 'Category not found'
+        });
+      }
 
-  matchStage.categoryId = new mongoose.Types.ObjectId(category);
-}
+      matchStage.categoryId = new mongoose.Types.ObjectId(category);
+    }
    
 
-// subcategory filtering logic (single source of truth)
-if (subcategory) {
+    // subcategory filtering logic (single source of truth)
+    if (subcategory) {
 
-  // Case 1: category selected → subcategory is ObjectId
-  if (category && mongoose.Types.ObjectId.isValid(subcategory)) {
-    matchStage.subcategoryId = new mongoose.Types.ObjectId(subcategory);
-  }
+      // Case 1: category selected → subcategory is ObjectId
+      if (category && mongoose.Types.ObjectId.isValid(subcategory)) {
+        matchStage.subcategoryId = new mongoose.Types.ObjectId(subcategory);
+      }
 
-  // Case 2: category = ALL → subcategory is fitName
-  else if (!category) {
-    const subs = await SubCategory.find({ fitName: subcategory })
-      .select('_id')
-      .lean();
+      // Case 2: category = ALL → subcategory is fitName
+      else if (!category) {
+        const subs = await SubCategory.find({ fitName: subcategory })
+          .select('_id')
+          .lean();
 
-    const ids = subs.map(s => s._id);
+        const ids = subs.map(s => s._id);
 
-    if (ids.length) {
-      matchStage.subcategoryId = { $in: ids };
+        if (ids.length) {
+          matchStage.subcategoryId = { $in: ids };
+        }
+      }
     }
-  }
-}
 
 
 
     const pipeline = [
       { $match: matchStage },
-//join category
-{
-  $lookup: {
-    from: 'categories',
-    localField: 'categoryId',
-    foreignField: '_id',
-    as: 'category'
-  }
-},
-{
-  $addFields: {
-    categoryData: { $arrayElemAt: ['$category', 0] }
-  }
-},
-  {
-    $addFields: {
-      categoryOfferActive: {
-        $cond: [
-          {
-            $and: [
-              { $gt: ['$categoryData.offerPrice', 0] },
+      //join category
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categoryId',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      {
+        $addFields: {
+          categoryData: { $arrayElemAt: ['$category', 0] }
+        }
+      },
+      {
+        $addFields: {
+          categoryOfferActive: {
+            $cond: [
               {
-                $or: [
-                  { $eq: ['$categoryData.offerValidDate', null] },
-                  { $gt: ['$categoryData.offerValidDate', new Date()] }
+                $and: [
+                  { $gt: ['$categoryData.offerPrice', 0] },
+                  {
+                    $or: [
+                      { $eq: ['$categoryData.offerValidDate', null] },
+                      { $gt: ['$categoryData.offerValidDate', new Date()] }
+                    ]
+                  }
                 ]
-              }
+              },
+              true,
+              false
             ]
-          },
-          true,
-          false
-        ]
-      }
-    }
-  },
-//join variants
+          }
+        }
+      },
+      //join variants
       {
         $lookup: {
           from: 'variants',
@@ -203,77 +203,77 @@ if (subcategory) {
               null
             ]
           },
-_finalPrice: {
-  $cond: [
-    { $gt: [{ $size: '$variants' }, 0] },
-    {
-      $min: {
-        $map: {
-          input: '$variants',
-          as: 'v',
-          in: {
-            $let: {
-              vars: {
-                basePrice: '$$v.price',
-                variantDiscount: {
-                  $cond: [
-                    {
-                      $and: [
-                        { $ne: ['$$v.discountPrice', null] },
-                        { $gt: ['$$v.discountPrice', 0] }
-                      ]
-                    },
-                    '$$v.discountPrice',
-                    '$$v.price'
-                  ]
-                },
-                categoryDiscounted: {
-                  $cond: [
-                    '$categoryOfferActive',
-                    {
-                      $cond: [
-                        '$categoryData.offerIsPercent',
-                        {
-                          $multiply: [
-                            '$$v.price',
-                            {
-                              $subtract: [
-                                1,
-                                { $divide: ['$categoryData.offerPrice', 100] }
-                              ]
-                            }
-                          ]
+          _finalPrice: {
+            $cond: [
+              { $gt: [{ $size: '$variants' }, 0] },
+              {
+                $min: {
+                  $map: {
+                    input: '$variants',
+                    as: 'v',
+                    in: {
+                      $let: {
+                        vars: {
+                          basePrice: '$$v.price',
+                          variantDiscount: {
+                            $cond: [
+                              {
+                                $and: [
+                                  { $ne: ['$$v.discountPrice', null] },
+                                  { $gt: ['$$v.discountPrice', 0] }
+                                ]
+                              },
+                              '$$v.discountPrice',
+                              '$$v.price'
+                            ]
+                          },
+                          categoryDiscounted: {
+                            $cond: [
+                              '$categoryOfferActive',
+                              {
+                                $cond: [
+                                  '$categoryData.offerIsPercent',
+                                  {
+                                    $multiply: [
+                                      '$$v.price',
+                                      {
+                                        $subtract: [
+                                          1,
+                                          { $divide: ['$categoryData.offerPrice', 100] }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    $cond: [
+                                      {
+                                        $and: [
+                                          { $ne: ['$categoryData.minProductPrice', null] },
+                                          { $gte: ['$$v.price', '$categoryData.minProductPrice'] }
+                                        ]
+                                      },
+                                      { $subtract: ['$$v.price', '$categoryData.offerPrice'] },
+                                      '$$v.price'
+                                    ]
+                                  }
+                                ]
+                              },
+                              '$$v.price'
+                            ]
+                          }
                         },
-                        {
-  $cond: [
-    {
-      $and: [
-        { $ne: ['$categoryData.minProductPrice', null] },
-        { $gte: ['$$v.price', '$categoryData.minProductPrice'] }
-      ]
-    },
-    { $subtract: ['$$v.price', '$categoryData.offerPrice'] },
-    '$$v.price'
-  ]
-}
-                      ]
-                    },
-                    '$$v.price'
-                  ]
+                        in: {
+                          // Apply largest discount
+                          $min: ['$$variantDiscount', '$$categoryDiscounted']
+                        }
+                      }
+                    }
+                  }
                 }
               },
-              in: {
-                // Apply largest discount
-                $min: ['$$variantDiscount', '$$categoryDiscounted']
-              }
-            }
-          }
-        }
-      }
-    },
-    0
-  ]
-},
+              0
+            ]
+          },
 
           _price: {
             $cond: [
@@ -287,12 +287,12 @@ _finalPrice: {
       { $project: { _discountPrices: 0 } }
     ];
 
-if (minPrice != null || maxPrice != null) {
-  const priceCond = {};
-  if (minPrice != null) priceCond.$gte = minPrice;
-  if (maxPrice != null) priceCond.$lte = maxPrice;
-  pipeline.push({ $match: { _finalPrice: priceCond } });
-}
+    if (minPrice != null || maxPrice != null) {
+      const priceCond = {};
+      if (minPrice != null) priceCond.$gte = minPrice;
+      if (maxPrice != null) priceCond.$lte = maxPrice;
+      pipeline.push({ $match: { _finalPrice: priceCond } });
+    }
 
 
     pipeline.push({ $sort: buildSort(sort) });
@@ -303,45 +303,45 @@ if (minPrice != null || maxPrice != null) {
       .collation({ locale: 'en', strength: 2 })
       .allowDiskUse(true);
 
-const countPipeline = [
+    const countPipeline = [
       { $match: matchStage },
-//join category
-{
-    $lookup: {
-      from: 'categories',
-      localField: 'categoryId',
-      foreignField: '_id',
-      as: 'category'
-    }
-  },
-  {
-    $addFields: {
-      categoryData: { $arrayElemAt: ['$category', 0] }
-    }
-  },
-  {
-    $addFields: {
-      categoryOfferActive: {
-        $cond: [
-          {
-            $and: [
-              { $gt: ['$categoryData.offerPrice', 0] },
+      //join category
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categoryId',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      {
+        $addFields: {
+          categoryData: { $arrayElemAt: ['$category', 0] }
+        }
+      },
+      {
+        $addFields: {
+          categoryOfferActive: {
+            $cond: [
               {
-                $or: [
-                  { $eq: ['$categoryData.offerValidDate', null] },
-                  { $gt: ['$categoryData.offerValidDate', new Date()] }
+                $and: [
+                  { $gt: ['$categoryData.offerPrice', 0] },
+                  {
+                    $or: [
+                      { $eq: ['$categoryData.offerValidDate', null] },
+                      { $gt: ['$categoryData.offerValidDate', new Date()] }
+                    ]
+                  }
                 ]
-              }
+              },
+              true,
+              false
             ]
-          },
-          true,
-          false
-        ]
-      }
-    }
-  },
+          }
+        }
+      },
 
-//join variants
+      //join variants
       {
         $lookup: {
           from: 'variants',
@@ -362,78 +362,78 @@ const countPipeline = [
           as: 'variants'
         }
       },
-{
-  $addFields: {
-    _finalPrice: {
-      $cond: [
-        { $gt: [{ $size: '$variants' }, 0] },
-        {
-          $min: {
-            $map: {
-              input: '$variants',
-              as: 'v',
-              in: {
-                $let: {
-                  vars: {
-                    variantDiscount: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $ne: ['$$v.discountPrice', null] },
-                            { $gt: ['$$v.discountPrice', 0] }
-                          ]
+      {
+        $addFields: {
+          _finalPrice: {
+            $cond: [
+              { $gt: [{ $size: '$variants' }, 0] },
+              {
+                $min: {
+                  $map: {
+                    input: '$variants',
+                    as: 'v',
+                    in: {
+                      $let: {
+                        vars: {
+                          variantDiscount: {
+                            $cond: [
+                              {
+                                $and: [
+                                  { $ne: ['$$v.discountPrice', null] },
+                                  { $gt: ['$$v.discountPrice', 0] }
+                                ]
+                              },
+                              '$$v.discountPrice',
+                              '$$v.price'
+                            ]
+                          },
+                          categoryDiscounted: {
+                            $cond: [
+                              '$categoryOfferActive',
+                              {
+                                $cond: [
+                                  '$categoryData.offerIsPercent',
+                                  {
+                                    $multiply: [
+                                      '$$v.price',
+                                      {
+                                        $subtract: [
+                                          1,
+                                          { $divide: ['$categoryData.offerPrice', 100] }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    $cond: [
+                                      {
+                                        $and: [
+                                          { $ne: ['$categoryData.minProductPrice', null] },
+                                          { $gte: ['$$v.price', '$categoryData.minProductPrice'] }
+                                        ]
+                                      },
+                                      { $subtract: ['$$v.price', '$categoryData.offerPrice'] },
+                                      '$$v.price'
+                                    ]
+                                  }
+                                ]
+                              },
+                              '$$v.price'
+                            ]
+                          }
                         },
-                        '$$v.discountPrice',
-                        '$$v.price'
-                      ]
-                    },
-                    categoryDiscounted: {
-                      $cond: [
-                        '$categoryOfferActive',
-                        {
-                          $cond: [
-                            '$categoryData.offerIsPercent',
-                            {
-                              $multiply: [
-                                '$$v.price',
-                                {
-                                  $subtract: [
-                                    1,
-                                    { $divide: ['$categoryData.offerPrice', 100] }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-  $cond: [
-    {
-      $and: [
-        { $ne: ['$categoryData.minProductPrice', null] },
-        { $gte: ['$$v.price', '$categoryData.minProductPrice'] }
-      ]
-    },
-    { $subtract: ['$$v.price', '$categoryData.offerPrice'] },
-    '$$v.price'
-  ]
-}
-                          ]
-                        },
-                        '$$v.price'
-                      ]
+                        in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
+                      }
                     }
-                  },
-                  in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
+                  }
                 }
-              }
-            }
+              },
+              0
+            ]
           }
-        },
-        0
-      ]
-    }
-  }
-}
-];
+        }
+      }
+    ];
 
     if (minPrice != null || maxPrice != null) {
       const priceCond = {};
@@ -450,51 +450,51 @@ const countPipeline = [
 
     const categories = await Category.find({isDeleted: { $ne: true },isListed: true}).sort({ name: 1 }).lean();
     
-let subcategories;
+    let subcategories;
 
-if (category && mongoose.Types.ObjectId.isValid(category)) {
-  // category selected → ONLY its subcategories
-  subcategories = await SubCategory.find({
-    Category: new mongoose.Types.ObjectId(category)
-  }).sort({ fitName: 1 }).lean();
-} else {
-  // category = ALL → subcategories of all active categories
-  const activeCategoryIds = categories.map(c => c._id);
-  subcategories = await SubCategory.find({
-    Category: { $in: activeCategoryIds }
-  }).sort({ fitName: 1 }).lean();
-}
-
-
-
-   let finalSubcategories = subcategories;
-
-// Only dedupe when category = ALL
-if (!category) {
-  const map = new Map();
-  for (const s of subcategories) {
-    if (!map.has(s.fitName)) {
-      map.set(s.fitName, s);
+    if (category && mongoose.Types.ObjectId.isValid(category)) {
+      // category selected → ONLY its subcategories
+      subcategories = await SubCategory.find({
+        Category: new mongoose.Types.ObjectId(category)
+      }).sort({ fitName: 1 }).lean();
+    } else {
+      // category = ALL → subcategories of all active categories
+      const activeCategoryIds = categories.map(c => c._id);
+      subcategories = await SubCategory.find({
+        Category: { $in: activeCategoryIds }
+      }).sort({ fitName: 1 }).lean();
     }
-  }
-  finalSubcategories = Array.from(map.values());
-}
 
-const isLoggedIn = !!req.session.user;
 
-let wishlistProductIds = [];
 
-if (req.session.user) {
-  const wishlist = await Wishlist.findOne({ userId: req.session.user })
-    .select('products.productId')
-    .lean();
+    let finalSubcategories = subcategories;
 
-  if (wishlist && wishlist.products) {
-    wishlistProductIds = wishlist.products.map(p =>
-      String(p.productId)
-    );
-  }
-}
+    // Only dedupe when category = ALL
+    if (!category) {
+      const map = new Map();
+      for (const s of subcategories) {
+        if (!map.has(s.fitName)) {
+          map.set(s.fitName, s);
+        }
+      }
+      finalSubcategories = Array.from(map.values());
+    }
+
+    const isLoggedIn = !!req.session.user;
+
+    let wishlistProductIds = [];
+
+    if (req.session.user) {
+      const wishlist = await Wishlist.findOne({ userId: req.session.user })
+        .select('products.productId')
+        .lean();
+
+      if (wishlist && wishlist.products) {
+        wishlistProductIds = wishlist.products.map(p =>
+          String(p.productId)
+        );
+      }
+    }
 
     return res.render('allProducts', {
       products,
@@ -518,6 +518,7 @@ if (req.session.user) {
 
   } catch (err) {
     console.error('listProducts error:', err);
+    logger.error(`listProducts error: ${err.message}`);
     return res.status(500).render('error-page', {
       message: 'Failed loading products'
     });
@@ -549,12 +550,12 @@ const productDetails = async (req, res) => {
 
     const isUnavailable = product.isDeleted || !product.isListed;
 
-   const variants = isUnavailable
-  ? []
-  : await Variant.find({
-      productId: product._id,
-      isListed: true
-    }).lean();
+    const variants = isUnavailable
+      ? []
+      : await Variant.find({
+        productId: product._id,
+        isListed: true
+      }).lean();
 
 
     const category = await Category.findById(product.categoryId).lean();
@@ -562,47 +563,47 @@ const productDetails = async (req, res) => {
       ? await SubCategory.findById(product.subcategoryId).lean()
       : null;
       
-const now = new Date();
+    const now = new Date();
 
-let categoryOffer = null;
+    let categoryOffer = null;
 
-if (category && category.offerPrice > 0) {
-  if (!category.offerValidDate || category.offerValidDate > now) {
-    categoryOffer = category;
-  }
-}
+    if (category && category.offerPrice > 0) {
+      if (!category.offerValidDate || category.offerValidDate > now) {
+        categoryOffer = category;
+      }
+    }
 
-const updatedVariants = variants.map(v => {
-  let finalPrice = v.discountPrice && v.discountPrice > 0
-    ? v.discountPrice
-    : v.price;
+    const updatedVariants = variants.map(v => {
+      let finalPrice = v.discountPrice && v.discountPrice > 0
+        ? v.discountPrice
+        : v.price;
 
-  if (categoryOffer) {
-    let categoryPrice;
+      if (categoryOffer) {
+        let categoryPrice;
 
-    if (categoryOffer.offerIsPercent) {
-      categoryPrice = v.price - (v.price * categoryOffer.offerPrice / 100);
-    } else {
+        if (categoryOffer.offerIsPercent) {
+          categoryPrice = v.price - (v.price * categoryOffer.offerPrice / 100);
+        } else {
 
-  if (
-    categoryOffer.minProductPrice &&
+          if (
+            categoryOffer.minProductPrice &&
     v.price >= categoryOffer.minProductPrice
-  ) {
-    categoryPrice = v.price - categoryOffer.offerPrice;
-  } else {
-    categoryPrice = v.price;
-  }
+          ) {
+            categoryPrice = v.price - categoryOffer.offerPrice;
+          } else {
+            categoryPrice = v.price;
+          }
 
-}
+        }
 
-    finalPrice = Math.min(finalPrice, categoryPrice);
-  }
+        finalPrice = Math.min(finalPrice, categoryPrice);
+      }
 
-  return {
-    ...v,
-    finalPrice
-  };
-});
+      return {
+        ...v,
+        finalPrice
+      };
+    });
 
 
     const sizeVariants = updatedVariants.map(v => ({
@@ -614,166 +615,166 @@ const updatedVariants = variants.map(v => {
       _id: v._id
     }));
 
-const recommendations = await Product.aggregate([
-  {
-    $match: {
-      categoryId: product.categoryId,
-      isListed: true,
-      isDeleted: { $ne: true },
-      _id: { $ne: product._id }
-    }
-  },
-  {
-    $lookup: {
-      from: 'variants',
-      let: { pid: '$_id' },
-      pipeline: [
-        {
-          $match: {
-            $expr: {
-              $and: [
-                { $eq: ['$productId', '$$pid'] },
-                { $eq: ['$isListed', true] }
-              ]
-            }
-          }
-        },
-        { $project: { price: 1, discountPrice: 1 } }
-      ],
-      as: 'variants'
-    }
-  },
- {
-  $lookup: {
-    from: 'categories',
-    localField: 'categoryId',
-    foreignField: '_id',
-    as: 'category'
-  }
-},
-{
-  $addFields: {
-    categoryData: { $arrayElemAt: ['$category', 0] }
-  }
-},
-{
-  $addFields: {
-    categoryOfferActive: {
-      $cond: [
-        {
-          $and: [
-            { $gt: ['$categoryData.offerPrice', 0] },
+    const recommendations = await Product.aggregate([
+      {
+        $match: {
+          categoryId: product.categoryId,
+          isListed: true,
+          isDeleted: { $ne: true },
+          _id: { $ne: product._id }
+        }
+      },
+      {
+        $lookup: {
+          from: 'variants',
+          let: { pid: '$_id' },
+          pipeline: [
             {
-              $or: [
-                { $eq: ['$categoryData.offerValidDate', null] },
-                { $gt: ['$categoryData.offerValidDate', new Date()] }
-              ]
-            }
-          ]
-        },
-        true,
-        false
-      ]
-    }
-  }
-},
-{
-  $addFields: {
-    finalPrice: {
-      $cond: [
-        { $gt: [{ $size: '$variants' }, 0] },
-        {
-          $min: {
-            $map: {
-              input: '$variants',
-              as: 'v',
-              in: {
-                $let: {
-                  vars: {
-                    variantDiscount: {
-                      $cond: [
-                        {
-                          $and: [
-                            { $ne: ['$$v.discountPrice', null] },
-                            { $gt: ['$$v.discountPrice', 0] }
-                          ]
-                        },
-                        '$$v.discountPrice',
-                        '$$v.price'
-                      ]
-                    },
-                    categoryDiscounted: {
-                      $cond: [
-                        '$categoryOfferActive',
-                        {
-                          $cond: [
-                            '$categoryData.offerIsPercent',
-                            {
-                              $multiply: [
-                                '$$v.price',
-                                {
-                                  $subtract: [
-                                    1,
-                                    { $divide: ['$categoryData.offerPrice', 100] }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-  $cond: [
-    {
-      $and: [
-        { $ne: ['$categoryData.minProductPrice', null] },
-        { $gte: ['$$v.price', '$categoryData.minProductPrice'] }
-      ]
-    },
-    { $subtract: ['$$v.price', '$categoryData.offerPrice'] },
-    '$$v.price'
-  ]
-}
-                          ]
-                        },
-                        '$$v.price'
-                      ]
-                    }
-                  },
-                  in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$productId', '$$pid'] },
+                    { $eq: ['$isListed', true] }
+                  ]
                 }
               }
-            }
+            },
+            { $project: { price: 1, discountPrice: 1 } }
+          ],
+          as: 'variants'
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categoryId',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      {
+        $addFields: {
+          categoryData: { $arrayElemAt: ['$category', 0] }
+        }
+      },
+      {
+        $addFields: {
+          categoryOfferActive: {
+            $cond: [
+              {
+                $and: [
+                  { $gt: ['$categoryData.offerPrice', 0] },
+                  {
+                    $or: [
+                      { $eq: ['$categoryData.offerValidDate', null] },
+                      { $gt: ['$categoryData.offerValidDate', new Date()] }
+                    ]
+                  }
+                ]
+              },
+              true,
+              false
+            ]
           }
-        },
-        0
-      ]
+        }
+      },
+      {
+        $addFields: {
+          finalPrice: {
+            $cond: [
+              { $gt: [{ $size: '$variants' }, 0] },
+              {
+                $min: {
+                  $map: {
+                    input: '$variants',
+                    as: 'v',
+                    in: {
+                      $let: {
+                        vars: {
+                          variantDiscount: {
+                            $cond: [
+                              {
+                                $and: [
+                                  { $ne: ['$$v.discountPrice', null] },
+                                  { $gt: ['$$v.discountPrice', 0] }
+                                ]
+                              },
+                              '$$v.discountPrice',
+                              '$$v.price'
+                            ]
+                          },
+                          categoryDiscounted: {
+                            $cond: [
+                              '$categoryOfferActive',
+                              {
+                                $cond: [
+                                  '$categoryData.offerIsPercent',
+                                  {
+                                    $multiply: [
+                                      '$$v.price',
+                                      {
+                                        $subtract: [
+                                          1,
+                                          { $divide: ['$categoryData.offerPrice', 100] }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    $cond: [
+                                      {
+                                        $and: [
+                                          { $ne: ['$categoryData.minProductPrice', null] },
+                                          { $gte: ['$$v.price', '$categoryData.minProductPrice'] }
+                                        ]
+                                      },
+                                      { $subtract: ['$$v.price', '$categoryData.offerPrice'] },
+                                      '$$v.price'
+                                    ]
+                                  }
+                                ]
+                              },
+                              '$$v.price'
+                            ]
+                          }
+                        },
+                        in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
+                      }
+                    }
+                  }
+                }
+              },
+              0
+            ]
+          }
+        }
+      },
+
+      { $limit: 4 }
+    ]);
+
+
+    const userId = req.session.user;
+    const isLoggedIn = !!userId;
+
+    let isInWishlist = false;
+    let isInCart = false;
+
+    if (userId) {
+      const wishlist = await Wishlist.findOne({
+        userId,
+        'products.productId': product._id
+      }).lean();
+
+      isInWishlist = !!wishlist;
+
+      const cart = await Cart.findOne({
+        userId,
+        'items.productId': product._id
+      }).lean();
+
+      isInCart = !!cart;
     }
-  }
-},
-
-  { $limit: 4 }
-]);
-
-
-const userId = req.session.user;
-const isLoggedIn = !!userId;
-
-let isInWishlist = false;
-let isInCart = false;
-
-if (userId) {
-  const wishlist = await Wishlist.findOne({
-    userId,
-    'products.productId': product._id
-  }).lean();
-
-  isInWishlist = !!wishlist;
-
-  const cart = await Cart.findOne({
-    userId,
-    'items.productId': product._id
-  }).lean();
-
-  isInCart = !!cart;
-}
 
 
     return res.render('productDetails', {
@@ -792,6 +793,7 @@ if (userId) {
 
   } catch (err) {
     console.error('Product Details Error:', err);
+    logger.error(`Products Details error: ${err.message}`);
     return res.status(500).render('error-page', {
       message: 'Something went wrong'
     });

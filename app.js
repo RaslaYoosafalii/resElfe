@@ -67,6 +67,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 //view engine setup
 app.set('view engine', 'ejs');
 app.set('views', [path.join(__dirname, 'views/user'), path.join(__dirname, 'views/admin')]);
+app.locals.imageUrl = function (img) {
+
+  if (!img) return '/images/placeholder.png';
+
+  // If already an S3 URL
+  if (img.startsWith('http')) {
+    return img;
+  }
+
+  // Otherwise it's a local file
+  return '/uploads/products/' + img;
+};
 
 //ping route for smoke testing 
 app.get('/ping', (req, res) => {
@@ -81,8 +93,8 @@ app.use((req, res, next) => {
 
 
 //routers
-app.use('/', userRouter);
-app.use('/admin', adminRouter);
+app.use('/',noCache, userRouter);
+app.use('/admin',noCache, adminRouter);
 
 //fallback handler 
 app.use((req, res) => {

@@ -54,7 +54,7 @@ Order total: ₹<%= order.finalPrice %>
 
 <% order.orderedItem.forEach(i => { %>
 <div class="item">
-  <img src="/uploads/products/<%= i.productImages[0] %>">
+  <img src="<%= imageUrl(i.productImages[0]) %>">
 
   <div>
     <strong><%= i.productName %></strong><br>

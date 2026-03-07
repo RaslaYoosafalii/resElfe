@@ -404,13 +404,14 @@ button[disabled] {
         <!-- LEFT IMAGES -->
         <div class="left-images">
             <div class="main-img-wrap">
-                <img id="mainImg" src="/uploads/products/<%= product.images[0] %>" alt="Product Image">
+                <img id="mainImg" src="<%= imageUrl(product.images[0]) %>" alt="Product Image">
             </div>
 
             <div class="thumbnail-grid">
                 <% product.images.forEach(function(img, i) { %>
+                  
                     <img 
-                      src="/uploads/products/<%= img %>" 
+                      src="<%= imageUrl(img )%>" 
                       onclick="changeImage(this)" 
                       class="<%= i === 0 ? 'thumbnail-active' : '' %>"
                     >
@@ -552,7 +553,7 @@ button[disabled] {
 <div class="recommend-grid">
     <% recommendations.forEach(function(r) { %>
         <div onclick="window.location.href='/product/<%= r._id %>'" style="cursor:pointer;">
-            <img src="/uploads/products/<%= r.images[0] %>">
+            <img src="<%= imageUrl(r.images[0]) %>">
             <div style="color:#222; text-decoration:none; margin-top:6px;">
                 <%= r.productName %>
             </div>

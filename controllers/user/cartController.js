@@ -4,6 +4,8 @@ import Wishlist from '../../models/wishlistSchema.js';
 import { Product, Variant } from '../../models/productSchema.js';
 import { Category } from '../../models/categorySchema.js';
 import mongoose from 'mongoose';
+import logger from '../../config/logger.js';
+
 
 const MAX_QTY_PER_PRODUCT = 5;
 
@@ -17,26 +19,26 @@ async function resolveFinalPrice(variant) {
 
   let categoryPrice = variant.price;
 
-if (
-  category &&
+  if (
+    category &&
   category.offerPrice > 0 &&
   (!category.offerValidDate || category.offerValidDate > new Date())
-) {
-  if (category.offerIsPercent) {
-    categoryPrice =
+  ) {
+    if (category.offerIsPercent) {
+      categoryPrice =
       variant.price -
       (variant.price * category.offerPrice / 100);
-  } else {
-    if (
-      category.minProductPrice &&
-      variant.price >= category.minProductPrice
-    ) {
-      categoryPrice = variant.price - category.offerPrice;
     } else {
-      categoryPrice = variant.price;
+      if (
+        category.minProductPrice &&
+      variant.price >= category.minProductPrice
+      ) {
+        categoryPrice = variant.price - category.offerPrice;
+      } else {
+        categoryPrice = variant.price;
+      }
     }
   }
-}
 
   const variantDiscount =
     variant.discountPrice && variant.discountPrice > 0
@@ -45,6 +47,8 @@ if (
 
   return Math.min(variantDiscount, categoryPrice);
 }
+
+
 
 const addToCart = async (req, res) => {
   try {
@@ -97,7 +101,7 @@ const addToCart = async (req, res) => {
     }
 
     //price resolution
-const unitPrice = await resolveFinalPrice(variant);
+    const unitPrice = await resolveFinalPrice(variant);
 
     let cart = await Cart.findOne({ userId });
 
@@ -155,6 +159,7 @@ const unitPrice = await resolveFinalPrice(variant);
 
   } catch (error) {
     console.error('addToCart error:', error);
+    logger.error(`addToCart error: ${error.message}`);
     return res.status(500).json({ success: false });
   }
 };
@@ -176,44 +181,44 @@ const loadCart = async (req, res) => {
     cart.items = await Promise.all(
       cart.items.map(async item => {
 
-const currentVariant = await Variant.findOne({
-  productId: item.productId._id,
-  size: item.size,
-  color: item.color,
-  isListed: true
-}).lean();
+        const currentVariant = await Variant.findOne({
+          productId: item.productId._id,
+          size: item.size,
+          color: item.color,
+          isListed: true
+        }).lean();
 
-const productUnavailable =
+        const productUnavailable =
   !item.productId ||
   item.productId.isDeleted ||
   !item.productId.isListed;
 
   
-const variants = await Variant.find({
-  productId: item.productId._id,
-  isListed: true
-}).select('_id size stock price discountPrice color').lean();
+        const variants = await Variant.find({
+          productId: item.productId._id,
+          isListed: true
+        }).select('_id size stock price discountPrice color').lean();
 
-let finalPrice = item.price;
+        let finalPrice = item.price;
 
-if (currentVariant) {
-  finalPrice = await resolveFinalPrice(currentVariant);
-}
+        if (currentVariant) {
+          finalPrice = await resolveFinalPrice(currentVariant);
+        }
 
-const totalPrice = finalPrice * item.quantity;
+        const totalPrice = finalPrice * item.quantity;
 
-return {
-  ...item,
-  price: finalPrice,
-  totalPrice,
-  productName: item.productId.productName,
-  productImage: item.productId.images?.[0],
-  stock: currentVariant ? currentVariant.stock : 0,
-  maxQty: MAX_QTY_PER_PRODUCT,
-  basePrice: currentVariant ? currentVariant.price : item.price,
-  variants,
-  isUnavailable: productUnavailable
-};
+        return {
+          ...item,
+          price: finalPrice,
+          totalPrice,
+          productName: item.productId.productName,
+          productImage: item.productId.images?.[0],
+          stock: currentVariant ? currentVariant.stock : 0,
+          maxQty: MAX_QTY_PER_PRODUCT,
+          basePrice: currentVariant ? currentVariant.price : item.price,
+          variants,
+          isUnavailable: productUnavailable
+        };
 
       })
     );
@@ -222,6 +227,7 @@ return {
 
   } catch (error) {
     console.error('loadCart error:', error);
+    logger.error(`loadCart error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -250,15 +256,15 @@ const changeCartSize = async (req, res) => {
       });
     }
 
-let qtyAdjusted = false;
+    let qtyAdjusted = false;
 
-if (item.quantity > variant.stock) {
-  item.quantity = 1;       //reset quantity
-  qtyAdjusted = true;
-}
+    if (item.quantity > variant.stock) {
+      item.quantity = 1;       //reset quantity
+      qtyAdjusted = true;
+    }
 
 
-const unitPrice = await resolveFinalPrice(variant);
+    const unitPrice = await resolveFinalPrice(variant);
 
 
     item.size = variant.size;
@@ -268,13 +274,13 @@ const unitPrice = await resolveFinalPrice(variant);
 
     await cart.save();
 
-  return res.json({
-  success: true,
-  qtyAdjusted,
-  message: qtyAdjusted
-    ? 'Qty reset to 1 due to limited stock'
-    : null
-});
+    return res.json({
+      success: true,
+      qtyAdjusted,
+      message: qtyAdjusted
+        ? 'Qty reset to 1 due to limited stock'
+        : null
+    });
 
   } catch (err) {
     console.error('changeCartSize error', err);
@@ -312,8 +318,8 @@ const updateCartQty = async (req, res) => {
       return res.json({ success: false });
     }
 
-item.quantity = newQty;
-item.totalPrice = newQty * item.price; 
+    item.quantity = newQty;
+    item.totalPrice = newQty * item.price; 
 
 
 
@@ -323,6 +329,7 @@ item.totalPrice = newQty * item.price;
 
   } catch (error) {
     console.error('updateCartQty error:', error);
+    logger.error(`updateCartQty error: ${error.message}`);
     res.json({ success: false });
   }
 };
@@ -342,6 +349,7 @@ const removeCartItem = async (req, res) => {
 
   } catch (error) {
     console.error('removeCartItem error:', error);
+    logger.error(`removeCartItem error: ${error.message}`);
     res.json({ success: false });
   }
 };

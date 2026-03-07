@@ -550,12 +550,12 @@
 
   <% if (!p.isUnavailable) { %>
     <a class="product-thumb" href="/product/<%= p._id %>">
-      <img src="/uploads/products/<%= p.images[0] %>" alt="<%= p.productName %>">
+      <img src="<%= imageUrl(p.images[0]) %>" alt="<%= p.productName %>">
     </a>
   
   <% } else { %>
 <div class="product-thumb unavailable-thumb">
-  <img src="/uploads/products/<%= p.images[0] %>" alt="<%= p.productName %>">
+  <img src="<%= imageUrl(p.images[0]) %>" alt="<%= p.productName %>">
   <div class="unavailable-overlay">
     Product unavailable<br>
     It may have been removed

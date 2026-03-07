@@ -2,6 +2,7 @@
 import { Category, SubCategory } from '../../models/categorySchema.js';
 import { Product } from '../../models/productSchema.js';
 import mongoose from 'mongoose';
+import logger from '../../config/logger.js';
 
 function parsePaging(req) {
   const page = Math.max(parseInt(req.query.page || '1', 10), 1);
@@ -35,23 +36,23 @@ const listCategories = async (req, res) => {
       .limit(limit)
       .lean();
 
-//clear expired offers
-const now = new Date();
-await Category.updateMany(
-  {
-    offerValidDate: { $lt: now },
-    offerPrice: { $gt: 0 }
-  },
-  {
-    $set: {
-      offerPrice: 0,
-      offerIsPercent: false
-    },
-    $unset: {
-      offerValidDate: ""
-    }
-  }
-);
+    //clear expired offers
+    const now = new Date();
+    await Category.updateMany(
+      {
+        offerValidDate: { $lt: now },
+        offerPrice: { $gt: 0 }
+      },
+      {
+        $set: {
+          offerPrice: 0,
+          offerIsPercent: false
+        },
+        $unset: {
+          offerValidDate: ''
+        }
+      }
+    );
 
     // fetch all subcategories for categories on this page
     const categoryIds = categories.map(c => c._id);
@@ -94,6 +95,7 @@ await Category.updateMany(
     });
   } catch (err) {
     console.error('listCategories function error:', err);
+    logger.error(`listCategories function error: ${err.message}`);
     return res.status(500).render('error-page', { message: 'Failed to load categories' });
   }
 };
@@ -115,6 +117,7 @@ const getCategoryData = async (req, res) => {
     return res.json({ success: true, category: cat, subcategories });
   } catch (err) {
     console.error('getCategoryData function error:', err);
+    logger.error(`getCategoryData function error: ${err.message}`);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -136,49 +139,50 @@ const editCategory = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Category not found' });
     }
 
-// check unique name (if changed)
-if (cat.name.toLowerCase() !== name.trim().toLowerCase()) {
+    // check unique name (if changed)
+    if (cat.name.toLowerCase() !== name.trim().toLowerCase()) {
 
-  const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  const exists = await Category.findOne({
-    name: { $regex: new RegExp(`^${escaped}$`, 'i') },
-    _id: { $ne: id },
-    isDeleted: { $ne: true }
-  });
+      const exists = await Category.findOne({
+        name: { $regex: new RegExp(`^${escaped}$`, 'i') },
+        _id: { $ne: id },
+        isDeleted: { $ne: true }
+      });
 
-  if (exists) {
-    return res.status(400).json({
-      success: false,
-      message: 'Another category with this name already exists'
-    });
-  }
-}
+      if (exists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Another category with this name already exists'
+        });
+      }
+    }
 
-  const newStatus =
+    const newStatus =
   isListed === 'true' ||
   isListed === true ||
   isListed === '1' ||
   isListed === 1;
 
-const statusChanged = cat.isListed !== newStatus;
+    const statusChanged = cat.isListed !== newStatus;
 
     cat.name = name.trim();
     cat.description = description.trim();
-    cat.isListed = newStatus
+    cat.isListed = newStatus;
 
     await cat.save();
 
-  if (statusChanged) {
-  await Product.updateMany(
-    { categoryId: cat._id },
-    { $set: { isListed: newStatus } }
-  );
-}
+    if (statusChanged) {
+      await Product.updateMany(
+        { categoryId: cat._id },
+        { $set: { isListed: newStatus } }
+      );
+    }
     console.log('editCategory:', id);
     return res.json({ success: true, message: 'Category updated', category: cat });
   } catch (err) {
     console.error('editCategory error:', err);
+    logger.error(`editCategory error: ${err.message}`);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -191,7 +195,7 @@ const editSubCategory = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, message: 'Invalid id' });
     }
-   if (!isValidString(fitName) ) {
+    if (!isValidString(fitName) ) {
       return res.status(400).json({ success: false, message: 'Name required' });
     }
 
@@ -201,22 +205,22 @@ const editSubCategory = async (req, res) => {
     }
 
     // unique fitName check
-if (sub.fitName.toLowerCase() !== fitName.trim().toLowerCase()) {
+    if (sub.fitName.toLowerCase() !== fitName.trim().toLowerCase()) {
 
-  const escaped = fitName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const exists = await SubCategory.findOne({
-    Category: sub.Category,
-    fitName: { $regex: new RegExp(`^${escaped}$`, 'i') },
-    _id: { $ne: id }
-  });
+      const escaped = fitName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const exists = await SubCategory.findOne({
+        Category: sub.Category,
+        fitName: { $regex: new RegExp(`^${escaped}$`, 'i') },
+        _id: { $ne: id }
+      });
 
-  if (exists) {
-    return res.status(400).json({
-      success: false,
-      message: 'Another subcategory with this name already exists'
-    });
-  }
-}
+      if (exists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Another subcategory with this name already exists'
+        });
+      }
+    }
 
     sub.fitName = fitName.trim();
     await sub.save();
@@ -225,6 +229,7 @@ if (sub.fitName.toLowerCase() !== fitName.trim().toLowerCase()) {
     return res.json({ success: true, message: 'Subcategory updated', subcategory: sub });
   } catch (err) {
     console.error('editSubCategory error:', err);
+    logger.error(`editSubCategory error: ${err.message}`);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -233,19 +238,19 @@ const createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
     if (!isValidString(name) || !isValidString(description)) {
-    req.session.message = 'Name and description are required';
-    return res.redirect('/admin/category');
+      req.session.message = 'Name and description are required';
+      return res.redirect('/admin/category');
     }
     if (!alpha.test(name)) {
-    req.session.message = 'enter a valid category name';
-    return res.redirect('/admin/category');
+      req.session.message = 'enter a valid category name';
+      return res.redirect('/admin/category');
     }
 
-const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const exists = await Category.findOne({
-  name: { $regex: new RegExp(`^${escaped}$`, 'i') },
-  isDeleted: { $ne: true }
-});
+    const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const exists = await Category.findOne({
+      name: { $regex: new RegExp(`^${escaped}$`, 'i') },
+      isDeleted: { $ne: true }
+    });
 
     if (exists) {
       console.log('createCategory failed: category exists named', name);
@@ -265,6 +270,7 @@ const exists = await Category.findOne({
     return res.redirect('/admin/category');
   } catch (err) {
     console.error('createCategory error:', err);
+    logger.error(`createCategory error: ${err.message}`);
     return res.status(500).render('error-page', { message: 'Failed to create category' });
   }
 };
@@ -281,13 +287,13 @@ const createSubCategory = async (req, res) => {
       return res.redirect('/admin/category');
     }
 
-const escaped = fitName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const exists = await SubCategory.findOne({
-  Category: categoryId,
-  fitName: { $regex: new RegExp(`^${escaped}$`, 'i') }
-});
+    const escaped = fitName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const exists = await SubCategory.findOne({
+      Category: categoryId,
+      fitName: { $regex: new RegExp(`^${escaped}$`, 'i') }
+    });
 
-if (exists) {
+    if (exists) {
       console.log('createSubCategory failed: subcategory exists', fitName);
       req.session.message = 'subcategory already exists with same name';
       return res.redirect('/admin/category');
@@ -304,6 +310,7 @@ if (exists) {
     return res.redirect('/admin/category');
   } catch (err) {
     console.error('createSubCategory error:', err);
+    logger.error(`createSubCategory error: ${err.message}`);
     return res.status(500).render('error-page', { message: 'Failed to create subcategory' });
   }
 };
@@ -335,6 +342,7 @@ const toggleCategoryList = async (req, res) => {
     return res.redirect('/admin/category');
   } catch (err) {
     console.error('toggleCategoryList error:', err);
+    logger.error(`toggleCategoryList error: ${err.message}`);
     return res.status(500).render('error-page', { message: 'Failed to toggle category' });
   }
 };
@@ -349,111 +357,111 @@ const setCategoryOffer = async (req, res) => {
 
     const { offerType, offerValue, offerValidDate, minProductPrice } = req.body;
 
-if (offerType && !['fixed', 'percent'].includes(offerType)) {
-req.session.message = 'Invalid offer type';
-return res.redirect('/admin/category');
-}
+    if (offerType && !['fixed', 'percent'].includes(offerType)) {
+      req.session.message = 'Invalid offer type';
+      return res.redirect('/admin/category');
+    }
 
     const cat = await Category.findById(id);
     if (!cat) {
       return res.redirect('/admin/category');
     }
 
-const valueTrim = (offerValue || '').toString().trim();
-const dateTrim = (offerValidDate || '').toString().trim();
+    const valueTrim = (offerValue || '').toString().trim();
+    const dateTrim = (offerValidDate || '').toString().trim();
 
-// clear offer
-if (!valueTrim && !dateTrim) {
-  cat.offerPrice = 0;
-  cat.offerIsPercent = false;
-  cat.offerValidDate = undefined;
-  cat.minProductPrice = null;
+    // clear offer
+    if (!valueTrim && !dateTrim) {
+      cat.offerPrice = 0;
+      cat.offerIsPercent = false;
+      cat.offerValidDate = undefined;
+      cat.minProductPrice = null;
   
-  await cat.save();
+      await cat.save();
 
-  req.session.message = 'Offer cleared successfully';
-  return res.redirect('/admin/category');
-}
+      req.session.message = 'Offer cleared successfully';
+      return res.redirect('/admin/category');
+    }
 
 
-if (!valueTrim || !dateTrim) {
-  req.session.message = 'Offer value and valid date are required';
-  return res.redirect('/admin/category');
-}
+    if (!valueTrim || !dateTrim) {
+      req.session.message = 'Offer value and valid date are required';
+      return res.redirect('/admin/category');
+    }
 
 
     const numericValue = Number(valueTrim);
 
-if (Number.isNaN(numericValue) || numericValue < 0) {
-     req.session.message = 'Invalid offer value';
-     return res.redirect('/admin/category');
-}
+    if (Number.isNaN(numericValue) || numericValue < 0) {
+      req.session.message = 'Invalid offer value';
+      return res.redirect('/admin/category');
+    }
 
-if (offerType === 'percent') {
+    if (offerType === 'percent') {
 
-  if (numericValue > 100) {
-    req.session.message = 'Percentage value must be between 1 and 100';
-    return res.redirect('/admin/category');
-  }
+      if (numericValue > 100) {
+        req.session.message = 'Percentage value must be between 1 and 100';
+        return res.redirect('/admin/category');
+      }
 
-  cat.offerIsPercent = true;
-  cat.offerPrice = numericValue;
-  cat.minProductPrice = null; // not required for percent
+      cat.offerIsPercent = true;
+      cat.offerPrice = numericValue;
+      cat.minProductPrice = null; // not required for percent
 
-} else {
+    } else {
 
-  //fixed
-  const minTrim = (minProductPrice || '').toString().trim();
+      //fixed
+      const minTrim = (minProductPrice || '').toString().trim();
 
-  if (!minTrim) {
-    req.session.message = 'Minimum product price is required for fixed offers';
-    return res.redirect('/admin/category');
-  }
+      if (!minTrim) {
+        req.session.message = 'Minimum product price is required for fixed offers';
+        return res.redirect('/admin/category');
+      }
 
-  const numericMin = Number(minTrim);
+      const numericMin = Number(minTrim);
 
-  if (Number.isNaN(numericMin) || numericMin <= 0) {
-    req.session.message = 'Minimum product price must be greater than 0';
-    return res.redirect('/admin/category');
-  }
+      if (Number.isNaN(numericMin) || numericMin <= 0) {
+        req.session.message = 'Minimum product price must be greater than 0';
+        return res.redirect('/admin/category');
+      }
 
-  if (numericMin <= numericValue) {
-    req.session.message = 'Minimum product price must be greater than offer value';
-    return res.redirect('/admin/category');
-  }
+      if (numericMin <= numericValue) {
+        req.session.message = 'Minimum product price must be greater than offer value';
+        return res.redirect('/admin/category');
+      }
 
-  cat.offerIsPercent = false;
-  cat.offerPrice = numericValue;
-  cat.minProductPrice = numericMin;
-}
+      cat.offerIsPercent = false;
+      cat.offerPrice = numericValue;
+      cat.minProductPrice = numericMin;
+    }
 
-if (offerValidDate) {
-  const d = new Date(offerValidDate);
+    if (offerValidDate) {
+      const d = new Date(offerValidDate);
 
-  if (isNaN(d.getTime())) {
-    req.session.message = 'Invalid offer date';
-    return res.redirect('/admin/category');
-  }
+      if (isNaN(d.getTime())) {
+        req.session.message = 'Invalid offer date';
+        return res.redirect('/admin/category');
+      }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  d.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      d.setHours(0, 0, 0, 0);
 
-  if (d <= today) {
-    req.session.message = 'Offer valid date must be a future date';
-    return res.redirect('/admin/category');
-  }
+      if (d <= today) {
+        req.session.message = 'Offer valid date must be a future date';
+        return res.redirect('/admin/category');
+      }
 
-  cat.offerValidDate = d;
-} else {
-  cat.offerValidDate = undefined;
-}
+      cat.offerValidDate = d;
+    } else {
+      cat.offerValidDate = undefined;
+    }
 
 
 
-   await cat.save();
+    await cat.save();
 
- req.session.message = 'Offer created successfully';
+    req.session.message = 'Offer created successfully';
 
     console.log(
       'setCategoryOffer:',
@@ -467,11 +475,12 @@ if (offerValidDate) {
     );
 
     return res.redirect('/admin/category');
- } catch (err) {
-  console.error('setCategoryOffer error:', err);
-  req.session.message = 'Error creating offer';
-  return res.redirect('/admin/category');
-}
+  } catch (err) {
+    console.error('setCategoryOffer error:', err);
+    logger.error(`setCategoryOffer error: ${err.message}`);
+    req.session.message = 'Error creating offer';
+    return res.redirect('/admin/category');
+  }
 
 };
 
@@ -490,6 +499,7 @@ const getSubCategoryData = async (req, res) => {
     return res.json({ success: true, subcategory: sub });
   } catch (err) {
     console.error('getSubCategoryData error:', err);
+    logger.error(`getSubCategoryData error: ${err.message}`);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -504,7 +514,7 @@ const deleteCategory = async (req, res) => {
       });
     }
  
-   const category = await Category.findById(id);
+    const category = await Category.findById(id);
     if (!category) {
       return res.status(404).json({
         success: false,
@@ -530,6 +540,7 @@ const deleteCategory = async (req, res) => {
 
   } catch (err) {
     console.error('deleteCategory error:', err);
+    logger.error(`deleteCategory error: ${err.message}`);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -603,10 +614,10 @@ const restoreCategory = async (req, res) => {
     category.isListed = true;
     await category.save();
 
-   await Product.updateMany(
-  { categoryId: category._id },
-  { $set: { isListed: true } }
-   );
+    await Product.updateMany(
+      { categoryId: category._id },
+      { $set: { isListed: true } }
+    );
 
 
 
@@ -619,6 +630,7 @@ const restoreCategory = async (req, res) => {
 
   } catch (err) {
     console.error('restoreCategory error:', err);
+    logger.error(`restoreCategory error: ${err.message}`);
     return res.status(500).json({
       success: false,
       message: 'Server error'
@@ -632,11 +644,12 @@ const listDeletedCategories = async (req, res) => {
       .lean();
 
     return res.render('categories-deleted', {
-       allowRender: true,
+      allowRender: true,
       categories
     });
   } catch (err) {
     console.error('listDeletedCategories error:', err);
+    logger.error(`listDeletedCategories error: ${err.message}`);
     return res.status(500).render('error-page', {
       message: 'Failed to load deleted categories'
     });

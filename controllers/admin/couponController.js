@@ -1,5 +1,5 @@
-import { Coupon } from "../../models/couponSchema.js";
-
+import { Coupon } from '../../models/couponSchema.js';
+import logger from '../../config/logger.js';
 
 const listCoupons = async (req, res) => {
   try {
@@ -7,53 +7,53 @@ const listCoupons = async (req, res) => {
     const limit = 8;
     const skip = (page - 1) * limit;
 
-const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
-const status = typeof req.query.status === "string" ? req.query.status.trim().toLowerCase() : "";
-const type = typeof req.query.type === "string" ? req.query.type.trim().toLowerCase() : "";
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const status = typeof req.query.status === 'string' ? req.query.status.trim().toLowerCase() : '';
+    const type = typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : '';
 
 
-let query = { isDeleted: false };
+    let query = { isDeleted: false };
 
-if (search.length > 0) {
+    if (search.length > 0) {
 
-  //prevent symbols
-  const cleanSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      //prevent symbols
+      const cleanSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  query.$or = [
-    { description: { $regex: cleanSearch, $options: "i" } },
-    { code: { $regex: cleanSearch, $options: "i" } }
-  ];
-}
-//type filter
-if (type) {
-  const allowedTypes = ["fixed", "percentage"];
+      query.$or = [
+        { description: { $regex: cleanSearch, $options: 'i' } },
+        { code: { $regex: cleanSearch, $options: 'i' } }
+      ];
+    }
+    //type filter
+    if (type) {
+      const allowedTypes = ['fixed', 'percentage'];
 
-  if (!allowedTypes.includes(type)) {
-    return res.redirect("/admin/errorPage");
-  }
+      if (!allowedTypes.includes(type)) {
+        return res.redirect('/admin/errorPage');
+      }
 
-  query.discountType = type;
-}
-//status
-if (status) {
-  const allowedStatus = ["active", "inactive", "expired"];
+      query.discountType = type;
+    }
+    //status
+    if (status) {
+      const allowedStatus = ['active', 'inactive', 'expired'];
 
-  if (!allowedStatus.includes(status)) {
-    return res.redirect("/admin/errorPage");
-  }
+      if (!allowedStatus.includes(status)) {
+        return res.redirect('/admin/errorPage');
+      }
 
-  const now = new Date();
+      const now = new Date();
 
-  if (status === "expired") {
-    query.validUntil = { $lt: now };
-  } else if (status === "active") {
-    query.validUntil = { $gte: now };
-    query.isActive = true;
-  } else if (status === "inactive") {
-    query.validUntil = { $gte: now };
-    query.isActive = false;
-  }
-}
+      if (status === 'expired') {
+        query.validUntil = { $lt: now };
+      } else if (status === 'active') {
+        query.validUntil = { $gte: now };
+        query.isActive = true;
+      } else if (status === 'inactive') {
+        query.validUntil = { $gte: now };
+        query.isActive = false;
+      }
+    }
 
     const coupons = await Coupon.find(query)
       .sort({ createdAt: -1 })
@@ -64,19 +64,20 @@ if (status) {
     const totalCoupons = await Coupon.countDocuments(query);
     const totalPages = Math.ceil(totalCoupons / limit);
 
-res.render("coupons-list", {
-  coupons,
-  page,
-  totalPages,
-  search,
-  status,
-  type,
-  allowRender: true
-});
+    res.render('coupons-list', {
+      coupons,
+      page,
+      totalPages,
+      search,
+      status,
+      type,
+      allowRender: true
+    });
 
   } catch (error) {
-    console.error("listCoupons error", error);
-    res.redirect("/admin/errorPage");
+    console.error('listCoupons error', error);
+    logger.error(`listCoupons error: ${error.message}`);
+    res.redirect('/admin/errorPage');
   }
 };
 
@@ -90,7 +91,7 @@ const deleteCoupon = async (req, res) => {
     if (!coupon) {
       return res.json({ 
         success: false, 
-        message: "The selected coupon does not exist." 
+        message: 'The selected coupon does not exist.' 
       });
     }
 
@@ -106,11 +107,11 @@ const deleteCoupon = async (req, res) => {
     return res.json({ success: true });
 
   } catch (error) {
-    console.error("deleteCoupon error", error);
-
+    console.error('deleteCoupon error', error);
+    logger.error(`deleteCoupon error: ${error.message}`);
     return res.json({
       success: false,
-      message: "Unable to delete coupon. Please try again."
+      message: 'Unable to delete coupon. Please try again.'
     });
   }
 };
@@ -136,91 +137,91 @@ const addCoupon = async (req, res) => {
 
     //description validation
     if (!description || !description.trim()) {
-       errors.description = "Description is required";
+      errors.description = 'Description is required';
     }
 
 
     // ===== CODE VALIDATION =====
     if (!code || !code.trim()) {
-      errors.code = "Coupon code is required";
+      errors.code = 'Coupon code is required';
     }
 
     const upperCode = code?.trim().toUpperCase();
 
     if (upperCode) {
       const existing = await Coupon.findOne({ 
-         code: upperCode,
-         isDeleted: false
+        code: upperCode,
+        isDeleted: false
       });
 
       if (existing) {
-        errors.code = "Coupon code already exists";
+        errors.code = 'Coupon code already exists';
       }
     }
 
   
     if (!['fixed', 'percentage'].includes(discountType)) {
-      errors.discountType = "Invalid discount type";
+      errors.discountType = 'Invalid discount type';
     }
 
-const value = Number(discountValue);
-const min = Number(minimumPurchase);
-const max = Number(maximumDiscount);
-const limit = Number(usageLimit);
+    const value = Number(discountValue);
+    const min = Number(minimumPurchase);
+    const max = Number(maximumDiscount);
+    const limit = Number(usageLimit);
 
-if (isNaN(value) || value <= 0) {
-  errors.discountValue = "Discount value must be greater than 0";
-}
+    if (isNaN(value) || value <= 0) {
+      errors.discountValue = 'Discount value must be greater than 0';
+    }
 
-if (discountType === "percentage" && (value < 1 || value > 100)) {
-  errors.discountValue = "Percentage discount must be between 1 and 100";
-}
+    if (discountType === 'percentage' && (value < 1 || value > 100)) {
+      errors.discountValue = 'Percentage discount must be between 1 and 100';
+    }
 
-if (discountType === "fixed") {
-  if (!isNaN(min) && value >= min) {
-    errors.discountValue = 
-      "Fixed discount must be less than minimum purchase amount";
-  }
-}
+    if (discountType === 'fixed') {
+      if (!isNaN(min) && value >= min) {
+        errors.discountValue = 
+      'Fixed discount must be less than minimum purchase amount';
+      }
+    }
 
-if (discountType === "fixed") {
-  if (!isNaN(max) && max > value) {
-    errors.maximumDiscount =
-      "For fixed coupons, maximum discount cannot exceed discount value";
-  }
-}
+    if (discountType === 'fixed') {
+      if (!isNaN(max) && max > value) {
+        errors.maximumDiscount =
+      'For fixed coupons, maximum discount cannot exceed discount value';
+      }
+    }
 
 
     if (isNaN(min) || min < 0) {
-      errors.minimumPurchase = "Minimum purchase must be 0 or more";
+      errors.minimumPurchase = 'Minimum purchase must be 0 or more';
     }
 
     if (isNaN(max) || max < 0) {
-      errors.maximumDiscount = "Maximum discount must be 0 or more";
+      errors.maximumDiscount = 'Maximum discount must be 0 or more';
     }
 
-if (limit !== 0 && (isNaN(limit) || limit < 1)) {
-  errors.usageLimit = "Usage limit must be at least 1";
-}
+    if (limit !== 0 && (isNaN(limit) || limit < 1)) {
+      errors.usageLimit = 'Usage limit must be at least 1';
+    }
 
 
     const start = new Date(startingDate);
     const end = new Date(validUntil);
 
     if (!startingDate) {
-      errors.startingDate = "Starting date is required";
+      errors.startingDate = 'Starting date is required';
     }
 
     if (!validUntil) {
-      errors.validUntil = "Expiry date is required";
+      errors.validUntil = 'Expiry date is required';
     }
 
     if (start && end && start > end) {
-      errors.validUntil = "Expiry must be after starting date";
+      errors.validUntil = 'Expiry must be after starting date';
     }
 
     if (end && end < new Date()) {
-      errors.validUntil = "Expiry must be future date";
+      errors.validUntil = 'Expiry must be future date';
     }
 
     // ===== IF ANY ERRORS RETURN =====
@@ -242,14 +243,15 @@ if (limit !== 0 && (isNaN(limit) || limit < 1)) {
 
     res.json({ success: true });
 
-} catch (err) {
-  console.error("addCoupon error:", err);
+  } catch (err) {
+    console.error('addCoupon error:', err);
+    logger.error(`addCoupon error: ${err.message}`);
 
-  res.json({
-    success: false,
-    message: err.message || "Server error"
-  });
-}
+    res.json({
+      success: false,
+      message: err.message || 'Server error'
+    });
+  }
 };
 
 const editCoupon = async (req, res) => {
@@ -271,35 +273,35 @@ const editCoupon = async (req, res) => {
 
     const coupon = await Coupon.findById(id);
     if (!coupon) {
-      return res.json({ success:false, message:"Coupon not found" });
+      return res.json({ success:false, message:'Coupon not found' });
     }
 
     const errors = {};
 
     if (!description || !description.trim()) {
-      errors.description = "Description is required";
+      errors.description = 'Description is required';
     }
 
 
     if (!code || !code.trim()) {
-      errors.code = "Coupon code is required";
+      errors.code = 'Coupon code is required';
     }
 
     const upperCode = code?.trim().toUpperCase();
 
     const existing = await Coupon.findOne({
-          code: upperCode,
-          isDeleted: false,
-          _id: { $ne: id }
+      code: upperCode,
+      isDeleted: false,
+      _id: { $ne: id }
     });
 
 
     if (existing) {
-      errors.code = "Coupon code already exists";
+      errors.code = 'Coupon code already exists';
     }
 
     if (!['fixed', 'percentage'].includes(discountType)) {
-      errors.discountType = "Invalid discount type";
+      errors.discountType = 'Invalid discount type';
     }
 
     const value = Number(discountValue);
@@ -308,46 +310,46 @@ const editCoupon = async (req, res) => {
     const limit = Number(usageLimit);
 
 
-if (isNaN(value) || value <= 0) {
-  errors.discountValue = "Discount value must be greater than 0";
-}
+    if (isNaN(value) || value <= 0) {
+      errors.discountValue = 'Discount value must be greater than 0';
+    }
 
-if (discountType === "percentage" && (value < 1 || value > 100)) {
-  errors.discountValue = "Percentage discount must be between 1 and 100";
-}
+    if (discountType === 'percentage' && (value < 1 || value > 100)) {
+      errors.discountValue = 'Percentage discount must be between 1 and 100';
+    }
 
-if (discountType === "fixed") {
-  if (!isNaN(min) && value >= min) {
-    errors.discountValue = 
-      "Fixed discount must be less than minimum purchase amount";
-  }
-}
+    if (discountType === 'fixed') {
+      if (!isNaN(min) && value >= min) {
+        errors.discountValue = 
+      'Fixed discount must be less than minimum purchase amount';
+      }
+    }
 
 
-if (discountType === "fixed") {
-  if (!isNaN(max) && max > value) {
-    errors.maximumDiscount =
-      "For fixed coupons, maximum discount cannot exceed discount value";
-  }
-}
+    if (discountType === 'fixed') {
+      if (!isNaN(max) && max > value) {
+        errors.maximumDiscount =
+      'For fixed coupons, maximum discount cannot exceed discount value';
+      }
+    }
     if (isNaN(min) || min < 0) {
-      errors.minimumPurchase = "Minimum purchase must be 0 or more";
+      errors.minimumPurchase = 'Minimum purchase must be 0 or more';
     }
 
     if (isNaN(max) || max < 0) {
-      errors.maximumDiscount = "Maximum discount must be 0 or more";
+      errors.maximumDiscount = 'Maximum discount must be 0 or more';
     }
 
-if (limit !== 0 && (isNaN(limit) || limit < 1)) {
-  errors.usageLimit = "Usage limit per user must be at least 1";
-}
+    if (limit !== 0 && (isNaN(limit) || limit < 1)) {
+      errors.usageLimit = 'Usage limit per user must be at least 1';
+    }
 
 
     const start = new Date(startingDate);
     const end = new Date(validUntil);
 
     if (start > end) {
-      errors.validUntil = "Expiry must be after starting date";
+      errors.validUntil = 'Expiry must be after starting date';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -369,14 +371,14 @@ if (limit !== 0 && (isNaN(limit) || limit < 1)) {
 
     res.json({ success:true });
 
-} catch (err) {
-  console.error("editCoupon error:", err);
-
-  res.json({
-    success: false,
-    message: err.message || "Update failed"
-  });
-}
+  } catch (err) {
+    console.error('editCoupon error:', err);
+    logger.error(`editCoupon error: ${err.message}`);
+    res.json({
+      success: false,
+      message: err.message || 'Update failed'
+    });
+  }
 };
 
 const toggleStatus = async (req, res) => {
@@ -388,7 +390,7 @@ const toggleStatus = async (req, res) => {
       return res.json({ success:false });
     }
     if (coupon.validUntil < new Date()) {
-    return res.json({ success:false, message:"Expired coupon cannot be toggled" });
+      return res.json({ success:false, message:'Expired coupon cannot be toggled' });
     }
 
     coupon.isActive = !coupon.isActive;
@@ -397,6 +399,8 @@ const toggleStatus = async (req, res) => {
     res.json({ success:true });
 
   } catch (err) {
+    console.error('toggleStatus error:', err);
+    logger.error(`toggleStatus error: ${err.message}`);
     res.json({ success:false });
   }
 };

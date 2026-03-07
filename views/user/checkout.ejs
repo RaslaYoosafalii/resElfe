@@ -326,7 +326,7 @@ const selectedIndex = defaultIndex !== -1 ? defaultIndex : 0;
 
         <% cart.items.forEach(item => { %>
 <div class="product-row <%= item.isUnavailable ? 'product-unavailable' : '' %>">
-           <img src="<%= item.productImage  ? '/uploads/products/' + item.productImage  : '/images/placeholder.png' %>">
+           <img src="<%= imageUrl(item.productImage ) ? imageUrl(item.productImage)  : '/images/placeholder.png' %>">
             <div>
               <strong><%= item.productName %></strong><br>
               Size: <%= item.size %> | Qty: <%= item.quantity %><br>

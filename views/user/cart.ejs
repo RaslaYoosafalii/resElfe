@@ -288,7 +288,7 @@
      <tr class="<%= (isOut || isUnavailable) ? 'out-of-stock' : '' %>">
         <td>
           <div class="cart-product">
-            <img src="/uploads/products/<%= item.productImage %>">
+            <img src="<%= imageUrl(item.productImage) %>">
             <div>
               <h4><%= item.productName %></h4>
 

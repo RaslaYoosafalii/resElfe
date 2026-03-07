@@ -1,7 +1,7 @@
 import Wishlist from '../../models/wishlistSchema.js';
 import { Variant } from '../../models/productSchema.js';
 import mongoose from 'mongoose';
-
+import logger from '../../config/logger.js';
 
 const addToWishlist = async (req, res) => {
   try {
@@ -40,6 +40,7 @@ const addToWishlist = async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     console.error('addToWishlist error:', err);
+    logger.error(`addToWishlist error: ${err.message}`);
     return res.status(500).json({
       success: false,
       message: 'Failed to add to wishlist'
@@ -67,6 +68,7 @@ const removeFromWishlist = async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     console.error('removeFromWishlist error:', err);
+    logger.error(`removeFromWishlist error: ${err.message}`);
     return res.status(500).json({ success: false });
   }
 };
@@ -99,110 +101,110 @@ const loadWishlist = async (req, res) => {
 
     const productIds = wishlist.products.map(w => w.productId._id);
 
-const variants = await Variant.aggregate([
-  { $match: { productId: { $in: productIds }, isListed: true } },
+    const variants = await Variant.aggregate([
+      { $match: { productId: { $in: productIds }, isListed: true } },
 
-  {
-    $lookup: {
-      from: 'products',
-      localField: 'productId',
-      foreignField: '_id',
-      as: 'product'
-    }
-  },
-  {
-    $addFields: {
-      productData: { $arrayElemAt: ['$product', 0] }
-    }
-  },
-  {
-    $lookup: {
-      from: 'categories',
-      localField: 'productData.categoryId',
-      foreignField: '_id',
-      as: 'category'
-    }
-  },
-  {
-    $addFields: {
-      categoryData: { $arrayElemAt: ['$category', 0] }
-    }
-  },
-  {
-    $addFields: {
-      categoryOfferActive: {
-        $cond: [
-          {
-            $and: [
-              { $gt: ['$categoryData.offerPrice', 0] },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      {
+        $addFields: {
+          productData: { $arrayElemAt: ['$product', 0] }
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'productData.categoryId',
+          foreignField: '_id',
+          as: 'category'
+        }
+      },
+      {
+        $addFields: {
+          categoryData: { $arrayElemAt: ['$category', 0] }
+        }
+      },
+      {
+        $addFields: {
+          categoryOfferActive: {
+            $cond: [
               {
-                $or: [
-                  { $eq: ['$categoryData.offerValidDate', null] },
-                  { $gt: ['$categoryData.offerValidDate', new Date()] }
+                $and: [
+                  { $gt: ['$categoryData.offerPrice', 0] },
+                  {
+                    $or: [
+                      { $eq: ['$categoryData.offerValidDate', null] },
+                      { $gt: ['$categoryData.offerValidDate', new Date()] }
+                    ]
+                  }
                 ]
-              }
+              },
+              true,
+              false
             ]
-          },
-          true,
-          false
-        ]
-      }
-    }
-  },
-  {
-    $addFields: {
-      finalVariantPrice: {
-        $let: {
-          vars: {
-            variantDiscount: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ['$discountPrice', null] },
-                    { $gt: ['$discountPrice', 0] }
-                  ]
-                },
-                '$discountPrice',
-                '$price'
-              ]
-            },
-            categoryDiscounted: {
-              $cond: [
-                '$categoryOfferActive',
-                {
+          }
+        }
+      },
+      {
+        $addFields: {
+          finalVariantPrice: {
+            $let: {
+              vars: {
+                variantDiscount: {
                   $cond: [
-                    '$categoryData.offerIsPercent',
                     {
-                      $multiply: [
-                        '$price',
-                        {
-                          $subtract: [
-                            1,
-                            { $divide: ['$categoryData.offerPrice', 100] }
-                          ]
-                        }
+                      $and: [
+                        { $ne: ['$discountPrice', null] },
+                        { $gt: ['$discountPrice', 0] }
                       ]
                     },
-                    { $subtract: ['$price', '$categoryData.offerPrice'] }
+                    '$discountPrice',
+                    '$price'
                   ]
                 },
-                '$price'
-              ]
+                categoryDiscounted: {
+                  $cond: [
+                    '$categoryOfferActive',
+                    {
+                      $cond: [
+                        '$categoryData.offerIsPercent',
+                        {
+                          $multiply: [
+                            '$price',
+                            {
+                              $subtract: [
+                                1,
+                                { $divide: ['$categoryData.offerPrice', 100] }
+                              ]
+                            }
+                          ]
+                        },
+                        { $subtract: ['$price', '$categoryData.offerPrice'] }
+                      ]
+                    },
+                    '$price'
+                  ]
+                }
+              },
+              in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
             }
-          },
-          in: { $min: ['$$variantDiscount', '$$categoryDiscounted'] }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$productId',
+          minPrice: { $min: '$price' },
+          minFinalPrice: { $min: '$finalVariantPrice' }
         }
       }
-    }
-  },
-  {
-    $group: {
-      _id: '$productId',
-      minPrice: { $min: '$price' },
-      minFinalPrice: { $min: '$finalVariantPrice' }
-    }
-  }
-]);
+    ]);
 
 
     const priceMap = {};
@@ -222,12 +224,12 @@ const variants = await Variant.aggregate([
         images: p.images,
         subcategoryName: p.subcategoryId?.fitName || '',
         _price: priceInfo.minPrice || 0,
-     minVariantDiscountPrice:
+        minVariantDiscountPrice:
   priceInfo.minFinalPrice < priceInfo.minPrice
     ? priceInfo.minFinalPrice
     : null,
 
-            isUnavailable
+        isUnavailable
       };
     });
 
@@ -245,6 +247,7 @@ const variants = await Variant.aggregate([
 
   } catch (err) {
     console.error('loadWishlist error:', err);
+    logger.error(`loadWishlist error: ${err.message}`);
     res.redirect('/pageNotFound');
   }
 };

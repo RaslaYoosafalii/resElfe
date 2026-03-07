@@ -1,13 +1,14 @@
 // controllers/admin/customerController.js
 import User from '../../models/userSchema.js';
 import mongoose from 'mongoose';
+import logger from '../../config/logger.js';
 
 // create short customer id from ObjectId
 function shortCustomerId(objectId) {
   try {
     const hex = objectId.toString();
     return `CUS-${hex.slice(-6).toUpperCase()}`;
-  } catch (e) {
+  } catch {
     return `CUS-${Date.now().toString().slice(-6)}`;
   }
 }
@@ -21,7 +22,7 @@ function extractNameFromEmail(email) {
   const withoutPlus = local.split('+')[0];
 
   // replace separators with spaces
-  const replaced = withoutPlus.replace(/[._\-]+/g, ' ');
+  const replaced = withoutPlus.replace(/[._-]+/g, ' ');
 
   // trim extra spaces
   const trimmed = replaced.trim();
@@ -150,7 +151,8 @@ const customerInfo = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[ADMIN] customerInfo error:', error);
+    console.error('customerInfo error:', error);
+    logger.error(`customerInfo error: ${error.message}`);
     return res.status(500).render('error-page', {
       message: 'Unable to load customers'
     });
@@ -189,6 +191,7 @@ const toggleBlockUser = async (req, res) => {
     return res.redirect('/admin/customer');
   } catch (error) {
     console.error('toggleBlockUser error:', error);
+    logger.error(`toggleBlockUser error: ${error.message}`);
     if (req.headers.accept && req.headers.accept.includes('application/json')) {
       return res.status(500).json({ success: false, message: 'Server error' });
     }
@@ -225,6 +228,7 @@ const deleteCustomer = async (req, res) => {
 
   } catch (err) {
     console.error('deleteCustomer error:', err);
+    logger.error(`deleteCustomer error: ${err.message}`);
     return res.status(500).json({
       success: false,
       message: 'Server error'

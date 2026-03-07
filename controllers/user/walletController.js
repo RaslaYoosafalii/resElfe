@@ -1,7 +1,11 @@
-import Wallet from "../../models/walletSchema.js";
-import razorpayInstance from "../../config/razorpay.js";
-import crypto from "crypto";
-import User from "../../models/userSchema.js";
+import Wallet from '../../models/walletSchema.js';
+import razorpayInstance from '../../config/razorpay.js';
+import crypto from 'crypto';
+import User from '../../models/userSchema.js';
+import logger from '../../config/logger.js';
+
+
+
 const loadWallet = async (req, res) => {
   try {
     const userId = req.session.user;
@@ -15,7 +19,8 @@ const loadWallet = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Wallet load error:", error);
+    console.error('Wallet load error:', error);
+    logger.error(`Wallet load error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -42,7 +47,7 @@ const loadTransactions = async (req, res) => {
     );
 
 
-    res.render("wallet-transactions", {
+    res.render('wallet-transactions', {
       user,
       wallet,
       transactions: paginatedTransactions,
@@ -51,7 +56,8 @@ const loadTransactions = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Wallet transaction load error:", error);
+    console.error('Wallet transaction load error:', error);
+    logger.error(`Wallet transaction load error: ${error.message}`);
     res.redirect('/pageNotFound');
   }
 };
@@ -64,14 +70,14 @@ const createWalletOrder = async (req, res) => {
     if (!amount || amount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid amount. Amount must be greater than 0."
+        message: 'Invalid amount. Amount must be greater than 0.'
       });
     }
 
     const razorpayOrder = await razorpayInstance.orders.create({
       amount: amount * 100,
-      currency: "INR",
-      receipt: "wallet_" + Date.now()
+      currency: 'INR',
+      receipt: 'wallet_' + Date.now()
     });
 
     res.json({
@@ -82,10 +88,12 @@ const createWalletOrder = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Create wallet add error:", error);
+    console.error('Create wallet add error:', error);
+    logger.error(`Create wallet add error: ${error.message}`);
+
     res.status(500).json({
       success: false,
-      message: "Unable to process wallet order"
+      message: 'Unable to process wallet order'
     });
   }
 };
@@ -99,9 +107,9 @@ const verifyWalletPayment = async (req, res) => {
   } = req.body;
 
   const generatedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(razorpay_order_id + "|" + razorpay_payment_id)
-    .digest("hex");
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(razorpay_order_id + '|' + razorpay_payment_id)
+    .digest('hex');
 
   if (generatedSignature !== razorpay_signature) {
     return res.json({ success: false });
@@ -115,9 +123,9 @@ const verifyWalletPayment = async (req, res) => {
   wallet.balance += Number(amount);
 
   wallet.transactions.push({
-    type: "credit",
+    type: 'credit',
     amount,
-    description: "Wallet Top-up"
+    description: 'Wallet Top-up'
   });
 
   await wallet.save();

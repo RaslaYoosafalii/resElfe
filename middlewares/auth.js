@@ -2,9 +2,9 @@
 import User from '../models/userSchema.js';
 
 const noCache = (req, res, next) => {
-res.setHeader(
-  'Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0'
-);
+  res.setHeader(
+    'Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0'
+  );
 
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -24,15 +24,15 @@ const userAuth = (req, res, next) => {
 
   User.findById(userId)
     .then(user => {
-     if (!user) {
-  return res.redirect('/login');
-}
+      if (!user) {
+        return res.redirect('/login');
+      }
 
-if (user.isBlocked) {
-  delete req.session.user; 
+      if (user.isBlocked) {
+        delete req.session.user; 
 
-  return res.redirect('/?blocked=1');
-}
+        return res.redirect('/?blocked=1');
+      }
 
       req.user = user;
       next();
@@ -103,9 +103,9 @@ const adminAuth = async (req, res, next) => {
       return;
     }
 
-  req.admin = admin;
-req.allowRender = true;
-next();
+    req.admin = admin;
+    req.allowRender = true;
+    next();
 
   } catch (err) {
     console.error('AdminAuth error:', err);

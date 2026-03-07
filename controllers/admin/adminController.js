@@ -1,9 +1,8 @@
 // controllers/admin/adminController.js
 import User from '../../models/userSchema.js';
-import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
-
+import logger from '../../config/logger.js';
 
 const OTP_COOLDOWN = 60 * 1000;
 
@@ -53,6 +52,7 @@ const login = async (req, res) => {
     }
   } catch (error) {
     console.log('Login Error', error);
+    logger.error(`Login Error: ${error.message}`);
     return res.redirect('/errorPage');
   }
 };
@@ -71,6 +71,8 @@ const loadDashboard = async (req, res) => {
       res.render('dashboard', { allowRender: true });
 
     } catch (error) {
+      console.error('Dashboard load error:', error);
+      logger.error(`Dashboard load error: ${error.message}`);
       res.redirect('/errorPage');
     }
   } else {
@@ -103,6 +105,7 @@ const sendVerificationEmail = async (email, otp) => {
     return true;
   } catch (error) {
     console.error('Admin OTP email error', error);
+    logger.error(`Admin OTP email error: ${error.message}`);
     return false;
   }
 };
@@ -115,11 +118,11 @@ const adminForgotPasswordRequest = async (req, res) => {
     const { email } = req.body;
 
 
-if (!isValidString(email)) {
-  return res.render('admin-forgot-password', {
-    message: 'Invalid email'
-  });
-}
+    if (!isValidString(email)) {
+      return res.render('admin-forgot-password', {
+        message: 'Invalid email'
+      });
+    }
 
     if (
       req.session.adminForgotLastRequest &&
@@ -161,6 +164,7 @@ if (!isValidString(email)) {
     return res.redirect('/admin/verify-otp');
   } catch (error) {
     console.error(error);
+    logger.error(`${error.message}`);
     res.render('admin-forgot-password', {
       message: 'Server error'
     });
@@ -181,11 +185,11 @@ const adminVerifyOtp = async (req, res) => {
   const email = req.session.adminResetEmail;
   
   if (!isValidString(otp)) {
-  return res.render('admin-verify-otp', {
-    email,
-    message: 'Invalid OTP'
-  });
-}
+    return res.render('admin-verify-otp', {
+      email,
+      message: 'Invalid OTP'
+    });
+  }
 
 
  
@@ -259,6 +263,7 @@ const adminChangePassword = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    logger.error(`${err.message}`);
     return res.status(500).json({
       success: false,
       message: 'Server error'
@@ -270,12 +275,12 @@ const adminResendOtp = async (req, res) => {
   try {
     const { email } = req.body;
 
-  if (!isValidString(email)) {
-  return res.status(400).json({
-    success: false,
-    message: 'Invalid email'
-  });
-}
+    if (!isValidString(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email'
+      });
+    }
 
     if (
       !req.session.adminResetEmail ||
@@ -309,13 +314,14 @@ const adminResendOtp = async (req, res) => {
         message: 'Failed to send OTP'
       });
     }
-    console.log('otp sent: ', otp)
+    console.log('otp sent: ', otp);
     return res.json({
       success: true,
       message: 'OTP resent successfully'
     });
   } catch (error) {
     console.error('adminResendOtp error', error);
+    logger.error(`adminResendOtp error: ${error.message}`);
     return res.status(500).json({
       success: false,
       message: 'Server error'
@@ -330,23 +336,21 @@ const adminResendOtp = async (req, res) => {
 // logout
 const logout = async (req, res) => {
   try {
-    
-    const adminId = req.session?.admin;
+    delete req.session.admin; 
 
-     delete req.session.admin; 
+    res.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate, private'
+    );
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
 
-      res.set(
-        'Cache-Control',
-        'no-store, no-cache, must-revalidate, proxy-revalidate, private'
-      );
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
-
-      console.log('admin logged out');
-     return res.redirect(303, '/admin/login');
+    console.log('admin logged out');
+    return res.redirect(303, '/admin/login');
     
   } catch (error) {
     console.log('Error logging out', error);
+    logger.error(`Error logging out: ${error.message}`);
     return res.redirect('/errorPage');
   }
 };

@@ -156,7 +156,7 @@
               <td>
                 <div class="product-identity">
                   <div class="product-thumb">
-                    <img src="/uploads/products/<%= p.images?.[0] || 'placeholder.png' %>">
+                    <img src="<%= imageUrl(p.images?.[0]) || 'placeholder.png' %>">
                   </div>
                   <div class="product-name"><%= p.productName %></div>
                 </div>
