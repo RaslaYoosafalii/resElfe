@@ -60,25 +60,23 @@ const login = async (req, res) => {
 
 // load Dashboard
 const loadDashboard = async (req, res) => {
-  if (req.session.admin) {
-    try {
-      res.set(
-        'Cache-Control',
-        'no-store, no-cache, must-revalidate, proxy-revalidate, private'
-      );
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
 
-      res.render('dashboard', { allowRender: true });
+  try {
+    res.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, proxy-revalidate, private'
+    );
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
 
-    } catch (error) {
-      console.error('Dashboard load error:', error);
-      logger.error(`Dashboard load error: ${error.message}`);
-      res.redirect('/errorPage');
-    }
-  } else {
-    res.redirect('/admin/login');
+    res.render('dashboard', { allowRender: true });
+
+  } catch (error) {
+    console.error('Dashboard load error:', error);
+    logger.error(`Dashboard load error: ${error.message}`);
+    res.redirect('/errorPage');
   }
+
 };
 
 
