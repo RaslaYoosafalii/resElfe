@@ -211,7 +211,7 @@
     placeholder="Search coupon"
   />
 
-  <% if (search && search.length > 0) { %>
+
     <button
       type="button"
       id="clearSearchBtn"
@@ -226,7 +226,7 @@
     >
       Clear
     </button>
-  <% } %>
+
 </div>
 <!-- STATUS FILTER -->
 <select id="statusFilter" class="modal-input" style="width:140px;">
@@ -371,7 +371,7 @@
       <% } %>
 
       <% if (page < totalPages) { %>
-        <a class="page-btn" href="/admin/coupon?page=<%= i %>&search=<%= search || '' %>&status=<%= status || '' %>&type=<%= type || '' %>">&gt;</a>
+        <a class="page-btn" href="/admin/coupon?page=<%= page + 1 %>&search=<%= search || '' %>&status=<%= status || '' %>&type=<%= type || '' %>">&gt;</a>
       <% } %>
 
     </div>
@@ -633,6 +633,36 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+async function loadCoupons(params = {}) {
+
+  const urlParams = new URLSearchParams(params);
+
+  const res = await fetch("/admin/coupon?" + urlParams.toString(), {
+    headers: { "X-Requested-With": "XMLHttpRequest" }
+  });
+
+  const html = await res.text();
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  const newTable = doc.querySelector(".coupons-table");
+  const newPagination = doc.querySelector(".pagination");
+
+  document.querySelector(".coupons-table").innerHTML = newTable.innerHTML;
+  document.querySelector(".pagination").innerHTML = newPagination.innerHTML;
+
+  const clearBtn = document.getElementById("clearSearchBtn");
+
+if (clearBtn) {
+  if (params.search) {
+    clearBtn.style.display = "inline";
+  } else {
+    clearBtn.style.display = "none";
+  }
+}
+}
+
 document.addEventListener("click", e => {
   const btn = e.target.closest("[data-action='delete-coupon']");
   if (!btn) return;
@@ -661,9 +691,9 @@ document.addEventListener("click", e => {
     timer: 1500
   });
 
-  setTimeout(() => {
-    location.reload();
-  }, 1500);
+ setTimeout(() => {
+  loadCoupons();
+}, 800);
 
 } else {
   Swal.fire(
@@ -684,9 +714,15 @@ document.addEventListener("click", async e => {
   const res = await fetch(`/admin/coupon/toggle/${id}`, { method:"POST" });
   const json = await res.json();
 
-  if (json.success) {
-  location.reload();
-} else {
+if (json.success) {
+
+  await loadCoupons({
+    search: document.getElementById("searchInput").value,
+    status: document.getElementById("statusFilter").value,
+    type: document.getElementById("typeFilter").value
+  });
+
+}else {
   Swal.fire(
     "Failed to Update Status",
     "A server-side error occurred while updating coupon status.",
@@ -789,8 +825,8 @@ Swal.fire("Success","Coupon created successfully","success");
 
 // Reload after short delay
 setTimeout(() => {
-  location.reload();
-}, 800);
+  loadCoupons();
+}, 500);
 
 
 
@@ -883,8 +919,8 @@ Swal.fire("Updated","Coupon updated successfully","success");
 
 // Reload after short delay
 setTimeout(() => {
-  location.reload();
-}, 800);
+  loadCoupons();
+}, 500);
 
 });
 </script>
@@ -911,23 +947,73 @@ function applyFilters() {
 
 // Search on Enter
 searchInput.addEventListener("keydown", function(e){
+
   if(e.key === "Enter"){
-    applyFilters();
+
+    e.preventDefault();
+
+    loadCoupons({
+      search: searchInput.value.trim(),
+      status: statusFilter.value,
+      type: typeFilter.value
+    });
+
   }
+
 });
 
 // Change filters automatically
-statusFilter.addEventListener("change", applyFilters);
-typeFilter.addEventListener("change", applyFilters);
+statusFilter.addEventListener("change", function(){
 
-// Clear button logic (keep existing)
+  loadCoupons({
+    search: searchInput.value.trim(),
+    status: statusFilter.value,
+    type: typeFilter.value
+  });
+
+});
+typeFilter.addEventListener("change", function(){
+
+  loadCoupons({
+    search: searchInput.value.trim(),
+    status: statusFilter.value,
+    type: typeFilter.value
+  });
+
+});
+
+
 const clearBtn = document.getElementById("clearSearchBtn");
+
 if (clearBtn) {
   clearBtn.addEventListener("click", function(){
-    window.location.href = "/admin/coupon";
+
+    searchInput.value = "";
+
+    loadCoupons({
+      status: statusFilter.value,
+      type: typeFilter.value
+    });
+
+    clearBtn.style.display = "none";
+
   });
 }
 
+document.addEventListener("click", function(e){
+
+  const btn = e.target.closest(".page-btn");
+  if(!btn) return;
+
+  e.preventDefault();
+
+  const url = new URL(btn.href);
+
+  const params = Object.fromEntries(url.searchParams.entries());
+
+  loadCoupons(params);
+
+});
 </script>
 
 </body>

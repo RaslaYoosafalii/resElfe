@@ -24,6 +24,7 @@ import methodOverride from 'method-override';
 
 import userRouter from './routes/userRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
+import STATUS_CODES from './utils/statusCodes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -101,11 +102,11 @@ app.use((req, res) => {
 
   // admin route
   if (req.originalUrl.startsWith('/admin')) {
-    return res.status(404).render('error-page'); 
+    return res.status(STATUS_CODES.NOT_FOUND).render('error-page'); 
   }
 
   // user routes
-  return res.status(404).render('page-404', {
+  return res.status(STATUS_CODES.NOT_FOUND).render('page-404', {
     message: 'Page not found'
   });
 
@@ -116,7 +117,7 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('Unhandled error for', req.method, req.originalUrl, err);
   if (res.headersSent) return next(err);
-  return res.status(500).render('page-404', { message: 'Something went wrong', user: null });
+  return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('page-404', { message: 'Something went wrong', user: null });
 });
 
 

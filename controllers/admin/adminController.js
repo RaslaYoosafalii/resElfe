@@ -3,6 +3,7 @@ import User from '../../models/userSchema.js';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import logger from '../../config/logger.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 const OTP_COOLDOWN = 60 * 1000;
 
@@ -228,21 +229,21 @@ const adminChangePassword = async (req, res) => {
     const email = req.session.adminResetEmail;
 
     if (!email) {
-      return res.status(401).json({
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
         success: false,
         message: 'Session expired'
       });
     }
 
     if ( !isValidString(newPassword) || newPassword.length < 6 || !/^(?=.*[A-Za-z])(?=.*\d)/.test(newPassword)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Password must be at least 6 characters and should contain at least one letter and one number'
       });
     }
 
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Passwords do not match'
       });
@@ -264,7 +265,7 @@ const adminChangePassword = async (req, res) => {
   } catch (err) {
     console.error(err);
     logger.error(`${err.message}`);
-    return res.status(500).json({
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Server error'
     });
@@ -276,7 +277,7 @@ const adminResendOtp = async (req, res) => {
     const { email } = req.body;
 
     if (!isValidString(email)) {
-      return res.status(400).json({
+      return res.status( STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid email'
       });
@@ -286,7 +287,7 @@ const adminResendOtp = async (req, res) => {
       !req.session.adminResetEmail ||
       req.session.adminResetEmail !== (email && email.toLowerCase())
     ) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid request'
       });
@@ -296,7 +297,7 @@ const adminResendOtp = async (req, res) => {
       req.session.adminOtpLastSentAt &&
       Date.now() - req.session.adminOtpLastSentAt < OTP_COOLDOWN
     ) {
-      return res.status(429).json({
+      return res.status(STATUS_CODES.TOO_MANY_REQUESTS).json({
         success: false,
         message: 'Please wait before resending OTP'
       });
@@ -309,7 +310,7 @@ const adminResendOtp = async (req, res) => {
 
     const emailSent = await sendVerificationEmail(email, otp);
     if (!emailSent) {
-      return res.status(500).json({
+      return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: 'Failed to send OTP'
       });
@@ -322,7 +323,7 @@ const adminResendOtp = async (req, res) => {
   } catch (error) {
     console.error('adminResendOtp error', error);
     logger.error(`adminResendOtp error: ${error.message}`);
-    return res.status(500).json({
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Server error'
     });
@@ -346,7 +347,7 @@ const logout = async (req, res) => {
     res.set('Expires', '0');
 
     console.log('admin logged out');
-    return res.redirect(303, '/admin/login');
+    return res.redirect(STATUS_CODES.SEE_OTHER, '/admin/login');
     
   } catch (error) {
     console.log('Error logging out', error);

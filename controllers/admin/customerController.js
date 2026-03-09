@@ -2,6 +2,7 @@
 import User from '../../models/userSchema.js';
 import mongoose from 'mongoose';
 import logger from '../../config/logger.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 // create short customer id from ObjectId
 function shortCustomerId(objectId) {
@@ -153,7 +154,7 @@ const customerInfo = async (req, res) => {
   } catch (error) {
     console.error('customerInfo error:', error);
     logger.error(`customerInfo error: ${error.message}`);
-    return res.status(500).render('error-page', {
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Unable to load customers'
     });
   }
@@ -165,7 +166,7 @@ const toggleBlockUser = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       const msg = 'Invalid user id';
       if (req.headers.accept && req.headers.accept.includes('application/json')) {
-        return res.status(400).json({ success: false, message: msg });
+        return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: msg });
       }
       return res.redirect('/admin/customer');
     }
@@ -174,7 +175,7 @@ const toggleBlockUser = async (req, res) => {
     if (!user) {
       const msg = 'User not found';
       if (req.headers.accept && req.headers.accept.includes('application/json')) {
-        return res.status(404).json({ success: false, message: msg });
+        return res.status(STATUS_CODES.NOT_FOUND).json({ success: false, message: msg });
       }
       return res.redirect('/admin/customer');
     }
@@ -193,7 +194,7 @@ const toggleBlockUser = async (req, res) => {
     console.error('toggleBlockUser error:', error);
     logger.error(`toggleBlockUser error: ${error.message}`);
     if (req.headers.accept && req.headers.accept.includes('application/json')) {
-      return res.status(500).json({ success: false, message: 'Server error' });
+      return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
     }
     return res.redirect('/admin/errorPage');
   }
@@ -204,7 +205,7 @@ const deleteCustomer = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid customer ID'
       });
@@ -212,7 +213,7 @@ const deleteCustomer = async (req, res) => {
 
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({
+      return res.status(STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: 'Customer not found'
       });
@@ -229,7 +230,7 @@ const deleteCustomer = async (req, res) => {
   } catch (err) {
     console.error('deleteCustomer error:', err);
     logger.error(`deleteCustomer error: ${err.message}`);
-    return res.status(500).json({
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Server error'
     });

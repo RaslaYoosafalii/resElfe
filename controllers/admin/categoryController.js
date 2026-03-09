@@ -3,6 +3,7 @@ import { Category, SubCategory } from '../../models/categorySchema.js';
 import { Product } from '../../models/productSchema.js';
 import mongoose from 'mongoose';
 import logger from '../../config/logger.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 function parsePaging(req) {
   const page = Math.max(parseInt(req.query.page || '1', 10), 1);
@@ -76,7 +77,7 @@ const listCategories = async (req, res) => {
       })
     );
 
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
+    const totalPages = Math.ceil(total / limit);
   
     const message = req.session.message || null;
     req.session.message = null;
@@ -96,7 +97,7 @@ const listCategories = async (req, res) => {
   } catch (err) {
     console.error('listCategories function error:', err);
     logger.error(`listCategories function error: ${err.message}`);
-    return res.status(500).render('error-page', { message: 'Failed to load categories' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to load categories' });
   }
 };
 
@@ -104,12 +105,12 @@ const getCategoryData = async (req, res) => {
   try {
     const id = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid id' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid id' });
     }
 
     const cat = await Category.findById(id).lean();
     if (!cat) {
-      return res.status(404).json({ success: false, message: 'Category not found' });
+      return res.status(STATUS_CODES.NOT_FOUND).json({ success: false, message: 'Category not found' });
     }
 
     const subcategories = await SubCategory.find({ Category: id }).lean();
@@ -118,7 +119,7 @@ const getCategoryData = async (req, res) => {
   } catch (err) {
     console.error('getCategoryData function error:', err);
     logger.error(`getCategoryData function error: ${err.message}`);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -128,15 +129,15 @@ const editCategory = async (req, res) => {
     const { name, description, isListed } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid id' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid id' });
     }
     if (!isValidString(name) || !isValidString(description)) {
-      return res.status(400).json({ success: false, message: 'Name and description required' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Name and description required' });
     }
 
     const cat = await Category.findById(id);
     if (!cat) {
-      return res.status(404).json({ success: false, message: 'Category not found' });
+      return res.status(STATUS_CODES.NOT_FOUND).json({ success: false, message: 'Category not found' });
     }
 
     // check unique name (if changed)
@@ -151,7 +152,7 @@ const editCategory = async (req, res) => {
       });
 
       if (exists) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Another category with this name already exists'
         });
@@ -183,7 +184,7 @@ const editCategory = async (req, res) => {
   } catch (err) {
     console.error('editCategory error:', err);
     logger.error(`editCategory error: ${err.message}`);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -193,15 +194,15 @@ const editSubCategory = async (req, res) => {
     const { fitName } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid id' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid id' });
     }
     if (!isValidString(fitName) ) {
-      return res.status(400).json({ success: false, message: 'Name required' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Name required' });
     }
 
     const sub = await SubCategory.findById(id);
     if (!sub) {
-      return res.status(404).json({ success: false, message: 'Subcategory not found' });
+      return res.status(STATUS_CODES.NOT_FOUND).json({ success: false, message: 'Subcategory not found' });
     }
 
     // unique fitName check
@@ -215,7 +216,7 @@ const editSubCategory = async (req, res) => {
       });
 
       if (exists) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Another subcategory with this name already exists'
         });
@@ -230,7 +231,7 @@ const editSubCategory = async (req, res) => {
   } catch (err) {
     console.error('editSubCategory error:', err);
     logger.error(`editSubCategory error: ${err.message}`);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -271,7 +272,7 @@ const createCategory = async (req, res) => {
   } catch (err) {
     console.error('createCategory error:', err);
     logger.error(`createCategory error: ${err.message}`);
-    return res.status(500).render('error-page', { message: 'Failed to create category' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to create category' });
   }
 };
 
@@ -311,7 +312,7 @@ const createSubCategory = async (req, res) => {
   } catch (err) {
     console.error('createSubCategory error:', err);
     logger.error(`createSubCategory error: ${err.message}`);
-    return res.status(500).render('error-page', { message: 'Failed to create subcategory' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to create subcategory' });
   }
 };
 
@@ -339,11 +340,19 @@ const toggleCategoryList = async (req, res) => {
     );
   
     console.log('toggleCategoryList:', id, '->', cat.isListed);
+    // AJAX request
+    if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
+      return res.json({
+        success: true,
+        message: 'Category status updated',
+        isListed: newStatus
+      });
+    }
     return res.redirect('/admin/category');
   } catch (err) {
     console.error('toggleCategoryList error:', err);
     logger.error(`toggleCategoryList error: ${err.message}`);
-    return res.status(500).render('error-page', { message: 'Failed to toggle category' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to toggle category' });
   }
 };
 
@@ -488,19 +497,19 @@ const getSubCategoryData = async (req, res) => {
   try {
     const id = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid id' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid id' });
     }
 
     const sub = await SubCategory.findById(id).lean();
     if (!sub) {
-      return res.status(404).json({ success: false, message: 'Not found' });
+      return res.status(STATUS_CODES.NOT_FOUND).json({ success: false, message: 'Not found' });
     }
 
     return res.json({ success: true, subcategory: sub });
   } catch (err) {
     console.error('getSubCategoryData error:', err);
     logger.error(`getSubCategoryData error: ${err.message}`);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -508,7 +517,7 @@ const deleteCategory = async (req, res) => {
   try {
     const id = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid category id'
       });
@@ -516,7 +525,7 @@ const deleteCategory = async (req, res) => {
  
     const category = await Category.findById(id);
     if (!category) {
-      return res.status(404).json({
+      return res.status(STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: 'Category not found'
       });
@@ -524,7 +533,7 @@ const deleteCategory = async (req, res) => {
 
     const productCount = await Product.countDocuments({ categoryId: id });
     if (productCount > 0) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message:
           'Cannot delete category with products. Unlist products or move them first.'
@@ -541,7 +550,7 @@ const deleteCategory = async (req, res) => {
   } catch (err) {
     console.error('deleteCategory error:', err);
     logger.error(`deleteCategory error: ${err.message}`);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -549,7 +558,7 @@ const deleteSubCategory = async (req, res) => {
   try {
     const id = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid subcategory id'
       });
@@ -557,7 +566,7 @@ const deleteSubCategory = async (req, res) => {
 
     const sub = await SubCategory.findById(id);
     if (!sub) {
-      return res.status(404).json({
+      return res.status(STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: 'Subcategory not found'
       });
@@ -567,7 +576,7 @@ const deleteSubCategory = async (req, res) => {
       subcategoryId: String(id)
     });
     if (productsUsing > 0) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message:
           'Cannot delete subcategory with products. Reassign or remove products first.'
@@ -580,7 +589,7 @@ const deleteSubCategory = async (req, res) => {
     return res.json({ success: true, message: 'Subcategory deleted' });
   } catch (err) {
     console.error('deleteSubCategory error:', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -589,7 +598,7 @@ const restoreCategory = async (req, res) => {
     const id = req.params.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid category id'
       });
@@ -597,7 +606,7 @@ const restoreCategory = async (req, res) => {
 
     const category = await Category.findById(id);
     if (!category) {
-      return res.status(404).json({
+      return res.status(STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: 'Category not found'
       });
@@ -631,7 +640,7 @@ const restoreCategory = async (req, res) => {
   } catch (err) {
     console.error('restoreCategory error:', err);
     logger.error(`restoreCategory error: ${err.message}`);
-    return res.status(500).json({
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Server error'
     });
@@ -650,7 +659,7 @@ const listDeletedCategories = async (req, res) => {
   } catch (err) {
     console.error('listDeletedCategories error:', err);
     logger.error(`listDeletedCategories error: ${err.message}`);
-    return res.status(500).render('error-page', {
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Failed to load deleted categories'
     });
   }

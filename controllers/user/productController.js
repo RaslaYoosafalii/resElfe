@@ -4,7 +4,7 @@ import { Category, SubCategory } from '../../models/categorySchema.js';
 import Wishlist from '../../models/wishlistSchema.js';
 import Cart from '../../models/cartSchema.js';
 import logger from '../../config/logger.js';
-
+import STATUS_CODES from '../../utils/statusCodes.js';
 import mongoose from 'mongoose';
 
 function parseQuery(req) {
@@ -48,7 +48,7 @@ const listProducts = async (req, res) => {
     if (category) {
 
       if (!mongoose.Types.ObjectId.isValid(category)) {
-        return res.status(400).render('error-page', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('error-page', {
           message: 'Invalid category selected'
         });
       }
@@ -60,7 +60,7 @@ const listProducts = async (req, res) => {
       }).lean();
 
       if (!categoryExists) {
-        return res.status(404).render('error-page', {
+        return res.status(STATUS_CODES.NOT_FOUND).render('error-page', {
           message: 'Category not found'
         });
       }
@@ -519,7 +519,7 @@ const listProducts = async (req, res) => {
   } catch (err) {
     console.error('listProducts error:', err);
     logger.error(`listProducts error: ${err.message}`);
-    return res.status(500).render('error-page', {
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Failed loading products'
     });
   }
@@ -530,7 +530,7 @@ const productDetails = async (req, res) => {
     const id = req.params.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).render('error-page', {
+      return res.status(STATUS_CODES.NOT_FOUND).render('error-page', {
         message: 'Invalid product ID'
       });
     }
@@ -543,7 +543,7 @@ const productDetails = async (req, res) => {
     const product = await Product.findById(id).lean();
 
     if (!product) {
-      return res.status(404).render('error-page', {
+      return res.status(STATUS_CODES.NOT_FOUND).render('error-page', {
         message: 'Product not found'
       });
     }
@@ -794,7 +794,7 @@ const productDetails = async (req, res) => {
   } catch (err) {
     console.error('Product Details Error:', err);
     logger.error(`Products Details error: ${err.message}`);
-    return res.status(500).render('error-page', {
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Something went wrong'
     });
   }

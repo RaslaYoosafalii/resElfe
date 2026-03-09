@@ -317,7 +317,7 @@
     <!-- ADD CATEGORY -->
     <div class="add-category-box">
       <h5>Add new category</h5>
-      <form method="POST" action="/admin/category/create" class="add-category-form">
+      <form id="addCategoryForm" class="add-category-form">
         <input name="name" placeholder="Enter category name" required>
         <input name="description" placeholder="Enter description" required>
         <button class="btn-primary-custom" type="submit">+ Add category</button>
@@ -395,7 +395,7 @@
                 <span class="muted">No subcategories</span>
               <% } %>
 
-              <form method="POST" action="/admin/category/subcreate" class="add-sub-form">
+              <form class="add-sub-form ajax-sub-create">
                 <input type="hidden" name="categoryId" value="<%= cat._id %>">
                 <input name="fitName" placeholder="Add subcategory" required>
                 <button class="btn-sm btn-edit">Add</button>
@@ -424,13 +424,13 @@
       <i class="bi bi-pencil"></i>
     </button>
 
-    <form method="POST" action="/admin/category/offer/<%= cat._id %>" style="display:inline;">
-      <input type="hidden" name="offerValue" value="">
-      <input type="hidden" name="offerValidDate" value="">
-      <button class="icon-btn" title="Clear Offer">
-        <i class="bi bi-trash"></i>
-      </button>
-    </form>
+<button
+  class="icon-btn"
+  data-action="clear-offer"
+  data-id="<%= cat._id %>"
+  title="Clear Offer">
+  <i class="bi bi-trash"></i>
+</button>
 
   <% } else { %>
 
@@ -448,11 +448,13 @@
             <td><%= cat.isListed ? 'Yes' : 'No' %></td>
 
             <td>
-              <form method="POST" action="/admin/category/toggle/<%= cat._id %>" style="display:inline;">
-                <button class="btn-sm <%= cat.isListed ? 'btn-unlist' : 'btn-list' %>">
-                  <%= cat.isListed ? 'Unlist' : 'List' %>
-                </button>
-              </form>
+<button
+  class="btn-sm <%= cat.isListed ? 'btn-unlist' : 'btn-list' %>"
+  data-action="toggle-category"
+  data-id="<%= cat._id %>">
+  <%= cat.isListed ? 'Unlist' : 'List' %>
+</button>
+
 <button class="icon-btn" data-action="edit-cat" data-id="<%= cat._id %>">
   <i class="bi bi-pencil"></i>
 </button>
@@ -495,14 +497,38 @@ async function sendJson(url, method, data) {
   });
   return res.json();
 }
+     
+const searchInput = document.querySelector('#searchForm input[name="q"]');
+let searchTimer;
 
+searchInput.addEventListener("input", function(){
 
-    // Clear search button behaviour
-    document.getElementById('clearSearch').addEventListener('click', function () {
-      const form = document.getElementById('searchForm');
-      form.q.value = '';
-      form.submit();
+  clearTimeout(searchTimer);
+
+  searchTimer = setTimeout(() => {
+    const q = searchInput.value.trim();
+    loadCategories({
+      q,
+      page:1
     });
+    window.history.replaceState({}, '', '/admin/category?q=' + encodeURIComponent(q));
+  }, 300); 
+});
+
+// Clear search
+document.getElementById('clearSearch').addEventListener('click', function () {
+  const form = document.getElementById('searchForm');
+  form.q.value = '';
+
+  currentQuery = {
+    page:1,
+    q:""
+  };
+  window.history.replaceState({}, '', '/admin/category');
+
+  loadCategories(currentQuery);
+
+});
 
     // click handler for edit/delete actions
     document.addEventListener('click', function (e) {
@@ -512,7 +538,25 @@ async function sendJson(url, method, data) {
       const action = btn.getAttribute('data-action');
       const id = btn.getAttribute('data-id');
       if (!id) return;
+       
+      // ----------------- TOGGLE CATEGORY LIST -----------------
+if (action === 'toggle-category') {
 
+fetch('/admin/category/toggle/' + id, {
+  method: 'POST',
+  headers:{
+    "X-Requested-With":"XMLHttpRequest"
+  }
+})
+  .then(() => {
+    loadCategories();
+  })
+  .catch(() => {
+    Swal.fire('Error', 'Failed to update category', 'error');
+  });
+
+  return;
+}
       // ----------------- DELETE CATEGORY -----------------
       if (action === 'delete-category') {
         Swal.fire({
@@ -527,7 +571,8 @@ async function sendJson(url, method, data) {
           try {
        const json = await sendJson('/admin/category/delete/' + id, 'DELETE');
             if (json.success) {
-              Swal.fire('Deleted', json.message, 'success').then(() => location.reload());
+              Swal.fire('Deleted', json.message, 'success');
+              loadCategories();
             } else {
               Swal.fire('Error', json.message || 'Failed to delete', 'error');
             }
@@ -552,7 +597,8 @@ async function sendJson(url, method, data) {
           try {
      const json = await sendJson('/admin/category/subdelete/' + id, 'DELETE');
             if (json.success) {
-              Swal.fire('Deleted', json.message, 'success').then(() => location.reload());
+              Swal.fire('Deleted', json.message, 'success');
+              loadCategories();
             } else {
               Swal.fire('Error', json.message || 'Failed to delete', 'error');
             }
@@ -610,7 +656,8 @@ buttonsStyling: false,
               try {
       const json = await sendJson('/admin/category/edit/' + id, 'PATCH', body);
                 if (json.success) {
-                  Swal.fire('Saved', json.message || 'Category updated', 'success').then(() => location.reload());
+                  Swal.fire('Saved', json.message || 'Category updated', 'success');
+                  loadCategories();
                 } else {
                   Swal.fire('Error', json.message || 'Failed to update', 'error');
                 }
@@ -674,7 +721,8 @@ buttonsStyling: false,
               try {
           const json = await sendJson('/admin/category/subedit/' + id, 'PATCH', { fitName: result.value.fitName });
                 if (json.success) {
-                  Swal.fire('Saved', json.message || 'Subcategory updated', 'success').then(() => location.reload());
+                 Swal.fire('Saved', json.message || 'Subcategory updated', 'success');
+                 loadCategories();
                 } else {
                   Swal.fire('Error', json.message || 'Failed to update', 'error');
                 }
@@ -686,7 +734,40 @@ buttonsStyling: false,
         return;
       }
 
+// ----------------- CLEAR OFFER -----------------
+if (action === 'clear-offer') {
 
+  Swal.fire({
+    title: 'Remove category offer?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes remove',
+    cancelButtonText: 'Cancel'
+  }).then((result)=>{
+
+    if(!result.isConfirmed) return;
+
+    const params = new URLSearchParams();
+    params.append("offerValue","");
+    params.append("offerValidDate","");
+
+    fetch('/admin/category/offer/' + id,{
+      method:'POST',
+      headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+      body: params.toString()
+    })
+    .then(()=>{
+      Swal.fire('Removed','Offer deleted','success');
+      loadCategories();
+    })
+    .catch(()=>{
+      Swal.fire('Error','Failed to delete offer','error');
+    });
+
+  });
+
+  return;
+}
 
 // ----------------- SET OFFER (modal) -----------------
 if (action === 'set-offer') {
@@ -740,7 +821,7 @@ if (action === 'set-offer') {
           const dateInput  = document.getElementById('sw-offer-date');
           const minInput   = document.getElementById('sw-min-price');
 
-          // 🔥 PREFILL EXISTING VALUES
+          
           if (cat.offerPrice > 0) {
 
             typeSelect.value = cat.offerIsPercent ? 'percent' : 'fixed';
@@ -809,25 +890,31 @@ if (action === 'set-offer') {
           return { offerType, offerValue, offerValidDate, minProductPrice: minPrice };
         }
 
-      }).then((result) => {
+     }).then((result) => {
 
-        if (!result.isConfirmed) return;
+  if (!result.isConfirmed) return;
 
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/admin/category/offer/' + id;
+  const params = new URLSearchParams();
 
-        ['offerType','offerValue','offerValidDate','minProductPrice'].forEach(key => {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = result.value[key];
-          form.appendChild(input);
-        });
+  params.append("offerType", result.value.offerType);
+  params.append("offerValue", result.value.offerValue);
+  params.append("offerValidDate", result.value.offerValidDate);
+  params.append("minProductPrice", result.value.minProductPrice || "");
 
-        document.body.appendChild(form);
-        form.submit();
-      });
+  fetch('/admin/category/offer/' + id,{
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body: params.toString()
+  })
+  .then(()=>{
+    Swal.fire('Success','Offer saved','success');
+    loadCategories();
+  })
+  .catch(()=>{
+    Swal.fire('Error','Failed to save offer','error');
+  });
+
+});
 
     })
     .catch(() => {
@@ -886,6 +973,103 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
 });
+
+ document.getElementById("addCategoryForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+
+  const formData = new URLSearchParams(new FormData(this));
+
+  const res = await fetch("/admin/category/create",{
+    method:"POST",
+    body:formData
+  });
+
+  if(res.ok){
+    Swal.fire("Success","Category created","success");
+    setTimeout(()=>loadCategories(),500);
+  }else{
+    Swal.fire("Error","Failed to create category","error");
+  }
+});
+document.addEventListener("submit",async function(e){
+
+  const form = e.target.closest(".ajax-sub-create");
+  if(!form) return;
+
+  e.preventDefault();
+
+  const formData = new URLSearchParams(new FormData(form));
+
+  const res = await fetch("/admin/category/subcreate",{
+    method:"POST",
+    body:formData
+  });
+
+  if(res.ok){
+    Swal.fire("Success","Subcategory added","success");
+    loadCategories();
+  }else{
+    Swal.fire("Error","Failed to create subcategory","error");
+  }
+
+});
+
+document.addEventListener("click", function(e){
+
+  const link = e.target.closest(".pagination-box a");
+  if(!link) return;
+
+  e.preventDefault();
+
+  const url = new URL(link.href);
+
+  const page = url.searchParams.get("page");
+  const q = url.searchParams.get("q") || "";
+
+loadCategories({
+  page,
+  q: currentQuery.q
+});
+window.history.replaceState({}, '', '/admin/category?' + new URLSearchParams(currentQuery));
+});
+
+
+let currentQuery = {
+  page:1,
+  q:""
+};
+
+async function loadCategories(params = {}) {
+
+  currentQuery = {...currentQuery, ...params};
+
+  const query = new URLSearchParams(currentQuery).toString();
+
+  const res = await fetch("/admin/category?" + query, {
+    headers: { "X-Requested-With": "XMLHttpRequest" }
+  });
+
+  const html = await res.text();
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  document.querySelector(".category-table").innerHTML =
+    doc.querySelector(".category-table").innerHTML;
+
+const newPagination = doc.querySelector(".pagination-box");
+const currentPagination = document.querySelector(".pagination-box");
+
+if(newPagination){
+
+  if(currentPagination){
+    currentPagination.innerHTML = newPagination.innerHTML;
+  }else{
+    document.querySelector(".main-content").appendChild(newPagination);
+  }
+
+}
+
+}
 </script>
 
 </body>

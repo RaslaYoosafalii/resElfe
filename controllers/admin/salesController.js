@@ -4,6 +4,9 @@ import PDFDocument from 'pdfkit';
 import { Product } from '../../models/productSchema.js';
 import { Category, SubCategory } from '../../models/categorySchema.js';
 import logger from '../../config/logger.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
+
+
 const allowedFilters = ['daily', 'weekly', 'monthly', 'yearly', 'custom'];
 
 const round = (val) => Number(Number(val || 0).toFixed(2));
@@ -222,7 +225,7 @@ const downloadSalesReport = async (req, res) => {
     const { type } = req.query;
 
     if (!['pdf', 'excel'].includes(type)) {
-      return res.status(400).send('Invalid download type');
+      return res.status(STATUS_CODES.BAD_REQUEST).send('Invalid download type');
     }
 
     const { startDate, endDate } = getDateRange(req.query);
@@ -661,7 +664,7 @@ const downloadSalesReport = async (req, res) => {
   } catch (err) {
     console.log(err);
     logger.error(`downloadSalesReport error: ${err.message}`);
-    return res.status(400).send('Invalid request');
+    return res.status(STATUS_CODES.BAD_REQUEST).send('Invalid request');
   }
 };
 
@@ -670,7 +673,7 @@ const getDashboardData = async (req, res) => {
   try {
 
     if (!req.session.admin) {
-      return res.status(401).json({
+      return res.status(STATUS_CODES.UNAUTHORIZED).json({
         success: false,
         message: 'Unauthorized access'
       });
@@ -681,7 +684,7 @@ const getDashboardData = async (req, res) => {
     const allowedFilters = ['yearly', 'monthly', 'weekly', 'daily', 'custom'];
 
     if (!allowedFilters.includes(filter)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid filter type'
       });
@@ -715,7 +718,7 @@ const getDashboardData = async (req, res) => {
     else if (filter === 'custom') {
 
       if (!from || !to) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Start date and end date are required'
         });
@@ -725,14 +728,14 @@ const getDashboardData = async (req, res) => {
       const toDate = new Date(to);
 
       if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Invalid date format'
         });
       }
 
       if (fromDate > toDate) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Start date cannot be greater than end date'
         });
@@ -742,7 +745,7 @@ const getDashboardData = async (req, res) => {
       today.setHours(23,59,59,999);
 
       if (fromDate > today || toDate > today) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Future dates are not allowed'
         });
@@ -764,7 +767,7 @@ const getDashboardData = async (req, res) => {
     let totalOrders = 0;
 
     if (!Array.isArray(orders)) {
-      return res.status(500).json({
+      return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: 'Invalid orders data'
       });
@@ -801,7 +804,7 @@ const getDashboardData = async (req, res) => {
 
     //sales line graph
     if (!startDate || !endDate) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid date range'
       });
@@ -1015,7 +1018,7 @@ const getDashboardData = async (req, res) => {
   } catch (error) {
     console.error('Dashboard analytics error:', error);
     logger.error(`Dashboard analytics error: ${error.message}`);
-    return res.status(500).json({
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Failed to load dashboard data'
     });

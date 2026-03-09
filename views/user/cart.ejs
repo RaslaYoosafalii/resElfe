@@ -240,7 +240,7 @@
 
 <%- include('../partials/user/loggedinHeader') %>
 
-<div class="container">
+<div class="container" id="cart-container">
 
 
   <div class="page-head">
@@ -349,7 +349,7 @@
               Rs. <%= item.basePrice * item.quantity %>
             </div>
           <% } %>
-          <strong>Rs. <%= item.totalPrice %></strong>
+          <strong>Rs. <%= item.totalPrice.toFixed(2) %></strong>
         </td>
 
         <td>
@@ -396,7 +396,7 @@
 
       <div class="summary-row">
         <strong>Payable</strong>
-        <strong>Rs. <%= finalTotal %></strong>
+        <strong>Rs. <%= finalTotal.toFixed(2) %></strong>
       </div>
 
  <button class="checkout-btn"
@@ -423,6 +423,23 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+
+  function refreshCart() {
+  fetch('/cart')
+    .then(res => res.text())
+    .then(html => {
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      const newCart = doc.querySelector('#cart-container');
+      const currentCart = document.querySelector('#cart-container');
+
+      currentCart.innerHTML = newCart.innerHTML;
+
+    });
+}
+
 function updateQty(itemId, delta) {
 fetch('/cart/update', {
   method: 'PATCH',
@@ -436,7 +453,7 @@ fetch('/cart/update', {
       el.style.display = 'block';
       setTimeout(() => el.style.display = 'none', 1000);
     } else {
-      location.reload();
+      refreshCart();
     }
   });
 }
@@ -455,7 +472,7 @@ fetch('/cart/remove', {
     method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId })
-      }).then(() => location.reload());
+      }).then(() => refreshCart());
     });
     return;
   }
@@ -482,7 +499,7 @@ fetch('/cart/remove', {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemId })
     })
-    .then(() => location.reload());
+    .then(() => refreshCart());
   });
 }
 
@@ -514,7 +531,7 @@ fetch('/cart/change-size', {
       }, 1500);
 
     } else {
-      location.reload();
+      refreshCart();
     }
   });
 }

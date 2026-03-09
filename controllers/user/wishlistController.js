@@ -2,6 +2,7 @@ import Wishlist from '../../models/wishlistSchema.js';
 import { Variant } from '../../models/productSchema.js';
 import mongoose from 'mongoose';
 import logger from '../../config/logger.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 const addToWishlist = async (req, res) => {
   try {
@@ -9,7 +10,7 @@ const addToWishlist = async (req, res) => {
     const { productId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ success: false, message: 'Invalid product' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid product' });
     }
 
     let wishlist = await Wishlist.findOne({ userId });
@@ -41,7 +42,7 @@ const addToWishlist = async (req, res) => {
   } catch (err) {
     console.error('addToWishlist error:', err);
     logger.error(`addToWishlist error: ${err.message}`);
-    return res.status(500).json({
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Failed to add to wishlist'
     });
@@ -69,7 +70,7 @@ const removeFromWishlist = async (req, res) => {
   } catch (err) {
     console.error('removeFromWishlist error:', err);
     logger.error(`removeFromWishlist error: ${err.message}`);
-    return res.status(500).json({ success: false });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false });
   }
 };
 

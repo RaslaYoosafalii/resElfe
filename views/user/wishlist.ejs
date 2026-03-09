@@ -546,7 +546,7 @@
     <div class="products-grid">
 
       <% products.forEach(function(p){ %>
-        <div class="product-card <%= p.isUnavailable ? 'disabled' : '' %>">
+        <div id="wishlist-item-<%= p._id %>" class="product-card <%= p.isUnavailable ? 'disabled' : '' %>">
 
   <% if (!p.isUnavailable) { %>
     <a class="product-thumb" href="/product/<%= p._id %>">
@@ -653,7 +653,29 @@ fetch('/wishlist/remove', {
       title: 'Removed from wishlist',
       timer: 1000,
       showConfirmButton: false
-    }).then(() => location.reload());
+    });
+  const card = document.getElementById('wishlist-item-' + productId);
+  if (card) {
+    card.remove();
+  }
+
+  const remainingItems = document.querySelectorAll('.product-card');
+
+  if (remainingItems.length === 0) {
+
+    const container = document.querySelector('.container');
+
+    container.innerHTML = `
+      <div class="page-head">
+        <h2>MY WISHLIST</h2>
+        <p>Saved styles you love. Ready when you are.</p>
+      </div>
+
+      <h2 style="margin-top: 100px; text-align: center; font-size: 100px; color: #958989; opacity: 50%;">
+        Your wishlist is empty
+      </h2>
+    `;
+  }
   });
 }
 </script>

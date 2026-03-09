@@ -5,7 +5,7 @@ import User from '../../models/userSchema.js';
 import { Variant } from '../../models/productSchema.js';
 import Wallet from '../../models/walletSchema.js';
 import logger from '../../config/logger.js';
-
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 const listOrders = async (req, res) => {
   try {
@@ -67,9 +67,9 @@ const listOrders = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('[ADMIN] listOrders error:', err);
-    logger.error(`[ADMIN] listOrders error: ${err.message}`);
-    return res.status(500).render('error-page', {
+    console.error(' listOrders error:', err);
+    logger.error(` listOrders error: ${err.message}`);
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Failed to load orders'
     });
   }
@@ -239,8 +239,8 @@ const updateOrderStatus = async (req, res) => {
     return res.json({ success: true });
 
   } catch (err) {
-    console.error('[ADMIN] updateOrderStatus error:', err);
-    logger.error(`[ADMIN] updateOrderStatus error: ${err.message}`);
+    console.error(' updateOrderStatus error:', err);
+    logger.error(` updateOrderStatus error: ${err.message}`);
     return res.json({
       success: false,
       message: 'Failed to update order status'
@@ -271,9 +271,9 @@ const viewOrderDetails = async (req, res) => {
     return res.render('admin-order-details', {allowRender: true, order });
 
   } catch (err) {
-    console.error('[ADMIN] viewOrderDetails error:', err);
-    logger.error(`[ADMIN] viewOrderDetails error: ${err.message}`);
-    return res.status(500).render('error-page', {
+    console.error(' viewOrderDetails error:', err);
+    logger.error(` viewOrderDetails error: ${err.message}`);
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Failed to load order details'
     });
   }
@@ -290,8 +290,8 @@ const loadReturnRefunds = async (req, res) => {
 
     res.render('return-refund', { allowRender: true, orders });
   } catch (err) {
-    console.error('[ADMIN] loadReturnRefunds error:', err);
-    logger.error(`[ADMIN] loadReturnRefunds error: ${err.message}`);
+    console.error(' loadReturnRefunds error:', err);
+    logger.error(` loadReturnRefunds error: ${err.message}`);
     res.render('return-refund', {allowRender: true, orders: [] });
   }
 };
@@ -400,8 +400,8 @@ const handleReturnAction = async (req, res) => {
     res.json({ success: true });
 
   } catch (err) {
-    console.error('[ADMIN] handleReturnAction error:', err);
-    logger.error(`[ADMIN] handleReturnAction error: ${err.message}`);
+    console.error('handleReturnAction error:', err);
+    logger.error(` handleReturnAction error: ${err.message}`);
     res.json({ success: false });
   }
 };

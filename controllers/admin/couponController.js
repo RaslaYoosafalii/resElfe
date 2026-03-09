@@ -1,5 +1,6 @@
 import { Coupon } from '../../models/couponSchema.js';
 import logger from '../../config/logger.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 const listCoupons = async (req, res) => {
   try {

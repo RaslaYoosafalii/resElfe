@@ -5,7 +5,7 @@ import { Product, Variant } from '../../models/productSchema.js';
 import { Category } from '../../models/categorySchema.js';
 import mongoose from 'mongoose';
 import logger from '../../config/logger.js';
-
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 const MAX_QTY_PER_PRODUCT = 5;
 
@@ -56,7 +56,7 @@ const addToCart = async (req, res) => {
     const { variantId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(variantId)) {
-      return res.status(400).json({ success: false, message: 'Invalid variant' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid variant' });
     }
 
     // 🔍 Variant validation
@@ -66,7 +66,7 @@ const addToCart = async (req, res) => {
     }).lean();
 
     if (!variant || variant.stock <= 0) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Variant unavailable'
       });
@@ -80,7 +80,7 @@ const addToCart = async (req, res) => {
     }).lean();
 
     if (!product) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Product unavailable'
       });
@@ -94,7 +94,7 @@ const addToCart = async (req, res) => {
     }).lean();
 
     if (!category) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Category unavailable'
       });
@@ -119,14 +119,14 @@ const addToCart = async (req, res) => {
     //increase quantity
     if (existingItem) {
       if (existingItem.quantity >= MAX_QTY_PER_PRODUCT) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Maximum quantity reached'
         });
       }
 
       if (existingItem.quantity + 1 > variant.stock) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Insufficient stock'
         });
@@ -160,7 +160,7 @@ const addToCart = async (req, res) => {
   } catch (error) {
     console.error('addToCart error:', error);
     logger.error(`addToCart error: ${error.message}`);
-    return res.status(500).json({ success: false });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false });
   }
 };
 

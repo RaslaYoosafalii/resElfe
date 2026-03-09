@@ -1,5 +1,6 @@
 // middlewares/auth.js
 import User from '../models/userSchema.js';
+import STATUS_CODES from '../utils/statusCodes.js';
 
 const noCache = (req, res, next) => {
   res.setHeader(
@@ -39,46 +40,12 @@ const userAuth = (req, res, next) => {
     })
     .catch(err => {
       console.log('Error in User Auth Middleware', err.message);
-      return res.status(500).send('Internal Server Error');
+      return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send('Internal Server Error');
     });
 };
 
-// const adminAuth = (req, res, next) => {
-//   res.setHeader(
-//     'Cache-Control',
-//     'no-store, no-cache, must-revalidate, proxy-revalidate, private'
-//   );
-//   res.setHeader('Pragma', 'no-cache');
-//   res.setHeader('Expires', '0');
 
-//   if (req.session && req.session.admin) {
-//     User.findById(req.session.admin)
-//       .then(admin => {
-//         if (admin && admin.isAdmin) {
-//           return next();
-//         } else {
-//           req.session.destroy(() => {
-//             res.clearCookie('connect.sid', { path: '/' });
-//             return res.redirect('/admin/login');
-//           });
-//         }
-//       })
-//       .catch(err => {
-//         console.error('Error in Admin Auth Middleware', err);
-//         return res.status(500).send('Internal Server Error');
-//       });
-//   } else {
-//   res.setHeader(
-//     'Cache-Control',
-//     'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0'
-//   );
-//   res.setHeader('Pragma', 'no-cache');
-//   res.setHeader('Expires', '0');
 
-//   return res.redirect('/admin/login');
-// }
-
-// };
 const adminAuth = async (req, res, next) => {
   res.setHeader(
     'Cache-Control',

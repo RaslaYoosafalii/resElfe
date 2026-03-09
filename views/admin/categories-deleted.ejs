@@ -74,21 +74,34 @@
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
-    document.addEventListener('click', async e => {
-      const btn = e.target.closest('.btn-restore');
-      if (!btn) return;
+document.addEventListener('click', async e => {
 
-      const id = btn.dataset.id;
-      const res = await fetch('/admin/category/restore/' + id, { method:'POST' });
-      const json = await res.json();
+  const btn = e.target.closest('.btn-restore');
+  if (!btn) return;
 
-      if (json.success) {
-        Swal.fire('Restored', json.message, 'success')
-          .then(() => location.reload());
-      } else {
-        Swal.fire('Error', json.message || 'Failed', 'error');
-      }
-    });
+  const id = btn.dataset.id;
+
+  const res = await fetch('/admin/category/restore/' + id, {
+    method: 'POST'
+  });
+
+  const json = await res.json();
+
+  if (json.success) {
+
+    Swal.fire('Restored', json.message, 'success');
+
+    // remove the row without reloading
+    const row = btn.closest('tr');
+    if (row) row.remove();
+
+  } else {
+
+    Swal.fire('Error', json.message || 'Failed', 'error');
+
+  }
+
+});
   </script>
 
   <%- include('../partials/admin/footer') %>

@@ -12,6 +12,8 @@ import path from 'path';
 import fs from 'fs';
 import logger from '../../config/logger.js';
 import { uploadToS3 } from '../../utils/s3Upload.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
+
 dotenv.config();
 
 
@@ -158,7 +160,7 @@ const loadHome = async (req, res) => {
   } catch (error) {
     console.log('home page error:', error);
     logger.error(`home page error: ${error.message}`);
-    return res.status(500).render('error-page', {
+    return res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Unable to load homepage'
     });
   }
@@ -328,7 +330,7 @@ const forgotResendOtp = async (req, res) => {
       !req.session.resetEmail ||
       req.session.resetEmail !== (email && email.toLowerCase())
     ) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid request'
       });
@@ -337,7 +339,7 @@ const forgotResendOtp = async (req, res) => {
       req.session.otpLastSentAt &&
       Date.now() - req.session.otpLastSentAt < OTP_COOLDOWN
     ) {
-      return res.status(429).json({
+      return res.status(STATUS_CODES.TOO_MANY_REQUESTS).json({
         success: false,
         message: 'Please wait before resending OTP'
       });
@@ -349,7 +351,7 @@ const forgotResendOtp = async (req, res) => {
 
     const emailResult = await sendVerificationEmail(email, otp);
     if (!emailResult || !emailResult.ok) {
-      return res.status(500).json({
+      return res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: 'Failed to send OTP'
       });
@@ -362,7 +364,7 @@ const forgotResendOtp = async (req, res) => {
   } catch (error) {
     console.error('forgotResendOtp error', error);
     logger.error(`forgotResendOtp error: ${error.message}`);
-    return res.status(500).json({
+    return res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Server error'
     });
@@ -442,7 +444,7 @@ const forgotChangePassword = async (req, res) => {
     logger.error(`ForgotChangePassword error: ${error.message}`);
 
     if (req.headers['content-type']?.includes('application/json')) {
-      return res.status(500).json({
+      return res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: 'Unable to change password. Please try again later.'
       });
@@ -1097,7 +1099,7 @@ const deleteProfileImage = async (req, res) => {
   } catch (error) {
     console.error('deleteProfileImage error', error);
     logger.error(`deleteProfileImage error: ${error.message}`);
-    return res.status(500).json({ success: false });
+    return res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false });
   }
 };
 
@@ -1702,28 +1704,28 @@ const editAddress = async (req, res) => {
       !locality || !city || !state ||
       !landmark || !addressType || !address
     ) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'All required fields must be filled'
       });
     }
 
     if (typeof name !== 'string' || name.trim().length < 3) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Name must be at least 3 characters'
       });
     }
 
     if (!/^\d{10}$/.test(mobileNumber)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Mobile number must be exactly 10 digits'
       });
     }
 
     if (!/^\d{6}$/.test(String(pincode))) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Pincode must be exactly 6 digits'
       });
@@ -1731,14 +1733,14 @@ const editAddress = async (req, res) => {
 
     if (alternativeNumber) {
       if (!/^\d{10}$/.test(alternativeNumber)) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Alternate number must be exactly 10 digits'
         });
       }
 
       if (String(alternativeNumber) === String(mobileNumber)) {
-        return res.status(400).json({
+        return res.status(STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: 'Alternate number cannot be same as mobile number'
         });
@@ -1746,14 +1748,14 @@ const editAddress = async (req, res) => {
     }
 
     if (!indianStates.includes(state)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid state selected'
       });
     }
 
     if (!['Home', 'Work'].includes(addressType)) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid address type'
       });
@@ -1762,7 +1764,7 @@ const editAddress = async (req, res) => {
     const addressDoc = await Address.findOne({ userId });
 
     if (!addressDoc || !addressDoc.address[index]) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid address selected'
       });
@@ -1789,7 +1791,7 @@ const editAddress = async (req, res) => {
   } catch (error) {
     console.error('editAddress error', error);
     logger.error(`editAddress error: ${error.message}`);
-    return res.status(500).json({
+    return res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Server error while updating address'
     });
@@ -1804,7 +1806,7 @@ const deleteAddress = async (req, res) => {
     const addressDoc = await Address.findOne({ userId });
 
     if (!addressDoc || !addressDoc.address[index]) {
-      return res.status(400).json({ success: false });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false });
     }
 
     addressDoc.address.splice(index, 1);
@@ -1814,7 +1816,7 @@ const deleteAddress = async (req, res) => {
   } catch (error) {
     console.error('deleteAddress error', error);
     logger.error(`deleteAddress error: ${error.message}`);
-    res.status(500).json({ success: false });
+    res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false });
   }
 };
 

@@ -9,6 +9,9 @@ import razorpayInstance from '../../config/razorpay.js';
 import crypto from 'crypto';
 import { Coupon } from '../../models/couponSchema.js';
 import logger from '../../config/logger.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
+
+
 
 const round2 = (num) => Number((num || 0).toFixed(2));
 
@@ -738,7 +741,7 @@ const getOrderDetails = async (req, res) => {
     const order = await Order.findOne({ orderId, userId }).lean();
 
     if (!order) {
-      return res.status(404).send('Order not found');
+      return res.status(STATUS_CODES.NOT_FOUND).send('Order not found');
     }
 
     res.render('order-details', { order });
@@ -746,7 +749,7 @@ const getOrderDetails = async (req, res) => {
   } catch (err) {
     console.error('getOrderDetails error', err);
     logger.error(`getOrderDetails error: ${err.message}`);
-    res.status(500).send('Something went wrong');
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send('Something went wrong');
   }
 };
 
@@ -1014,7 +1017,7 @@ const downloadInvoice = async (req, res) => {
     const userId = req.session.user;
 
     const order = await Order.findOne({ orderId, userId }).lean();
-    if (!order) return res.status(404).send('Order not found');
+    if (!order) return res.status(STATUS_CODES.NOT_FOUND).send('Order not found');
 
     const doc = new PDFDocument({ margin: 30 });
 
@@ -1271,7 +1274,7 @@ const downloadInvoice = async (req, res) => {
   } catch (err) {
     console.error('downloadInvoice error', err);
     logger.error(`downloadInvoice error: ${err.message}`);
-    res.status(500).send('Invoice generation failed');
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).send('Invoice generation failed');
   }
 };
 

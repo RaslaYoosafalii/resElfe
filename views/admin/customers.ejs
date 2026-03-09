@@ -148,7 +148,7 @@
 
     .pagination a.active {
       background: #e7e5ff;
-      color: #6b63ff;
+      color: #696868;
       border-color: transparent;
     }
 
@@ -302,9 +302,31 @@ async function sendRequest(url, method) {
 
 
   /* CLEAR SEARCH */
-  document.getElementById('clearSearch').onclick = () => {
-    window.location.href = '/admin/customer';
-  };
+document.getElementById('clearSearch').onclick = async () => {
+
+  // clear input value
+  const input = document.querySelector('#searchForm input[name="q"]');
+  if (input) input.value = "";
+
+  const res = await fetch("/admin/customer", {
+    headers:{ "X-Requested-With":"XMLHttpRequest" }
+  });
+
+  const html = await res.text();
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html,"text/html");
+
+  const newTable = doc.querySelector(".table-card");
+  const newPagination = doc.querySelector(".pagination-wrap");
+
+  document.querySelector(".table-card").innerHTML = newTable.innerHTML;
+
+  if(newPagination){
+    document.querySelector(".pagination-wrap").innerHTML = newPagination.innerHTML;
+  }
+
+};
 
   /* BLOCK / UNBLOCK */
   document.querySelectorAll('.toggle-form').forEach(form => {
@@ -323,7 +345,32 @@ async function sendRequest(url, method) {
       if (!result.isConfirmed) return;
 
      const json = await sendRequest('/admin/customer/' + id + '/block', 'PATCH');
-      if (json.success) location.reload();
+      if (json.success) {
+
+  const row = form.closest("tr");
+  const statusSpan = row.querySelector("td:nth-child(6) span");
+  const icon = form.querySelector("i");
+
+  if (json.isBlocked) {
+    row.classList.add("blocked");
+    statusSpan.className = "status-blocked";
+    statusSpan.textContent = "Blocked";
+    icon.className = "bi bi-x-circle";
+  } else {
+    row.classList.remove("blocked");
+    statusSpan.className = "status-active";
+    statusSpan.textContent = "Active";
+    icon.className = "bi bi-check-circle";
+  }
+
+  Swal.fire({
+    icon: "success",
+    title: json.message,
+    timer: 900,
+    showConfirmButton: false
+  });
+
+}
       else Swal.fire('Error', json.message || 'Action failed', 'error');
     });
   });
@@ -345,14 +392,51 @@ async function sendRequest(url, method) {
       if (!result.isConfirmed) return;
 
       const json = await sendRequest('/admin/customer/' + id, 'DELETE');
-      if (json.success) {
-        Swal.fire('Deleted', 'Customer removed', 'success').then(() => location.reload());
-      } else {
+    if (json.success) {
+
+  btn.closest("tr").remove();
+
+  Swal.fire({
+    icon: "success",
+    title: "Customer removed",
+    timer: 900,
+    showConfirmButton: false
+  });
+
+} else {
         Swal.fire('Error', json.message || 'Delete failed', 'error');
       }
     });
   });
+
+  const searchForm = document.getElementById("searchForm");
+
+searchForm.addEventListener("submit", async function(e){
+  e.preventDefault();
+
+  const formData = new FormData(searchForm);
+  const params = new URLSearchParams(formData);
+
+  const res = await fetch("/admin/customer?" + params.toString(), {
+    headers:{ "X-Requested-With":"XMLHttpRequest" }
+  });
+
+  const html = await res.text();
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html,"text/html");
+
+  const newTable = doc.querySelector(".table-card");
+  const newPagination = doc.querySelector(".pagination-wrap");
+
+  document.querySelector(".table-card").innerHTML = newTable.innerHTML;
+
+  if(newPagination){
+    document.querySelector(".pagination-wrap").innerHTML = newPagination.innerHTML;
+  }
+});
 </script>
+
 <script>
   window.addEventListener('pageshow', function (event) {
     if (event.persisted) {

@@ -8,9 +8,9 @@ import path from 'path';
 import fs from 'fs';
 import { upload, UPLOAD_DIR } from '../../config/upload.js';
 import { fileURLToPath } from 'url';
-
 import logger from '../../config/logger.js';
 import { uploadToS3 } from '../../utils/s3Upload.js';
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,7 +82,7 @@ const listProducts = async (req, res) => {
   } catch (err) {
     console.error('listProducts error:', err);
     logger.error(`listProducts error: ${err.message}`);
-    return res.status(500).render('error-page', { message: 'Failed to load products' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to load products' });
   }
 };
 
@@ -104,7 +104,7 @@ const loadAddProduct = async (req, res) => {
   } catch (err) {
     console.error('loadAddProduct error:', err);
     logger.error(`loadAddProduct error: ${err.message}`);
-    return res.status(500).render('error-page', { message: 'Failed to load add product page' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to load add product page' });
   }
 };
 
@@ -122,7 +122,7 @@ const addProduct = [
 
         const subcategories = await SubCategory.find().lean();
 
-        return res.status(400).render('product-add', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
           allowRender: true,
           categories,
           subcategories,
@@ -154,7 +154,7 @@ const addProduct = [
         // cleanup uploaded files
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
 
-        return res.status(400).render('product-add', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
           allowRender: true, 
           categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
           subcategories: await SubCategory.find().lean(),
@@ -169,7 +169,7 @@ const addProduct = [
 
       if (!mongoose.Types.ObjectId.isValid(categoryId) || !mongoose.Types.ObjectId.isValid(subcategoryId)) {
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
           allowRender: true, 
           categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
           subcategories: await SubCategory.find().lean(),
@@ -186,7 +186,7 @@ const addProduct = [
 
       if (!subCategoryDoc) {
         (req.files || []).forEach(f => safeUnlink(f.path));
-        return res.status(400).render('product-add', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
           allowRender: true,
           categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
           subcategories: await SubCategory.find().lean(),
@@ -207,7 +207,7 @@ const addProduct = [
         console.log(e);
         logger.error(`AddProduct error: ${e.message}`);
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
           allowRender: true,
           categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
           subcategories: await SubCategory.find().lean(),
@@ -223,7 +223,7 @@ const addProduct = [
       // validate variants: at least one variant, stock non-negative, price positive
       if (!Array.isArray(variantList) || variantList.length === 0) {
         (req.files || []).forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
           allowRender: true,
           categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
           subcategories: await SubCategory.find().lean(),
@@ -253,7 +253,7 @@ const addProduct = [
 
         if (!size) {
           (req.files || []).forEach(f => fs.unlinkSync(f.path));
-          return res.status(400).render('product-add', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
             allowRender: true,
             categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
             subcategories: await SubCategory.find().lean(),
@@ -269,7 +269,7 @@ const addProduct = [
 
         if (!/^[A-Za-z]+$/.test(size) && !/^[0-9]+$/.test(size)) {
           (req.files || []).forEach(f => safeUnlink(f.path));
-          return res.status(400).render('product-add', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
             allowRender: true,
             categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
             subcategories: await SubCategory.find().lean(),
@@ -293,7 +293,7 @@ const addProduct = [
     numericSize % 2 !== 0
           )  {
             (req.files || []).forEach(f => safeUnlink(f.path));
-            return res.status(400).render('product-add', {
+            return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
               allowRender: true,
               categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
               subcategories: await SubCategory.find().lean(),
@@ -310,7 +310,7 @@ const addProduct = [
         const sizeKey = size.toLowerCase();
         if (seenSizes.has(sizeKey)) {
           (req.files || []).forEach(f => fs.unlinkSync(f.path));
-          return res.status(400).render('product-add', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
             allowRender: true,
             categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
             subcategories: await SubCategory.find().lean(),
@@ -326,7 +326,7 @@ const addProduct = [
 
         if (!/^[A-Za-z]{2,}$/.test(color)) {
           (req.files || []).forEach(f => fs.unlinkSync(f.path));
-          return res.status(400).render('product-add', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
             allowRender: true,
             categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
             subcategories: await SubCategory.find().lean(),
@@ -341,7 +341,7 @@ const addProduct = [
 
         if (isNaN(price) || price <= 0) {
           (req.files || []).forEach(f => fs.unlinkSync(f.path));
-          return res.status(400).render('product-add', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
             allowRender: true,
             categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
             subcategories: await SubCategory.find().lean(),
@@ -356,7 +356,7 @@ const addProduct = [
 
         if (isNaN(stock) || stock < 0) {
           (req.files || []).forEach(f => fs.unlinkSync(f.path));
-          return res.status(400).render('product-add', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
             allowRender: true,
             categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
             subcategories: await SubCategory.find().lean(),
@@ -372,7 +372,7 @@ const addProduct = [
         if (discountPrice !== null) {
           if (isNaN(discountPrice) || discountPrice < 0) {
             (req.files || []).forEach(f => fs.unlinkSync(f.path));
-            return res.status(400).render('product-add', {
+            return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
               allowRender: true,
               categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
               subcategories: await SubCategory.find().lean(),
@@ -387,7 +387,7 @@ const addProduct = [
 
           if (discountPrice >= price) {
             (req.files || []).forEach(f => fs.unlinkSync(f.path));
-            return res.status(400).render('product-add', {
+            return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
               allowRender: true,
               categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
               subcategories: await SubCategory.find().lean(),
@@ -412,7 +412,7 @@ const addProduct = [
       const files = req.files || [];
       if (files.length < 3) {
         files.forEach(f => fs.unlinkSync(f.path));
-        return res.status(400).render('product-add', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-add', {
           allowRender: true, 
           categories: await Category.find({ isDeleted: { $ne: true }, isListed: true }).lean(),
           subcategories: await SubCategory.find().lean(),
@@ -479,7 +479,7 @@ const addProduct = [
       console.error('addProduct error:', err);
       logger.error(`addProduct error: ${err.message}`);
       (req.files || []).forEach(f => { try { fs.unlinkSync(f.path); } catch(e){ console.log(e); } });
-      return res.status(500).render('error-page', { message: 'Failed to create product' });
+      return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to create product' });
     }
   }
 ];
@@ -525,7 +525,7 @@ const loadEditProduct = async (req, res) => {
   } catch (err) {
     console.error(' loadEditProduct error:', err);
     logger.error(`loadEditProduct error: ${err.message}`);
-    return res.status(500).render('error-page', { message: 'Failed to load edit page' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to load edit page' });
   }
 };
 
@@ -550,7 +550,7 @@ const updateProduct = [
         productObj.categoryId = String(categoryId);
         productObj.subcategoryId = String(subcategoryId);
 
-        return res.status(400).render('product-edit', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
           allowRender: true,
           product: productObj,
           variants,
@@ -567,13 +567,13 @@ const updateProduct = [
       const id = req.params.id;
       if (!mongoose.Types.ObjectId.isValid(id)) {
         (req.files || []).forEach(f => safeUnlink(f.path));
-        return res.status(400).render('error-page', { message: 'Invalid product id' });
+        return res.status(STATUS_CODES.BAD_REQUEST).render('error-page', { message: 'Invalid product id' });
       }
 
       const product = await Product.findById(id);
       if (!product) {
         (req.files || []).forEach(f => safeUnlink(f.path));
-        return res.status(404).render('error-page', { message: 'Product not found' });
+        return res.status(STATUS_CODES.NOT_FOUND).render('error-page', { message: 'Product not found' });
       }
 
       const {
@@ -594,7 +594,7 @@ const updateProduct = [
         productObj.categoryId = String(categoryId);
         productObj.subcategoryId = String(subcategoryId);
 
-        return res.status(400).render('product-edit', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
           allowRender: true,
           product: productObj,
           variants: await Variant.find({ productId: id }).lean(),
@@ -612,7 +612,7 @@ const updateProduct = [
         productObj.categoryId = String(categoryId);
         productObj.subcategoryId = String(subcategoryId);
 
-        return res.status(400).render('product-edit', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
           allowRender: true,
           product: productObj,
           variants: await Variant.find({ productId: id }).lean(),
@@ -633,7 +633,7 @@ const updateProduct = [
         productObj.categoryId = String(categoryId);
         productObj.subcategoryId = String(subcategoryId);
 
-        return res.status(400).render('product-edit', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
           allowRender: true,
           product: productObj,
           variants: await Variant.find({ productId: id }).lean(),
@@ -656,7 +656,7 @@ const updateProduct = [
         productObj.categoryId = String(categoryId);
         productObj.subcategoryId = String(subcategoryId);
 
-        return res.status(400).render('product-edit', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
           allowRender: true,
           product: productObj,
           variants: await Variant.find({ productId: id }).lean(),
@@ -701,7 +701,7 @@ const updateProduct = [
           productObj.categoryId = String(categoryId);
           productObj.subcategoryId = String(subcategoryId);
 
-          return res.status(400).render('product-edit', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
             allowRender: true,
             product: productObj,
             variants: await Variant.find({ productId: id }).lean(),
@@ -721,7 +721,7 @@ const updateProduct = [
           productObj.categoryId = String(categoryId);
           productObj.subcategoryId = String(subcategoryId);
 
-          return res.status(400).render('product-edit', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
             allowRender: true,
             product: productObj,
             variants: await Variant.find({ productId: id }).lean(),
@@ -748,7 +748,7 @@ const updateProduct = [
             productObj.categoryId = String(categoryId);
             productObj.subcategoryId = String(subcategoryId);
 
-            return res.status(400).render('product-edit', {
+            return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
               allowRender: true,
               product: productObj,
               variants: await Variant.find({ productId: id }).lean(),
@@ -770,7 +770,7 @@ const updateProduct = [
           productObj.categoryId = String(categoryId);
           productObj.subcategoryId = String(subcategoryId);
 
-          return res.status(400).render('product-edit', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
             allowRender: true,
             product: productObj,
             variants: await Variant.find({ productId: id }).lean(),
@@ -791,7 +791,7 @@ const updateProduct = [
           productObj.categoryId = String(categoryId);
           productObj.subcategoryId = String(subcategoryId);
 
-          return res.status(400).render('product-edit', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
             allowRender: true,
             product: productObj,
             variants: await Variant.find({ productId: id }).lean(),
@@ -811,7 +811,7 @@ const updateProduct = [
           productObj.categoryId = String(categoryId);
           productObj.subcategoryId = String(subcategoryId);
 
-          return res.status(400).render('product-edit', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
             allowRender: true,
             product: productObj,
             variants: await Variant.find({ productId: id }).lean(),
@@ -831,7 +831,7 @@ const updateProduct = [
           productObj.categoryId = String(categoryId);
           productObj.subcategoryId = String(subcategoryId);
 
-          return res.status(400).render('product-edit', {
+          return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
             allowRender: true,
             product: productObj,
             variants: await Variant.find({ productId: id }).lean(),
@@ -852,7 +852,7 @@ const updateProduct = [
             productObj.categoryId = String(categoryId);
             productObj.subcategoryId = String(subcategoryId);
 
-            return res.status(400).render('product-edit', {
+            return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
               allowRender: true,
               product: productObj,
               variants: await Variant.find({ productId: id }).lean(),
@@ -872,7 +872,7 @@ const updateProduct = [
             productObj.subcategoryId = String(subcategoryId);
 
 
-            return res.status(400).render('product-edit', {
+            return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
               allowRender: true,
               product: productObj,
               variants: await Variant.find({ productId: id }).lean(),
@@ -920,7 +920,7 @@ const updateProduct = [
         productObj.categoryId = String(categoryId);
         productObj.subcategoryId = String(subcategoryId);
 
-        return res.status(400).render('product-edit', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
           allowRender: true,
           product: productObj,
           variants: await Variant.find({ productId: id }).lean(),
@@ -990,7 +990,7 @@ const updateProduct = [
         productObj.categoryId = String(categoryId);
         productObj.subcategoryId = String(subcategoryId);
 
-        return res.status(400).render('product-edit', {
+        return res.status(STATUS_CODES.BAD_REQUEST).render('product-edit', {
           allowRender: true,
           product: productObj,
           variants: await Variant.find({ productId: id }).lean(),
@@ -1033,7 +1033,7 @@ const updateProduct = [
       console.error('updateProduct error:', err);
       logger.error(`updateProduct error: ${err.message}`);
       (req.files || []).forEach(f => safeUnlink(f.path));
-      return res.status(500).render('error-page', { message: 'Failed to update product' });
+      return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', { message: 'Failed to update product' });
     }
   }
 ];
@@ -1046,12 +1046,12 @@ const deleteProduct = async (req, res) => {
     const id = req.params.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid id' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid id' });
     }
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+      return res.status(STATUS_CODES.NOT_FOUND).json({ success: false, message: 'Product not found' });
     }
 
 
@@ -1074,7 +1074,7 @@ const deleteProduct = async (req, res) => {
 
   } catch (err) {
     console.error('deleteProduct error:', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: 'Server error' });
   }
 };
 
@@ -1084,12 +1084,12 @@ const restoreProduct = async (req, res) => {
     const id = req.params.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'Invalid id' });
+      return res.status(STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invalid id' });
     }
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+      return res.status(STATUS_CODES.NOT_FOUND).json({ success: false, message: 'Product not found' });
     }
 
     if (!product.isDeleted) {
@@ -1118,7 +1118,7 @@ const restoreProduct = async (req, res) => {
   } catch (err) {
     console.error('restoreProduct error:', err);
     logger.error(`restoreProduct error: ${err.message}`);
-    return res.status(500).json({
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Server error'
     });
@@ -1140,7 +1140,7 @@ const listDeletedProducts = async (req, res) => {
   } catch (err) {
     console.error('listDeletedProducts error:', err);
     logger.error(`listDeletedProducts error: ${err.message}`);
-    return res.status(500).render('error-page', {
+    return res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).render('error-page', {
       message: 'Failed to load deleted products'
     });
   }

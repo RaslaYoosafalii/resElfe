@@ -3,7 +3,7 @@ import razorpayInstance from '../../config/razorpay.js';
 import crypto from 'crypto';
 import User from '../../models/userSchema.js';
 import logger from '../../config/logger.js';
-
+import STATUS_CODES from '../../utils/statusCodes.js';
 
 
 const loadWallet = async (req, res) => {
@@ -68,7 +68,7 @@ const createWalletOrder = async (req, res) => {
     const amount = Number(req.body.amount);
 
     if (!amount || amount <= 0) {
-      return res.status(400).json({
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: 'Invalid amount. Amount must be greater than 0.'
       });
@@ -91,7 +91,7 @@ const createWalletOrder = async (req, res) => {
     console.error('Create wallet add error:', error);
     logger.error(`Create wallet add error: ${error.message}`);
 
-    res.status(500).json({
+    res.status( STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Unable to process wallet order'
     });

@@ -163,7 +163,7 @@
 
 <%- include('../partials/admin/headerSidebar') %>
 
-<div class="admin-container">
+<div class="admin-container" id="orders-container">
 
   <div class="topbar">
     <div class="page-title">
@@ -302,6 +302,26 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+function refreshOrders(url = window.location.href) {
+
+  fetch(url)
+  .then(res => res.text())
+  .then(html => {
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    const newContent = doc.querySelector("#orders-container");
+    const currentContent = document.querySelector("#orders-container");
+
+    currentContent.innerHTML = newContent.innerHTML;
+
+    attachOrderEvents(); // reattach events
+  });
+
+}
+
+function attachOrderEvents(){
 document.querySelectorAll(".orderStatus").forEach(select => {
   select.addEventListener("change", async e => {
     const orderId = select.dataset.id;
@@ -334,7 +354,7 @@ if (json.success) {
     title: "Status Updated",
     showConfirmButton: false,
     timer: 1200
-  }).then(() => location.reload());
+  }).then(() => refreshOrders());
 }
 else {
   Swal.fire("Error", json.message, "error");
@@ -346,18 +366,41 @@ else {
 
 document.getElementById("searchInput")?.addEventListener("keydown", e => {
   if (e.key === "Enter") {
-    location.href = "?search=" + encodeURIComponent(e.target.value);
+
+    const search = encodeURIComponent(e.target.value);
+
+    refreshOrders(`?search=${search}`);
+
   }
 });
 
 document.getElementById("clearSearch")?.addEventListener("click", () => {
-  location.href = location.pathname;
+  refreshOrders(location.pathname);
 });
 
 document.getElementById("statusFilter")?.addEventListener("change", e => {
   const val = e.target.value;
-  location.href = val ? "?status=" + val : location.pathname;
+  if (val) {
+    refreshOrders(`?status=${val}`);
+  } else {
+    refreshOrders(location.pathname);
+  }
 });
+
+document.querySelectorAll(".page-btn").forEach(btn => {
+
+  btn.addEventListener("click", e => {
+
+    e.preventDefault();
+
+    refreshOrders(btn.getAttribute("href"));
+
+  });
+
+});
+
+}
+attachOrderEvents();
 </script>
 
 </body>
